@@ -16,9 +16,9 @@ export default function QRPrintModal({ isOpen, onClose, table }) {
 
   useEffect(() => {
     if (table && table.qr_token) {
-      QRCode.toDataURL(fullUrl, { 
-        width: 350, 
-        margin: 2, 
+      QRCode.toDataURL(fullUrl, {
+        width: 350,
+        margin: 2,
         color: { dark: '#000000', light: '#ffffff' },
         errorCorrectionLevel: 'H'
       })
@@ -41,7 +41,7 @@ export default function QRPrintModal({ isOpen, onClose, table }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Official Table QR Card — Table ${table.table_number}`} maxWidth="max-w-md">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Official Table QR Card - Table ${table.table_number}`} maxWidth="max-w-md">
       <div className="flex flex-col items-center text-center">
         {/* Printable Physical Table Stand / Card */}
         <div className="printable-area receipt-container p-6 bg-white text-slate-900 rounded-3xl shadow-2xl border-2 border-slate-200 w-full max-w-xs mb-6">
