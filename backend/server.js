@@ -158,17 +158,18 @@ app.use((err, req, res, next) => {
 
 // Start Server
 async function startServer() {
-  try {
-    await initDatabase();
-    server.listen(PORT, () => {
-      console.log(`🚀 Hotel Restaurant Backend Server running on http://localhost:${PORT}`);
-      console.log(`📡 Socket.IO server initialized`);
-      console.log(`🌐 CORS origin: ${CLIENT_URL}`);
-      console.log(`📁 Static uploads folder: ${path.join(__dirname, 'uploads')}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err);
-  }
+  server.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 Hotel Restaurant Backend Server running on port ${PORT}`);
+    console.log(`📡 Socket.IO server initialized`);
+    console.log(`📁 Static uploads folder: ${path.join(__dirname, 'uploads')}`);
+
+    try {
+      await initDatabase();
+      console.log(`✅ System database initialized and ready for production requests.`);
+    } catch (err) {
+      console.error('Database initialization warning/error:', err);
+    }
+  });
 }
 
 startServer();
