@@ -57,7 +57,14 @@ export default function RegisterRestaurantPage() {
         navigate('/admin');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to register restaurant. Please check all fields.');
+      const serverMsg = err.response?.data?.message;
+      if (serverMsg) {
+        setError(serverMsg);
+      } else if (err.message?.includes('Network Error') || !err.response) {
+        setError('Network Error: Cannot connect to backend server. Make sure the backend server is running and reachable.');
+      } else {
+        setError(err.message || 'Failed to register restaurant. Please check all fields.');
+      }
     } finally {
       setLoading(false);
     }
