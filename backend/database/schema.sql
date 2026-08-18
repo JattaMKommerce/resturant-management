@@ -1,9 +1,6 @@
 -- Database Schema for Hotel Restaurant Online Ordering & Delivery System
 -- Phase 1 + Phase 2: Multi-Restaurant Platform with Delivery Rider System
 
-CREATE DATABASE IF NOT EXISTS hotel_db;
-USE hotel_db;
-
 -- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
