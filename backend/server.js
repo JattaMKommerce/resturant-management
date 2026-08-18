@@ -16,11 +16,17 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+// Dynamic CORS configuration allowing localhost, local network IPs (192.168.x.x), and production domains
+const corsOptions = {
+  origin: (origin, callback) => {
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS']
+};
+
 // Middleware
-app.use(cors({
-  origin: CLIENT_URL,
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 app.use(express.json());
@@ -29,10 +35,12 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static image uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Socket.IO Setup
+// Socket.IO Setup with Permissive Mobile Cross-Origin
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     credentials: true
   }

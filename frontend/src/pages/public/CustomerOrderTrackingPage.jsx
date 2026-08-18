@@ -52,6 +52,11 @@ export default function CustomerOrderTrackingPage() {
       const room = `customer_${orderId}`;
       joinRoom(room);
 
+      // Auto-poll every 3 seconds for continuous mobile live-sync
+      const pollInterval = setInterval(() => {
+        fetchOrderTracking();
+      }, 3000);
+
       if (socket) {
         socket.on('order_updated', (data) => {
           console.log('Live order update received:', data);
@@ -60,13 +65,18 @@ export default function CustomerOrderTrackingPage() {
         socket.on('kot_updated', () => {
           fetchOrderTracking();
         });
+        socket.on('table_status_changed', () => {
+          fetchOrderTracking();
+        });
       }
 
       return () => {
+        clearInterval(pollInterval);
         leaveRoom(room);
         if (socket) {
           socket.off('order_updated');
           socket.off('kot_updated');
+          socket.off('table_status_changed');
         }
       };
     }

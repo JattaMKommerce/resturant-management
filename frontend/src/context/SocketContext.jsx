@@ -8,9 +8,14 @@ export const SocketProvider = ({ children }) => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const host = window.location.hostname;
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    const defaultSocketUrl = `${protocol}//${host}:5000`;
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || defaultSocketUrl;
+
     const socketInstance = io(SOCKET_URL, {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      withCredentials: true
     });
 
     socketInstance.on('connect', () => {

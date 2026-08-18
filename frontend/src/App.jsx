@@ -115,7 +115,8 @@ const WaiterRedirect = () => {
       </div>
     );
   }
-  if (!user) {
+  const waiterRoles = ['WAITER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER'];
+  if (!user || !waiterRoles.includes(user.role)) {
     return <Navigate to="/waiter/login" replace />;
   }
   return <Navigate to="/waiter/dashboard" replace />;
@@ -131,7 +132,8 @@ const RiderRedirect = () => {
       </div>
     );
   }
-  if (!user) {
+  const riderRoles = ['DRIVER', 'DELIVERY_DRIVER', 'SUPER_ADMIN'];
+  if (!user || !riderRoles.includes(user.role)) {
     return <Navigate to="/driver/login" replace />;
   }
   return <Navigate to="/driver/dashboard" replace />;
@@ -147,7 +149,8 @@ const KitchenRedirect = () => {
       </div>
     );
   }
-  if (!user) {
+  const kitchenRoles = ['KITCHEN', 'CHEF', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER'];
+  if (!user || !kitchenRoles.includes(user.role)) {
     return <Navigate to="/kitchen/login" replace />;
   }
   return <KitchenDisplayPage />;
