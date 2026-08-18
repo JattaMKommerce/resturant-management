@@ -141,7 +141,16 @@ for (const [routePath, routerHandler] of kotRouteMap) {
 app.use('/api', apiRoutes);
 app.use('/api/v1', apiRoutes);
 
-// Health check endpoint
+// Health & Root Status Endpoints
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    message: '🏨 Grand Palace HMS Unified Restaurant & Hotel API is Live',
+    version: '2.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Hotel Restaurant API Server Running', timestamp: new Date() });
 });
