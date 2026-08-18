@@ -84,8 +84,8 @@ async function initDatabase() {
 async function addColumnIfNotExists(conn, table, column, definition) {
   try {
     const [cols] = await conn.query(
-      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-      [dbName, table, column]
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [table, column]
     );
     if (cols.length === 0) {
       await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
@@ -98,6 +98,12 @@ async function addColumnIfNotExists(conn, table, column, definition) {
 
 async function runMigrations(conn) {
   console.log('🔄 Running idempotent migrations...');
+
+  // Users columns
+  await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
+  try {
+    await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
+  } catch (e) {}
 
   // Restaurants columns
   await addColumnIfNotExists(conn, 'restaurants', 'status', "ENUM('PENDING','ACTIVE','SUSPENDED') NOT NULL DEFAULT 'PENDING'");
