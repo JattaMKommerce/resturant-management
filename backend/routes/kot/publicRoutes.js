@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const qrController = require('../../controllers/kot/qrController');
+const menuController = require('../../controllers/kot/menuController');
+const orderController = require('../../controllers/kot/orderController');
+
+router.get('/tables/:token', qrController.getPublicTableByToken);
+router.get('/menu', menuController.getPublicMenu);
+router.post('/orders', orderController.createOrderHandler);
+router.get('/orders/:orderId/track', orderController.getCustomerOrderTracking);
+
+module.exports = router;
