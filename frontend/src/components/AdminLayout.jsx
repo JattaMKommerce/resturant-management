@@ -84,6 +84,7 @@ export default function AdminLayout({ children }) {
     if (path.includes('/admin/offline/reports')) return 'Reports & Analytics';
     if (path.includes('/admin/offline/qr-codes')) return 'QR Codes';
     if (path.includes('/admin/offline/audit-logs')) return 'Audit Logs';
+    if (path.includes('/history')) return 'Past History & Archive';
     if (path.includes('/orders')) return 'Online Orders Pipeline';
     if (path.includes('/riders')) return 'Delivery Partner Fleet';
     if (path.includes('/deliveries')) return 'Active Fleet Monitor';

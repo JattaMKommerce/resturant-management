@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link, useLocation } from 'react-router-dom';
 import { 
   ShoppingBag, 
   Search, 
@@ -13,7 +13,8 @@ import {
   XCircle, 
   Clock, 
   X,
-  ExternalLink
+  ExternalLink,
+  History
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -22,8 +23,14 @@ import { useSocket } from '../../context/SocketContext';
 
 export default function AdminOrdersPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const highlightId = searchParams.get('id');
   const { socket } = useSocket();
+
+  // Extract base slug path
+  const pathParts = location.pathname.split('/');
+  const routeSlug = (pathParts[1] === 'admin' && pathParts[2] && pathParts[2] !== 'offline') ? pathParts[2] : 'grand-palace';
+  const historyPath = `/admin/${routeSlug}/history`;
 
   const [orders, setOrders] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -162,6 +169,13 @@ export default function AdminOrdersPage() {
             <h2 className="text-xl font-extrabold text-slate-900">Orders Management Console</h2>
             <p className="text-xs text-slate-500">Live order processing pipeline, kitchen handoff & rider dispatch</p>
           </div>
+          <Link
+            to={historyPath}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold transition-all shadow-md shadow-amber-500/20"
+          >
+            <History className="w-4 h-4" />
+            <span>View Past History & Archive</span>
+          </Link>
         </div>
 
         {/* Filter Tabs & Search */}

@@ -165,6 +165,7 @@ router.delete('/admin/menu/:id', ...adminAuth, menuController.deleteMenuItem);
 
 // Orders
 router.get('/admin/orders', ...adminAuth, orderController.getAllOrders);
+router.get('/admin/history', ...adminAuth, orderController.getUnifiedHistory);
 router.patch('/admin/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
 router.post('/admin/orders/:id/assign-driver', ...adminAuth, orderController.assignDriver);
 router.post('/admin/orders/:id/recover-delivery', ...adminAuth, async (req, res) => {

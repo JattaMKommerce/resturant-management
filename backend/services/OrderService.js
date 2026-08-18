@@ -205,6 +205,19 @@ async function createOrder(orderPayload) {
       message: `Your order #${orderNumber} for ₹${totalAmount} has been placed.`
     });
 
+    // Automatically dispatch online order KOT to Kitchen KDS station
+    try {
+      await notifyKitchen({
+        id: orderId,
+        order_number: orderNumber,
+        restaurant_id: restaurant.id,
+        items: processedItems,
+        order_type: 'ONLINE'
+      });
+    } catch (kErr) {
+      console.warn('[ORDER SERVICE] Kitchen auto-dispatch warning:', kErr.message);
+    }
+
     return {
       id: orderId,
       orderId,

@@ -238,6 +238,210 @@ async function getDashboardKPIs(req, res) {
   }
 }
 
+async function getUnifiedHistory(req, res) {
+  try {
+    const { type = 'ALL', status, startDate, endDate, search, limit = 200 } = req.query;
+    const restId = req.adminRestaurantId;
+
+    let onlineOrders = [];
+    let offlineOrders = [];
+
+    const safeLimit = Math.max(1, Math.min(500, parseInt(limit) || 200));
+
+    // 1. Fetch Online Orders if type is ALL or ONLINE
+    if (type === 'ALL' || type === 'ONLINE') {
+      let onlineSql = `
+        SELECT o.*, r.name as restaurant_name,
+               COALESCE(d.full_name, u_d.name) as driver_name,
+               COALESCE(d.mobile, u_d.phone) as driver_phone,
+               d.vehicle_type, d.vehicle_number
+        FROM orders o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        LEFT JOIN delivery_drivers d ON o.assigned_driver_id = d.id
+        LEFT JOIN users u_d ON d.user_id = u_d.id
+      `;
+      const onlineParams = [];
+      const onlineWheres = [];
+
+      if (!req.isSuperAdmin && restId) {
+        onlineWheres.push('o.restaurant_id = ?');
+        onlineParams.push(restId);
+      }
+
+      if (status && status !== 'ALL') {
+        onlineWheres.push('o.order_status = ?');
+        onlineParams.push(status);
+      }
+      if (startDate) {
+        onlineWheres.push('DATE(o.created_at) >= ?');
+        onlineParams.push(startDate);
+      }
+      if (endDate) {
+        onlineWheres.push('DATE(o.created_at) <= ?');
+        onlineParams.push(endDate);
+      }
+      if (search) {
+        onlineWheres.push('(o.order_number LIKE ? OR o.customer_name LIKE ? OR o.customer_phone LIKE ?)');
+        const s = `%${search}%`;
+        onlineParams.push(s, s, s);
+      }
+
+      if (onlineWheres.length > 0) onlineSql += ' WHERE ' + onlineWheres.join(' AND ');
+      onlineSql += ` ORDER BY o.created_at DESC LIMIT ${safeLimit}`;
+
+      try {
+        const rows = await query(onlineSql, onlineParams);
+        onlineOrders = rows.map(o => ({
+          id: o.id,
+          source_type: 'ONLINE',
+          order_number: o.order_number,
+          restaurant_name: o.restaurant_name,
+          customer_name: o.customer_name,
+          customer_phone: o.customer_phone,
+          order_type: 'ONLINE_DELIVERY',
+          order_status: o.order_status,
+          payment_method: o.payment_method,
+          payment_status: o.payment_status,
+          subtotal: parseFloat(o.subtotal || 0),
+          tax_amount: parseFloat(o.tax_amount || 0),
+          delivery_fee: parseFloat(o.delivery_fee || 0),
+          discount_amount: parseFloat(o.discount_amount || 0),
+          total_amount: parseFloat(o.total_amount || 0),
+          delivery_address: o.delivery_address,
+          delivery_area: o.delivery_area,
+          driver_name: o.driver_name,
+          driver_phone: o.driver_phone,
+          driver_vehicle: o.vehicle_type ? `${o.vehicle_type} (${o.vehicle_number || ''})` : null,
+          created_at: o.created_at,
+          updated_at: o.updated_at
+        }));
+      } catch (err) {
+        console.error('Error querying online orders history:', err.message);
+      }
+    }
+
+    // 2. Fetch Offline Orders if type is ALL or OFFLINE
+    if (type === 'ALL' || type === 'OFFLINE') {
+      let offlineSql = `
+        SELECT o.*, t.table_number, t.table_name, rm.room_number
+        FROM restaurant_orders o
+        LEFT JOIN restaurant_tables t ON o.table_id = t.id
+        LEFT JOIN rooms rm ON o.room_id = rm.id
+      `;
+      const offlineParams = [];
+      const offlineWheres = [];
+
+      if (status && status !== 'ALL') {
+        offlineWheres.push('o.order_status = ?');
+        offlineParams.push(status);
+      }
+      if (startDate) {
+        offlineWheres.push('DATE(o.created_at) >= ?');
+        offlineParams.push(startDate);
+      }
+      if (endDate) {
+        offlineWheres.push('DATE(o.created_at) <= ?');
+        offlineParams.push(endDate);
+      }
+      if (search) {
+        offlineWheres.push('(o.order_number LIKE ? OR o.customer_name LIKE ? OR o.customer_phone LIKE ? OR t.table_number LIKE ? OR rm.room_number LIKE ?)');
+        const s = `%${search}%`;
+        offlineParams.push(s, s, s, s, s);
+      }
+
+      if (offlineWheres.length > 0) offlineSql += ' WHERE ' + offlineWheres.join(' AND ');
+      offlineSql += ` ORDER BY o.created_at DESC LIMIT ${safeLimit}`;
+
+      try {
+        const rows = await query(offlineSql, offlineParams);
+        offlineOrders = rows.map(o => ({
+          id: o.id,
+          source_type: 'OFFLINE',
+          order_number: o.order_number,
+          restaurant_name: 'Dine-In / Room Service',
+          customer_name: o.customer_name || 'Guest',
+          customer_phone: o.customer_phone || 'N/A',
+          order_type: o.order_type || 'DINE_IN',
+          order_status: o.order_status,
+          payment_method: o.payment_status === 'PAID' ? 'PAID' : (o.payment_status === 'ROOM_CHARGED' ? 'ROOM_CHARGE' : 'CASH_POS'),
+          payment_status: o.payment_status,
+          subtotal: parseFloat(o.subtotal || 0),
+          tax_amount: parseFloat(o.tax_amount || 0),
+          delivery_fee: 0,
+          service_charge: parseFloat(o.service_charge || 0),
+          discount_amount: parseFloat(o.discount_amount || 0),
+          total_amount: parseFloat(o.total_amount || 0),
+          table_number: o.table_number,
+          table_name: o.table_name,
+          room_number: o.room_number,
+          source: o.source,
+          created_at: o.created_at,
+          updated_at: o.updated_at
+        }));
+      } catch (err) {
+        console.error('Error querying offline orders history:', err.message);
+      }
+    }
+
+    // 3. Combine and sort chronologically (newest first)
+    const combined = [...onlineOrders, ...offlineOrders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // 4. Attach order items for top items in result
+    for (let order of combined.slice(0, 100)) {
+      try {
+        if (order.source_type === 'ONLINE') {
+          order.items = await query('SELECT item_name, quantity, unit_price, item_total FROM order_items WHERE order_id = ?', [order.id]);
+        } else {
+          order.items = await query('SELECT item_name, quantity, unit_price, item_total FROM order_items WHERE order_id = ?', [order.id]);
+        }
+      } catch (e) {
+        order.items = [];
+      }
+    }
+
+    // 5. Aggregate summary stats
+    const totalOrders = combined.length;
+    const onlineOrdersCount = onlineOrders.length;
+    const offlineOrdersCount = offlineOrders.length;
+
+    const totalRevenue = combined.reduce((sum, o) => {
+      const isSuccessful = !['CANCELLED', 'REJECTED', 'DELIVERY_FAILED'].includes(o.order_status);
+      return isSuccessful ? sum + o.total_amount : sum;
+    }, 0);
+
+    const onlineRevenue = onlineOrders.reduce((sum, o) => {
+      const isSuccessful = !['CANCELLED', 'REJECTED', 'DELIVERY_FAILED'].includes(o.order_status);
+      return isSuccessful ? sum + o.total_amount : sum;
+    }, 0);
+
+    const offlineRevenue = offlineOrders.reduce((sum, o) => {
+      const isSuccessful = !['CANCELLED', 'REJECTED', 'DELIVERY_FAILED'].includes(o.order_status);
+      return isSuccessful ? sum + o.total_amount : sum;
+    }, 0);
+
+    const completedCount = combined.filter(o => ['DELIVERED', 'COMPLETED', 'PAID', 'SERVED'].includes(o.order_status)).length;
+    const cancelledCount = combined.filter(o => ['CANCELLED', 'REJECTED', 'DELIVERY_FAILED'].includes(o.order_status)).length;
+
+    res.json({
+      success: true,
+      stats: {
+        totalOrders,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        onlineOrdersCount,
+        onlineRevenue: Math.round(onlineRevenue * 100) / 100,
+        offlineOrdersCount,
+        offlineRevenue: Math.round(offlineRevenue * 100) / 100,
+        completedCount,
+        cancelledCount
+      },
+      orders: combined
+    });
+  } catch (err) {
+    console.error('getUnifiedHistory Error:', err);
+    res.status(500).json({ success: false, message: 'Server error retrieving history.' });
+  }
+}
+
 module.exports = {
   placeOrder,
   getOrderById,
@@ -245,5 +449,6 @@ module.exports = {
   getAllOrders,
   updateOrderStatus,
   assignDriver,
-  getDashboardKPIs
+  getDashboardKPIs,
+  getUnifiedHistory
 };

@@ -162,7 +162,7 @@ async function getBillById(req, res, next) {
     bill.items = items;
 
     // Fetch payments
-    const [payments] = await pool.query(`SELECT * FROM payments WHERE bill_id = ?`, [bill.id]);
+    const [payments] = await pool.query(`SELECT * FROM payments WHERE order_id = ?`, [bill.order_id]);
     bill.payments = payments;
 
     return sendSuccess(res, bill, 'Bill details fetched');

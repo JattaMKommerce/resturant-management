@@ -28,6 +28,28 @@ export default function KitchenDisplayPage() {
   const [selectedPrintKOT, setSelectedPrintKOT] = useState(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
+  const [newOrderAlert, setNewOrderAlert] = useState(null);
+
+  // Play Kitchen Bell Chime
+  const playKitchenChime = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.0);
+    } catch (e) {}
+  };
+
   // 1-second live ticker to drive timers smoothly without server polling
   const [currentTime, setCurrentTime] = useState(Date.now());
 
@@ -74,21 +96,32 @@ export default function KitchenDisplayPage() {
     joinRoom('kitchen');
 
     if (socket) {
-      socket.on('new_kot', () => fetchKOTs());
+      const handleNewKOT = (data) => {
+        playKitchenChime();
+        setNewOrderAlert({
+          kot_number: data?.kot_number || 'New KOT',
+          table_number: data?.table_number,
+          order_number: data?.order_number,
+          order_type: data?.order_type || 'TICKET',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        fetchKOTs();
+        setTimeout(() => setNewOrderAlert(null), 8000);
+      };
+
+      socket.on('new_kot', handleNewKOT);
       socket.on('kot_updated', () => fetchKOTs());
       socket.on('kot_item_updated', () => fetchKOTs());
       socket.on('kot_delayed', () => fetchKOTs());
-    }
 
-    return () => {
-      leaveRoom('kitchen');
-      if (socket) {
-        socket.off('new_kot');
+      return () => {
+        leaveRoom('kitchen');
+        socket.off('new_kot', handleNewKOT);
         socket.off('kot_updated');
         socket.off('kot_item_updated');
         socket.off('kot_delayed');
-      }
-    };
+      };
+    }
   }, [selectedDept, selectedStatus, delayedOnly, socket]);
 
   const handleStatusUpdate = async (kotId, newStatus) => {
@@ -215,6 +248,35 @@ export default function KitchenDisplayPage() {
 
   const content = (
     <div className="space-y-4 w-full">
+      {/* Live New Ticket Alert Banner */}
+      {newOrderAlert && (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500/25 via-amber-500/20 to-orange-500/25 border-2 border-orange-500 shadow-xl flex items-center justify-between animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500 text-slate-950 flex items-center justify-center font-black animate-bounce shadow-md">
+              <ChefHat className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-orange-500 text-slate-950">
+                  New Incoming Ticket
+                </span>
+                <span className="text-xs text-slate-400 font-mono">{newOrderAlert.time}</span>
+              </div>
+              <p className="text-sm font-bold text-white mt-0.5">
+                {newOrderAlert.table_number ? `🍽️ Table ${newOrderAlert.table_number} ` : `🌐 Online Order #${newOrderAlert.order_number || ''} `}
+                <span className="text-orange-400 font-extrabold">({newOrderAlert.kot_number})</span> sent to kitchen!
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setNewOrderAlert(null)}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* COMPACT KDS TOOLBAR HEADER */}
       <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 sm:p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-md">
         <div className="flex items-center gap-3">

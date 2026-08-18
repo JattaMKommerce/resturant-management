@@ -349,14 +349,14 @@ export default function CustomerOrderTrackingPage() {
         <button
           onClick={async () => {
             try {
-              if (order.table_number) {
-                await api.post(`/public/tables/${order.qr_token || 'default'}/call-waiter`, { message: 'Customer requested assistance' });
-                alert('🛎️ Waiter notified! Service staff will be at Table ' + order.table_number + ' shortly.');
-              } else {
-                alert('🛎️ Service assistance requested.');
-              }
+              const tokenParam = order.qr_token || order.table_number || 'default';
+              await api.post(`/public/tables/${tokenParam}/call-waiter`, { 
+                table_number: order.table_number,
+                message: `Assistance requested at Table ${order.table_number || 'Dine-In'}`
+              });
+              alert(`🛎️ Waiter notified! Service staff is on their way to Table ${order.table_number || ''}.`);
             } catch (e) {
-              alert('🛎️ Waiter notified!');
+              alert('🛎️ Service call sent to waiter station.');
             }
           }}
           className="w-full py-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-slate-850"

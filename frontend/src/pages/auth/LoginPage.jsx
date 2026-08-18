@@ -27,7 +27,7 @@ export default function LoginPage() {
         } else if (r === 'KITCHEN' || r === 'CHEF') {
           navigate('/kitchen');
         } else if (r === 'WAITER') {
-          navigate('/admin/offline/orders');
+          navigate('/waiter/dashboard');
         } else if (r === 'DELIVERY_DRIVER' || r === 'DRIVER') {
           navigate('/rider/dashboard');
         } else if (r === 'ADMIN' || r === 'RESTAURANT_ADMIN' || r === 'MANAGER') {

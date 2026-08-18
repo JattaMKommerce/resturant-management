@@ -13,7 +13,8 @@ import {
   AlertTriangle, 
   Check, 
   Sparkles,
-  Info
+  Info,
+  Bell
 } from 'lucide-react';
 
 export default function CustomerQRMenuPage() {
@@ -283,6 +284,24 @@ export default function CustomerQRMenuPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                try {
+                  await api.post(`/public/tables/${token}/call-waiter`, {
+                    table_number: table?.table_number,
+                    message: `Customer at Table ${table?.table_number || ''} called for waiter`
+                  });
+                  alert(`🛎️ Waiter notified! Service staff is on their way to Table ${table?.table_number || ''}.`);
+                } catch (e) {
+                  alert('🛎️ Service call sent to waiter station.');
+                }
+              }}
+              className="px-2.5 py-1.5 rounded-full text-xs font-bold transition-all border bg-slate-850 border-amber-500/40 text-amber-400 hover:bg-amber-500/10 flex items-center gap-1"
+              title="Call Waiter to this table"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Call Waiter</span>
+            </button>
             <button
               onClick={() => setVegOnly(!vegOnly)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${

@@ -20,11 +20,21 @@ import DriverApplicationPage from './pages/driver/DriverApplicationPage';
 import DriverLoginPage from './pages/driver/DriverLoginPage';
 import DriverDashboardPage from './pages/driver/DriverDashboardPage';
 
+// Waiter Portal Pages
+import WaiterLoginPage from './pages/waiter/WaiterLoginPage';
+import WaiterRegisterPage from './pages/waiter/WaiterRegisterPage';
+import WaiterDashboard from './pages/offline/waiter/WaiterDashboard';
+
+// Kitchen Portal Pages
+import KitchenLoginPage from './pages/kitchen/KitchenLoginPage';
+import KitchenRegisterPage from './pages/kitchen/KitchenRegisterPage';
+
 // Online Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminMenuPage from './pages/admin/AdminMenuPage';
 import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminHistoryPage from './pages/admin/AdminHistoryPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminWebsitePage from './pages/admin/AdminWebsitePage';
 import RestaurantOnboarding from './pages/admin/RestaurantOnboarding';
@@ -83,6 +93,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     if (user.role === 'KITCHEN' || user.role === 'CHEF') {
       return <Navigate to="/kitchen" replace />;
     }
+    if (user.role === 'WAITER') {
+      return <Navigate to="/waiter/dashboard" replace />;
+    }
     if (user.role === 'DELIVERY_DRIVER' || user.role === 'DRIVER') {
       return <Navigate to="/rider/dashboard" replace />;
     }
@@ -90,6 +103,54 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   return children;
+};
+
+// Waiter Portal Smart Redirector
+const WaiterRedirect = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/waiter/login" replace />;
+  }
+  return <Navigate to="/waiter/dashboard" replace />;
+};
+
+// Rider Portal Smart Redirector
+const RiderRedirect = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/driver/login" replace />;
+  }
+  return <Navigate to="/driver/dashboard" replace />;
+};
+
+// Kitchen Portal Smart Redirector
+const KitchenRedirect = () => {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/kitchen/login" replace />;
+  }
+  return <KitchenDisplayPage />;
 };
 
 // Admin Restaurant Slug Redirector
@@ -159,6 +220,31 @@ export default function App() {
             <DriverDashboardPage />
           </ProtectedRoute>
         } />
+        {/* Rider aliases */}
+        <Route path="/rider" element={<RiderRedirect />} />
+        <Route path="/rider/login" element={<DriverLoginPage />} />
+        <Route path="/rider/apply" element={<DriverApplicationPage />} />
+        <Route path="/rider/register" element={<DriverApplicationPage />} />
+        <Route path="/rider/dashboard" element={
+          <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']}>
+            <DriverDashboardPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Dedicated Standalone Waiter Station Portal */}
+        <Route path="/waiter" element={<WaiterRedirect />} />
+        <Route path="/waiter/login" element={<WaiterLoginPage />} />
+        <Route path="/waiter/register" element={<WaiterRegisterPage />} />
+        <Route path="/waiter/dashboard" element={
+          <ProtectedRoute allowedRoles={['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <WaiterDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/waiter/ready" element={
+          <ProtectedRoute allowedRoles={['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <WaiterDashboard />
+          </ProtectedRoute>
+        } />
 
         {/* Super Admin Portal */}
         <Route path="/super-admin" element={<SuperAdminPage />} />
@@ -170,11 +256,9 @@ export default function App() {
         <Route path="/register-restaurant" element={<RegisterRestaurantPage />} />
 
         {/* Dedicated Standalone Kitchen Station Portal (Full-screen for Chefs) */}
-        <Route path="/kitchen" element={
-          <ProtectedRoute allowedRoles={['KITCHEN', 'CHEF', 'ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <KitchenDisplayPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/kitchen" element={<KitchenRedirect />} />
+        <Route path="/kitchen/login" element={<KitchenLoginPage />} />
+        <Route path="/kitchen/register" element={<KitchenRegisterPage />} />
         <Route path="/kds" element={<Navigate to="/kitchen" replace />} />
 
         {/* ========================================================= */}
@@ -203,6 +287,11 @@ export default function App() {
         <Route path="/admin/:slug/orders" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
             <AdminOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/:slug/history" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminHistoryPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/riders" element={
@@ -278,6 +367,18 @@ export default function App() {
             <AdminLayout>
               <ServiceDashboardPage />
             </AdminLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Order History */}
+        <Route path="/admin/offline/history" element={
+          <ProtectedRoute allowedRoles={adminRoles}>
+            <AdminHistoryPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/history" element={
+          <ProtectedRoute allowedRoles={adminRoles}>
+            <AdminHistoryPage />
           </ProtectedRoute>
         } />
 

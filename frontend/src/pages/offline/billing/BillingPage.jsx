@@ -3,8 +3,11 @@ import api from '../../../services/api';
 import Badge from '../../../components/common/Badge';
 import Modal from '../../../components/common/Modal';
 import { Receipt, CreditCard, Printer, Search, RefreshCw, CheckCircle2, DollarSign, Building, Globe } from 'lucide-react';
+import { useSocket } from '../../../context/SocketContext';
 
 export default function BillingPage() {
+  const { socket, joinRoom, leaveRoom } = useSocket();
+
   const [bills, setBills] = useState([]);
   const [unbilledOrders, setUnbilledOrders] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -41,7 +44,25 @@ export default function BillingPage() {
 
   useEffect(() => {
     fetchBillingData();
-  }, []);
+    joinRoom('admin');
+    joinRoom('cashier');
+
+    if (socket) {
+      socket.on('bill_requested', () => fetchBillingData());
+      socket.on('table_status_changed', () => fetchBillingData());
+      socket.on('order_served', () => fetchBillingData());
+    }
+
+    return () => {
+      leaveRoom('admin');
+      leaveRoom('cashier');
+      if (socket) {
+        socket.off('bill_requested');
+        socket.off('table_status_changed');
+        socket.off('order_served');
+      }
+    };
+  }, [socket]);
 
   const handleGenerateBill = async (orderId) => {
     try {

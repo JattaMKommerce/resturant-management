@@ -26,7 +26,8 @@ import {
   Boxes,
   BarChart3,
   ChevronDown,
-  Building
+  Building,
+  History
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -42,6 +43,7 @@ export default function UnifiedSidebar({ restaurant, currentSlug = 'grand-palace
   const onlineNavItems = [
     { name: 'Online Dashboard', path: basePath, icon: LayoutDashboard, exact: true },
     { name: 'Orders Pipeline', path: `${basePath}/orders`, icon: ShoppingBag },
+    { name: 'Order History & Archive', path: `${basePath}/history`, icon: History },
     { name: 'Delivery Riders', path: `${basePath}/riders`, icon: UtensilsCrossed },
     { name: 'Active Fleet Monitor', path: `${basePath}/deliveries`, icon: Globe },
     { name: 'Menu Items', path: `${basePath}/menu`, icon: Utensils },
@@ -57,6 +59,7 @@ export default function UnifiedSidebar({ restaurant, currentSlug = 'grand-palace
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2 },
     { name: 'Menu Management', path: '/admin/offline/menu', icon: UtensilsCrossed },
     { name: 'Orders', path: '/admin/offline/orders', icon: ShoppingBag },
+    { name: 'Order History', path: '/admin/offline/history', icon: History },
     { name: 'Kitchen Display', path: '/admin/offline/kds', icon: ChefHat },
     { name: 'Kitchen Display System (Accept/Reject)', path: '/admin/offline/kot-status', icon: CheckSquare2 },
     { name: 'Billing & Folio', path: '/admin/offline/billing', icon: Receipt },

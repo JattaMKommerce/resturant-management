@@ -113,9 +113,47 @@ async function getPublicTableByToken(req, res, next) {
   }
 }
 
+const { emitToRoom, broadcastEvent } = require('../../config/socket');
+
+async function callWaiterHandler(req, res, next) {
+  try {
+    const { token } = req.params;
+    const { message, table_number } = req.body;
+
+    let table = null;
+    if (token && token !== 'default') {
+      const [tables] = await pool.query(
+        `SELECT id, table_number, table_name, floor, section FROM restaurant_tables WHERE qr_token = ? OR id = ? OR table_number = ?`,
+        [token, token, token]
+      );
+      if (tables.length > 0) {
+        table = tables[0];
+      }
+    }
+
+    const payload = {
+      table_id: table ? table.id : null,
+      table_number: table ? table.table_number : (table_number || 'T01'),
+      table_name: table ? table.table_name : `Table ${table_number || 'T01'}`,
+      floor: table ? table.floor : 'Main Dining Area',
+      message: message || 'Customer requesting waiter assistance',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    };
+
+    emitToRoom('waiter', 'call_waiter', payload);
+    emitToRoom('admin', 'call_waiter', payload);
+    broadcastEvent('call_waiter', payload);
+
+    return sendSuccess(res, payload, 'Waiter called successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   regenerateQR,
   toggleQRStatus,
   getQRHistory,
-  getPublicTableByToken
+  getPublicTableByToken,
+  callWaiterHandler
 };

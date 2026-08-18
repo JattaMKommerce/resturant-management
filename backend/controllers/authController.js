@@ -18,8 +18,11 @@ async function register(req, res) {
       return res.status(400).json({ success: false, message: 'Email address already registered.' });
     }
 
-    // Only allow CUSTOMER self-registration. RESTAURANT_ADMIN created by Super Admin.
-    const assignedRole = role === 'DRIVER' ? 'DRIVER' : 'CUSTOMER';
+    let assignedRole = 'CUSTOMER';
+    if (role === 'DRIVER') assignedRole = 'DRIVER';
+    else if (role === 'WAITER') assignedRole = 'WAITER';
+    else if (role === 'KITCHEN' || role === 'CHEF') assignedRole = 'KITCHEN';
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await query(
@@ -33,6 +36,12 @@ async function register(req, res) {
       await query(
         `INSERT INTO delivery_drivers (user_id, vehicle_type, vehicle_number, is_active, approval_status, availability_status) VALUES (?, 'Motorbike', 'TEMP-0000', 1, 'PENDING', 'AVAILABLE')`,
         [userId]
+      );
+    } else if (assignedRole === 'WAITER' || assignedRole === 'KITCHEN') {
+      const restId = req.body.restaurant_id || 1;
+      await query(
+        `INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, ?, 0)`,
+        [userId, restId]
       );
     }
 

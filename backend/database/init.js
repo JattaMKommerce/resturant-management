@@ -179,6 +179,9 @@ async function runMigrations(conn) {
   } catch (e) {}
 
   // Payments columns
+  await addColumnIfNotExists(conn, 'payments', 'bill_id', "INT DEFAULT NULL");
+
+  // Payments columns
   await addColumnIfNotExists(conn, 'payments', 'collected_by', "INT DEFAULT NULL");
   await addColumnIfNotExists(conn, 'payments', 'collected_at', "TIMESTAMP NULL DEFAULT NULL");
 
@@ -554,6 +557,13 @@ async function seedKOTData(conn) {
     await seedIntelligence();
   } catch (e) {
     console.warn('Intelligence seed warning:', e.message);
+  }
+
+  try {
+    const { seedHistoricalOrders } = require('./seedHistoricalOrders');
+    await seedHistoricalOrders();
+  } catch (e) {
+    console.warn('Historical orders seed warning:', e.message);
   }
 
   console.log('✅ KOT seed data verified.');

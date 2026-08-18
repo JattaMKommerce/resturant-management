@@ -24,7 +24,16 @@ export const SocketProvider = ({ children }) => {
 
     socketInstance.on('admin_notification', (data) => {
       setToast(data);
-      setTimeout(() => setToast(null), 5000);
+      setTimeout(() => setToast(null), 6000);
+    });
+
+    socketInstance.on('bill_requested', (data) => {
+      setToast({
+        title: `🧾 Bill Requested: Table ${data.table_number || 'Dine-In'}`,
+        message: `Guests at Table ${data.table_number || ''} (${data.floor || 'Floor'}) requested their bill.`,
+        link: '/admin/offline/billing'
+      });
+      setTimeout(() => setToast(null), 8000);
     });
 
     setSocket(socketInstance);
