@@ -4,10 +4,14 @@ const pool = require('../config/database');
 
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+  if (!token && req.cookies) {
+    token = req.cookies.token || req.cookies.hotel_token || req.cookies.jwt;
+  }
 
   if (!token) {
-    return sendError(res, 'Access denied. No token provided.', 401);
+    return sendError(res, 'Access denied. No authentication token provided.', 401);
   }
 
   try {

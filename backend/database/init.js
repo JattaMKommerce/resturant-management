@@ -36,9 +36,9 @@ async function initDatabase() {
       });
       console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
 
-      const forceReset = process.argv.includes('--reset');
+      const forceReset = process.argv.includes('--reset') && process.env.NODE_ENV !== 'production';
       if (forceReset) {
-        console.log('⚠️  Force reset requested. Dropping and recreating database...');
+        console.log('⚠️  Force reset requested (Development only). Dropping and recreating database...');
         await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
       }
 
@@ -62,7 +62,7 @@ async function initDatabase() {
     // Always ensure super admin exists
     await getOrCreateUser(connection, 'Master Super Admin', 'superadmin@gmail.com', 'admin@123', '+91 9999999999', 'SUPER_ADMIN');
 
-    if (userRows[0].count <= 1 || menuRows[0].count === 0 || forceReset) {
+    if (userRows[0].count <= 1 || menuRows[0].count === 0 || (forceReset && process.env.NODE_ENV !== 'production')) {
       console.log('🌱 Seeding initial data...');
       await seedData(connection);
       console.log('✅ Seed data inserted successfully!');
@@ -93,6 +93,21 @@ async function addColumnIfNotExists(conn, table, column, definition) {
     }
   } catch (e) {
     console.warn(`Column check warning for ${table}.${column}:`, e.message);
+  }
+}
+
+async function addIndexIfNotExists(conn, table, indexName, columns) {
+  try {
+    const [indexes] = await conn.query(
+      `SHOW INDEX FROM \`${table}\` WHERE Key_name = ?`,
+      [indexName]
+    );
+    if (indexes.length === 0) {
+      await conn.query(`CREATE INDEX \`${indexName}\` ON \`${table}\` (${columns})`);
+      console.log(`  ↳ Created index ${table}.${indexName}`);
+    }
+  } catch (e) {
+    // Non-fatal warning if table/index exists or not supported
   }
 }
 
@@ -281,6 +296,19 @@ async function runMigrations(conn) {
   for (const sql of tableCreations) {
     try { await conn.query(sql); } catch (e) {}
   }
+
+  // Tenant Query Optimization Indexes
+  console.log('🔄 Ensuring tenant query indexes exist...');
+  await addIndexIfNotExists(conn, 'orders', 'idx_orders_tenant_status', '`restaurant_id`, `order_status`, `created_at`');
+  await addIndexIfNotExists(conn, 'orders', 'idx_orders_customer_id', '`customer_identity_id`');
+  await addIndexIfNotExists(conn, 'orders', 'idx_orders_driver_id', '`driver_id`');
+  await addIndexIfNotExists(conn, 'restaurant_orders', 'idx_rest_orders_tenant_status', '`restaurant_id`, `order_status`, `created_at`');
+  await addIndexIfNotExists(conn, 'restaurant_tables', 'idx_tables_tenant_status', '`restaurant_id`, `status`');
+  await addIndexIfNotExists(conn, 'kots', 'idx_kots_tenant_status', '`restaurant_id`, `status`');
+  await addIndexIfNotExists(conn, 'menu_items', 'idx_menu_tenant_active', '`restaurant_id`, `is_active`');
+  await addIndexIfNotExists(conn, 'categories', 'idx_cat_tenant_active', '`restaurant_id`, `is_active`');
+  await addIndexIfNotExists(conn, 'rider_applications', 'idx_rider_app_tenant_status', '`restaurant_id`, `application_status`');
+
   console.log('✅ Phase 1 + Phase 2 migrations applied.');
 }
 

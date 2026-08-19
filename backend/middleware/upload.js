@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -12,22 +13,24 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'file-' + uniqueSuffix + ext);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const randomSuffix = crypto.randomBytes(12).toString('hex');
+    const safeFilename = `img-${Date.now()}-${randomSuffix}${ext}`;
+    cb(null, safeFilename);
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|webp|gif|svg/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowedExtensions = /\.(jpg|jpeg|png|webp|gif|svg)$/i;
+  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
 
-  if (mimetype && extname) {
+  const extValid = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
+  const mimeValid = allowedMimes.includes(file.mimetype);
+
+  if (extValid && mimeValid) {
     return cb(null, true);
-  } else {
-    cb(new Error('Only image files (jpg, jpeg, png, webp, gif, svg) are allowed!'));
   }
+  return cb(new Error('Invalid image file. Only JPG, PNG, WebP, GIF, and SVG formats are permitted.'));
 };
 
 const upload = multer({

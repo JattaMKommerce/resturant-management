@@ -1,7 +1,25 @@
 import axios from 'axios';
 
+/**
+ * Resolve KOT & Offline API base URL.
+ * Automatically aligns with VITE_API_BASE_URL in production without requiring separate configuration.
+ */
+function resolveKotBaseUrl() {
+  if (import.meta.env.VITE_KOT_API_BASE_URL) {
+    return import.meta.env.VITE_KOT_API_BASE_URL.replace(/\/+$/, '');
+  }
+  const mainApi = import.meta.env.VITE_API_BASE_URL;
+  if (mainApi) {
+    // If mainApi is 'https://backend.railway.app/api/v1', strip /v1 and append /api
+    const origin = mainApi.replace(/\/api\/v1\/?$/, '').replace(/\/v1\/?$/, '').replace(/\/api\/?$/, '');
+    return `${origin}/api`;
+  }
+  // Development fallback
+  return 'http://localhost:5000/api';
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_KOT_API_BASE_URL || '/api',
+  baseURL: resolveKotBaseUrl(),
   headers: {
     'Content-Type': 'application/json'
   },
@@ -28,4 +46,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

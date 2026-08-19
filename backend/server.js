@@ -4,67 +4,203 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const fs = require('fs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const { initDatabase } = require('./database/init');
 const apiRoutes = require('./routes/api');
 const { setSocketIO } = require('./services/NotificationService');
+const { setSocketIO: setKOTSocketIO } = require('./config/socket');
+const { setSocketIOInstance, processDriverLocationUpdate } = require('./services/DriverLocationService');
+const { pool, testConnection } = require('./config/db');
+
+// Security & Logging Middleware
+const {
+  securityHeaders,
+  authRateLimiter,
+  generalRateLimiter,
+  requestCorrelationId,
+  requestLogger
+} = require('./middleware/security');
+const errorHandler = require('./middleware/errorHandler');
+
+const isProduction = process.env.NODE_ENV === 'production';
+const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
 
 const app = express();
 const server = http.createServer(app);
 
-const PORT = process.env.PORT || 5000;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+// ──────────────────────────────────────────────────────────
+// 1. CORS CONFIGURATION
+// ──────────────────────────────────────────────────────────
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,https://resturant-management-pied.vercel.app')
+  .split(',')
+  .map(url => url.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
-// Dynamic CORS configuration allowing localhost, local network IPs (192.168.x.x), and production domains
 const corsOptions = {
   origin: (origin, callback) => {
-    callback(null, true);
+    // Allow non-browser requests (e.g. mobile apps, postman, health checks)
+    if (!origin) return callback(null, true);
+
+    // Development local network / localhost access
+    if (!isProduction || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin) || allowedOrigins.some(ao => origin.endsWith(ao.replace(/^https?:\/\//, '')))) {
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS Blocked] Origin "${origin}" not in allowed list:`, allowedOrigins);
+    callback(new Error(`CORS origin "${origin}" not allowed by security policy.`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS']
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id']
 };
 
-// Middleware
+// ──────────────────────────────────────────────────────────
+// 2. GLOBAL MIDDLEWARE PIPELINE
+// ──────────────────────────────────────────────────────────
+app.use(securityHeaders);
 app.use(cors(corsOptions));
-
+app.use(requestCorrelationId);
+app.use(requestLogger);
+app.use(generalRateLimiter);
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static image uploads
+// Static asset uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Socket.IO Setup with Permissive Mobile Cross-Origin
+// ──────────────────────────────────────────────────────────
+// 3. SOCKET.IO HARDENING & TENANT ROOM AUTHORIZATION
+// ──────────────────────────────────────────────────────────
 const io = new Server(server, {
-  cors: {
-    origin: (origin, callback) => {
-      callback(null, true);
-    },
-    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-    credentials: true
-  }
+  cors: corsOptions,
+  pingTimeout: 30000,
+  pingInterval: 25000
 });
 
 setSocketIO(io);
-
-const { setSocketIOInstance, processDriverLocationUpdate } = require('./services/DriverLocationService');
+setKOTSocketIO(io);
 setSocketIOInstance(io);
 
-io.on('connection', (socket) => {
-  console.log(`🔌 Socket Client Connected: ${socket.id}`);
+// Socket.IO Handshake Authentication Middleware
+io.use((socket, next) => {
+  try {
+    let token = socket.handshake.auth?.token;
 
-  // Join rooms
+    if (!token && socket.handshake.headers?.authorization) {
+      const authHeader = socket.handshake.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+    }
+
+    if (!token && socket.handshake.headers?.cookie) {
+      const match = socket.handshake.headers.cookie.match(/(?:^|;\s*)(?:token|hotel_token|jwt)=([^;]+)/);
+      if (match) token = match[1];
+    }
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        socket.user = decoded;
+      } catch (e) {
+        // Expired or invalid token — socket remains unauthenticated/guest
+      }
+    }
+    next();
+  } catch (err) {
+    next();
+  }
+});
+
+io.on('connection', (socket) => {
+  const userId = socket.user?.id || 'GUEST';
+  const userRole = socket.user?.role || 'GUEST';
+
+  // Room Join Authorization
   socket.on('join_room', (room) => {
+    if (!room || typeof room !== 'string') return;
+
+    // 1. Public Order & Customer tracking rooms (Permitted for live tracking)
+    if (room.startsWith('order_') || room.startsWith('customer_') || room.startsWith('table_')) {
+      socket.join(room);
+      return;
+    }
+
+    // 2. Super Admin can join any operational room
+    if (socket.user?.role === 'SUPER_ADMIN') {
+      socket.join(room);
+      return;
+    }
+
+    // 3. Tenant Admin Rooms: restaurant_${id}_admin or restaurant_admin_${id}
+    const adminMatch = room.match(/^restaurant_(?:admin_)?(\d+)(?:_admin)?$/);
+    if (adminMatch) {
+      const targetRestId = parseInt(adminMatch[1], 10);
+      const isAuthorized = socket.user && (
+        socket.user.role === 'ADMIN' ||
+        socket.user.role === 'RESTAURANT_ADMIN' ||
+        socket.user.role === 'MANAGER'
+      );
+
+      if (isAuthorized && (!socket.user.restaurant_id || parseInt(socket.user.restaurant_id, 10) === targetRestId)) {
+        socket.join(room);
+      } else if (!isProduction) {
+        socket.join(room); // Permissive in dev
+      } else {
+        socket.emit('room_error', { message: 'Unauthorized access to restaurant management room.', room });
+      }
+      return;
+    }
+
+    // 4. Waiter & Kitchen Stations
+    if (room.includes('waiter') || room === 'waiter') {
+      if (['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'].includes(userRole) || !isProduction) {
+        socket.join(room);
+      } else {
+        socket.emit('room_error', { message: 'Unauthorized access to waiter station room.', room });
+      }
+      return;
+    }
+
+    if (room.includes('kitchen') || room === 'kitchen') {
+      if (['KITCHEN', 'CHEF', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'].includes(userRole) || !isProduction) {
+        socket.join(room);
+      } else {
+        socket.emit('room_error', { message: 'Unauthorized access to kitchen display room.', room });
+      }
+      return;
+    }
+
+    // 5. Driver private rooms
+    const driverMatch = room.match(/driver_(\d+)/);
+    if (driverMatch) {
+      const targetDriverId = parseInt(driverMatch[1], 10);
+      if (socket.user?.id === targetDriverId || ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userRole) || !isProduction) {
+        socket.join(room);
+      } else {
+        socket.emit('room_error', { message: 'Unauthorized access to driver communication room.', room });
+      }
+      return;
+    }
+
+    // Default join
     socket.join(room);
-    console.log(`Socket ${socket.id} joined room: ${room}`);
   });
 
   socket.on('leave_room', (room) => {
-    socket.leave(room);
+    if (room) socket.leave(room);
   });
 
-  // Driver active delivery location stream (Phase 2 canonical pipeline)
+  // Driver GPS Location Streaming
   socket.on('driver_location_update', async (data) => {
     const { userId, latitude, longitude, orderId } = data;
     if (userId && latitude && longitude) {
@@ -74,7 +210,6 @@ io.on('connection', (socket) => {
         socket.emit('location_error', { message: err.message });
       }
     } else if (orderId && latitude && longitude) {
-      // Fallback for legacy broadcast compatibility
       io.to(`order_${orderId}`).emit('driver_location_stream', {
         driverId: data.driverId || 1,
         latitude: parseFloat(latitude),
@@ -85,16 +220,54 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`🔌 Socket Client Disconnected: ${socket.id}`);
+    // Clean socket disconnection
   });
 });
 
-const { setSocketIO: setKOTSocketIO } = require('./config/socket');
-setKOTSocketIO(io);
+// ──────────────────────────────────────────────────────────
+// 4. HEALTH CHECK ENDPOINTS
+// ──────────────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'OK',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
+});
 
-// ══════════════════════════════════════════════════════════
-// MOUNT OFFLINE RESTAURANT & KOT API ROUTES
-// ══════════════════════════════════════════════════════════
+app.get('/health/db', async (req, res) => {
+  try {
+    const isHealthy = await testConnection();
+    if (isHealthy) {
+      return res.status(200).json({
+        success: true,
+        status: 'OK',
+        database: 'CONNECTED',
+        timestamp: new Date().toISOString()
+      });
+    }
+    return res.status(503).json({ success: false, status: 'ERROR', database: 'DISCONNECTED' });
+  } catch (err) {
+    return res.status(503).json({
+      success: false,
+      status: 'ERROR',
+      database: 'UNAVAILABLE',
+      message: isProduction ? 'Database connection failure.' : err.message
+    });
+  }
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Hotel & HMS Restaurant Unified API is healthy and running.'
+  });
+});
+
+// ──────────────────────────────────────────────────────────
+// 5. RESTAURANT & KOT API ROUTES
+// ──────────────────────────────────────────────────────────
 const kotAuthRoutes = require('./routes/kot/authRoutes');
 const kotTableRoutes = require('./routes/kot/tableRoutes');
 const kotMenuRoutes = require('./routes/kot/menuRoutes');
@@ -107,10 +280,11 @@ const kotAuditRoutes = require('./routes/kot/auditRoutes');
 const kotPublicRoutes = require('./routes/kot/publicRoutes');
 const kotOperationsRoutes = require('./routes/kot/operationsRoutes');
 
-// Mount under both direct /api/* and /api/restaurant/* for zero conflicts
+// Apply stricter rate limiting to auth routes
+app.use('/api/auth', authRateLimiter, kotAuthRoutes);
+app.use('/api/restaurant/auth', authRateLimiter, kotAuthRoutes);
+
 const kotRouteMap = [
-  ['/api/auth', kotAuthRoutes],
-  ['/api/restaurant/auth', kotAuthRoutes],
   ['/api/tables', kotTableRoutes],
   ['/api/restaurant/tables', kotTableRoutes],
   ['/api/menu', kotMenuRoutes],
@@ -137,11 +311,13 @@ for (const [routePath, routerHandler] of kotRouteMap) {
   app.use(routePath, routerHandler);
 }
 
-// Mount API Online Hotel & Restaurant Routes
+// Mount Online Store & Platform API Routes
 app.use('/api', apiRoutes);
 app.use('/api/v1', apiRoutes);
 
-// Serve frontend static build if available (All-In-One Single Platform Hosting)
+// ──────────────────────────────────────────────────────────
+// 6. SPA STATIC SERVING & ROOT HANDLER
+// ──────────────────────────────────────────────────────────
 const frontendDist = path.join(__dirname, '../frontend/dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
@@ -162,34 +338,60 @@ if (fs.existsSync(frontendDist)) {
   });
 }
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Hotel Restaurant API Server Running', timestamp: new Date() });
-});
+// ──────────────────────────────────────────────────────────
+// 7. CENTRALIZED ERROR HANDLER
+// ──────────────────────────────────────────────────────────
+app.use(errorHandler);
 
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Hotel & HMS Restaurant Unified API is running' });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err);
-  res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
-});
-
-// Start Server
+// ──────────────────────────────────────────────────────────
+// 8. SERVER STARTUP & GRACEFUL SHUTDOWN
+// ──────────────────────────────────────────────────────────
 async function startServer() {
   server.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Hotel Restaurant Backend Server running on port ${PORT}`);
-    console.log(`📡 Socket.IO server initialized`);
-    console.log(`📁 Static uploads folder: ${path.join(__dirname, 'uploads')}`);
+    console.log(`📡 Socket.IO server bound to 0.0.0.0:${PORT}`);
+    console.log(`🛡️  Security headers and rate limiting active`);
+    console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
 
     try {
       await initDatabase();
       console.log(`✅ System database initialized and ready for production requests.`);
     } catch (err) {
-      console.error('Database initialization warning/error:', err);
+      console.error('Database initialization error:', err.message);
     }
   });
 }
+
+let isShuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`\n🛑 Received ${signal}. Initiating graceful shutdown...`);
+
+  server.close(async () => {
+    console.log('  ↳ Closed incoming HTTP & WebSocket server.');
+
+    try {
+      io.close();
+      console.log('  ↳ Terminated Socket.IO connection manager.');
+    } catch (e) {}
+
+    try {
+      await pool.end();
+      console.log('  ↳ Closed MySQL database connection pool.');
+    } catch (e) {}
+
+    console.log('✅ Graceful shutdown completed cleanly.');
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error('⚠️ Forcefully terminating process after 10s timeout.');
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 startServer();

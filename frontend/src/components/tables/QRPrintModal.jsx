@@ -6,12 +6,8 @@ import { Download, Printer, ExternalLink, QrCode } from 'lucide-react';
 export default function QRPrintModal({ isOpen, onClose, table }) {
   const [qrDataUrl, setQrDataUrl] = useState('');
 
-  // Single permanent origin: use network IP on dev so mobile works immediately, or live domain in prod
-  const networkIp = '192.168.1.3';
-  const effectiveOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? `http://${networkIp}:5173`
-    : window.location.origin;
-
+  // Use window.location.origin dynamically for QR generation across localhost, local network IP, or live domain
+  const effectiveOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const fullUrl = table ? `${effectiveOrigin}/order/table/${table.qr_token}` : '';
 
   useEffect(() => {
