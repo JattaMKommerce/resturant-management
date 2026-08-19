@@ -59,6 +59,15 @@
   background: rgba(148, 163, 184, 0.8);
 }
 
+/* Invisible smooth scroll for sidebar */
+.sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Print CSS for Tax Invoices, KOT Tickets, Receipts, and QR Cards */
 @media print {
   @page {

@@ -158,14 +158,14 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-6">
           
           {/* ONLINE ORDERING TOGGLE SECTION */}
-          <div className="p-5 rounded-2xl bg-orange-50/60 border border-orange-200 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
+          <div className="p-4 sm:p-5 rounded-2xl bg-orange-50/60 border border-orange-200 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <Power className="w-4 h-4 text-orange-600" /> Online Ordering Master Toggle
+                  <Power className="w-4 h-4 text-orange-600 shrink-0" /> Online Ordering Master Toggle
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   When turned OFF, customers will see a message: "Online ordering is currently unavailable."
@@ -175,7 +175,7 @@ export default function AdminSettingsPage() {
               <button
                 type="button"
                 onClick={() => setIsOnlineOrderingEnabled(!isOnlineOrderingEnabled)}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs ${
+                className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs text-center ${
                   isOnlineOrderingEnabled
                     ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                     : 'bg-red-500 text-white hover:bg-red-600'
@@ -349,18 +349,18 @@ export default function AdminSettingsPage() {
 
           {/* Dedicated Razorpay Merchant Account Settings */}
           <div className="pt-5 border-t border-slate-100 space-y-4">
-            <div className="bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="bg-slate-900 text-white p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-bold text-amber-400 flex items-center gap-2">
-                    <span>💳 Restaurant Razorpay Merchant Gateway (Direct Bank Payouts)</span>
+                    <span>💳 Restaurant Razorpay Merchant Gateway</span>
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Enter your restaurant's own Razorpay keys. All online deliveries and Table QR payments will deposit 100% directly into your bank account.
                   </p>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
                   <input
                     type="checkbox"
                     checked={razorpayEnabled}

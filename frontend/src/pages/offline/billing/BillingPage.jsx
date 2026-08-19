@@ -151,57 +151,59 @@ export default function BillingPage() {
       </div>
 
       {/* Filter Tabs & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-          <button
-            onClick={() => setChannelFilter('ALL')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'ALL' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            All Invoices ({bills.length})
-          </button>
-          <button
-            onClick={() => setChannelFilter('OFFLINE')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'OFFLINE' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            🍽️ Offline Restaurant ({bills.filter(b => b.channel !== 'ONLINE').length})
-          </button>
-          <button
-            onClick={() => setChannelFilter('ONLINE')}
-            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'ONLINE' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            🌐 Online Delivery ({bills.filter(b => b.channel === 'ONLINE').length})
-          </button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="overflow-x-auto custom-scrollbar w-full md:w-auto pb-1">
+          <div className="inline-flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs whitespace-nowrap">
+            <button
+              onClick={() => setChannelFilter('ALL')}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg font-bold transition-all ${
+                channelFilter === 'ALL' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All Invoices ({bills.length})
+            </button>
+            <button
+              onClick={() => setChannelFilter('OFFLINE')}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg font-bold transition-all ${
+                channelFilter === 'OFFLINE' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🍽️ Offline ({bills.filter(b => b.channel !== 'ONLINE').length})
+            </button>
+            <button
+              onClick={() => setChannelFilter('ONLINE')}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg font-bold transition-all ${
+                channelFilter === 'ONLINE' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🌐 Online ({bills.filter(b => b.channel === 'ONLINE').length})
+            </button>
+          </div>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full md:w-64">
           <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search bill #, order #, customer..."
-            className="pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-full sm:w-64"
+            className="pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-full"
           />
         </div>
       </div>
 
       {/* Orders Ready for Billing (Top Section) */}
       {unbilledOrders.length > 0 && (
-        <div className="glass-panel bg-amber-950/20 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+        <div className="glass-panel bg-amber-950/20 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
           <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
             <span>Served Orders Pending Bill Generation ({unbilledOrders.length})</span>
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {unbilledOrders.map((ord) => (
-              <div key={ord.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div key={ord.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-bold text-white">Order #{ord.order_number}</h4>
                   <p className="text-xs text-slate-400">{ord.table_number ? `Table ${ord.table_number}` : 'Room Service'}</p>
@@ -210,7 +212,7 @@ export default function BillingPage() {
 
                 <button
                   onClick={() => handleGenerateBill(ord.id)}
-                  className="py-2 px-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
+                  className="py-2 px-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20 shrink-0"
                 >
                   Generate Bill
                 </button>
@@ -222,8 +224,8 @@ export default function BillingPage() {
 
       {/* Bills Ledger Table */}
       <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[850px] text-left text-sm text-slate-300">
             <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-6 py-4">Bill / Invoice #</th>

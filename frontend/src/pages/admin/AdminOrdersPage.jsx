@@ -210,8 +210,8 @@ export default function AdminOrdersPage() {
 
         {/* Orders Table */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[700px] text-left text-xs text-slate-700">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="p-4">Order #</th>
@@ -312,7 +312,7 @@ export default function AdminOrdersPage() {
       {/* Order Detail Drawer Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-end">
-          <div className="bg-white w-full max-w-2xl h-full shadow-2xl p-6 overflow-y-auto space-y-6 animate-slide-left">
+          <div className="bg-white w-full max-w-2xl h-full shadow-2xl p-4 sm:p-6 overflow-y-auto space-y-6 animate-slide-left">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Order Details</span>
@@ -358,14 +358,14 @@ export default function AdminOrdersPage() {
               </div>
 
               {selectedOrder.assigned_driver_id || selectedOrder.driver_name ? (
-                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center font-black">
+                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center font-black shrink-0">
                       <Bike className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="font-extrabold text-slate-900 text-sm">{selectedOrder.driver_name || 'Assigned Driver'}</h4>
-                      <p className="text-slate-500 text-[11px] flex items-center gap-2 mt-0.5">
+                      <p className="text-slate-500 text-[11px] flex flex-wrap items-center gap-2 mt-0.5">
                         <span>📞 {selectedOrder.driver_phone || 'No phone provided'}</span>
                         {selectedOrder.vehicle_number && (
                           <span className="bg-slate-100 px-2 py-0.5 rounded font-mono font-bold text-[10px] text-slate-700">
@@ -375,7 +375,7 @@ export default function AdminOrdersPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right shrink-0">
                     <span className="text-[10px] font-bold text-slate-400 block uppercase">Fulfillment</span>
                     <span className="font-bold text-orange-600 uppercase text-xs">{selectedOrder.order_status.replace(/_/g, ' ')}</span>
                   </div>

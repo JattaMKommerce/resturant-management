@@ -279,75 +279,79 @@ export default function AdminHistoryPage() {
 
         {/* Channel Switcher Tabs (ALL | ONLINE | OFFLINE) */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-2">
-          <div className="inline-flex p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl">
-            <button
-              onClick={() => setActiveTab('ALL')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === 'ALL'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>ALL PAST DATA</span>
-              <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'ALL' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
-                {stats.totalOrders}
-              </span>
-            </button>
+          <div className="overflow-x-auto custom-scrollbar w-full md:w-auto pb-1">
+            <div className="inline-flex p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl whitespace-nowrap">
+              <button
+                onClick={() => setActiveTab('ALL')}
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                  activeTab === 'ALL'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>ALL PAST DATA</span>
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'ALL' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
+                  {stats.totalOrders}
+                </span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab('ONLINE')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === 'ONLINE'
-                  ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <Globe className="w-4 h-4" />
-              <span>ONLINE ORDERS</span>
-              <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'ONLINE' ? 'bg-slate-950 text-sky-400' : 'bg-slate-800 text-slate-400'}`}>
-                {stats.onlineOrdersCount}
-              </span>
-            </button>
+              <button
+                onClick={() => setActiveTab('ONLINE')}
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                  activeTab === 'ONLINE'
+                    ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                <span>ONLINE ORDERS</span>
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'ONLINE' ? 'bg-slate-950 text-sky-400' : 'bg-slate-800 text-slate-400'}`}>
+                  {stats.onlineOrdersCount}
+                </span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab('OFFLINE')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
-                activeTab === 'OFFLINE'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-              }`}
-            >
-              <UtensilsCrossed className="w-4 h-4" />
-              <span>OFFLINE / DINE-IN</span>
-              <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'OFFLINE' ? 'bg-slate-950 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                {stats.offlineOrdersCount}
-              </span>
-            </button>
+              <button
+                onClick={() => setActiveTab('OFFLINE')}
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                  activeTab === 'OFFLINE'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <UtensilsCrossed className="w-4 h-4" />
+                <span>OFFLINE / DINE-IN</span>
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'OFFLINE' ? 'bg-slate-950 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                  {stats.offlineOrdersCount}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Quick Date Presets */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
-            {[
-              { id: 'today', label: 'Today' },
-              { id: 'yesterday', label: 'Yesterday' },
-              { id: '7d', label: 'Last 7 Days' },
-              { id: '30d', label: 'Last 30 Days' },
-              { id: 'all', label: 'All Time' },
-              { id: 'custom', label: 'Custom' }
-            ].map((p) => (
-              <button
-                key={p.id}
-                onClick={() => handleDatePresetChange(p.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  dateRangePreset === p.id
-                    ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+          <div className="overflow-x-auto custom-scrollbar w-full md:w-auto pb-1">
+            <div className="inline-flex flex-nowrap sm:flex-wrap items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
+              {[
+                { id: 'today', label: 'Today' },
+                { id: 'yesterday', label: 'Yesterday' },
+                { id: '7d', label: 'Last 7 Days' },
+                { id: '30d', label: 'Last 30 Days' },
+                { id: 'all', label: 'All Time' },
+                { id: 'custom', label: 'Custom' }
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => handleDatePresetChange(p.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    dateRangePreset === p.id
+                      ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -493,8 +497,8 @@ export default function AdminHistoryPage() {
 
         {/* History Table */}
         <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[850px] text-left text-xs text-slate-300">
               <thead className="bg-slate-950/90 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
                   <th className="px-5 py-4">Order / Channel</th>
@@ -625,31 +629,31 @@ export default function AdminHistoryPage() {
 
         {/* Order Details Receipt Modal / Drawer */}
         {selectedOrder && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
             <div 
               className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70 gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-white text-base flex items-center gap-2">
-                      Order Receipt #{selectedOrder.order_number}
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2 truncate">
+                      Receipt #{selectedOrder.order_number}
                       <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase bg-slate-800 text-slate-300">
                         {selectedOrder.source_type}
                       </span>
                     </h3>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-[11px] sm:text-xs text-slate-400 truncate">
                       Placed on {new Date(selectedOrder.created_at).toLocaleString()}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={printReceipt}
                     className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors"
@@ -667,9 +671,9 @@ export default function AdminHistoryPage() {
               </div>
 
               {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-xs">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar text-xs">
                 {/* Meta details grid */}
-                <div className="grid grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-500 block">Customer Information</span>
                     <p className="font-bold text-white text-sm mt-0.5">{selectedOrder.customer_name || 'Guest'}</p>

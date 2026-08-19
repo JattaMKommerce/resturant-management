@@ -74,8 +74,8 @@ export default function QRManagementPage() {
 
       {/* QR List Table */}
       <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[750px] text-left text-sm text-slate-300">
             <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-6 py-4">Table</th>

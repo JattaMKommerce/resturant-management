@@ -184,12 +184,12 @@ export default function RestaurantOnboarding() {
         </button>
       </div>
 
-      <div className="flex-1 max-w-6xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-8">
+      <div className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8">
         
         {/* Step Sidebar */}
-        <div className="md:col-span-4 bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 h-fit space-y-4">
-          <h2 className="font-bold text-sm text-slate-300 uppercase tracking-wider">Setup Steps</h2>
-          <div className="space-y-2">
+        <div className="md:col-span-4 bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 sm:p-6 h-fit space-y-3 sm:space-y-4">
+          <h2 className="font-bold text-xs sm:text-sm text-slate-300 uppercase tracking-wider">Setup Steps</h2>
+          <div className="flex md:flex-col gap-2 overflow-x-auto custom-scrollbar pb-2 md:pb-0">
             {stepsList.map(s => {
               const Icon = s.icon;
               const isDone = s.number < step;
@@ -199,7 +199,7 @@ export default function RestaurantOnboarding() {
                 <button
                   key={s.number}
                   onClick={() => setStep(s.number)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-bold transition-all text-left ${
+                  className={`min-w-[160px] md:min-w-0 md:w-full shrink-0 flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl text-xs font-bold transition-all text-left ${
                     isCurrent
                       ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
                       : isDone
@@ -207,10 +207,10 @@ export default function RestaurantOnboarding() {
                       : 'bg-slate-900/40 text-slate-400 hover:bg-slate-800'
                   }`}
                 >
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black ${isCurrent ? 'bg-white/20 text-white' : isDone ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                    {isDone ? <CheckCircle className="w-4 h-4" /> : s.number}
+                  <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${isCurrent ? 'bg-white/20 text-white' : isDone ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                    {isDone ? <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : s.number}
                   </div>
-                  <span>{s.title}</span>
+                  <span className="truncate">{s.title}</span>
                 </button>
               );
             })}
@@ -218,23 +218,23 @@ export default function RestaurantOnboarding() {
         </div>
 
         {/* Form Content Area */}
-        <div className="md:col-span-8 bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6">
+        <div className="md:col-span-8 bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 sm:p-6">
           
           {error && (
             <div className="p-3 mb-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" /> {error}
+              <AlertCircle className="w-4 h-4 shrink-0" /> {error}
             </div>
           )}
 
           {/* STEP 1: Details */}
           {step === 1 && (
             <form onSubmit={handleSaveDetails} className="space-y-4 text-xs">
-              <h2 className="text-lg font-bold text-white mb-4">Step 1: Restaurant Details</h2>
+              <h2 className="text-base sm:text-lg font-bold text-white mb-4">Step 1: Restaurant Details</h2>
               <div>
                 <label className="block text-slate-300 font-bold mb-1">Restaurant Name *</label>
                 <input type="text" required value={detailsForm.name} onChange={e => setDetailsForm({...detailsForm, name: e.target.value})} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Phone *</label>
                   <input type="text" required value={detailsForm.phone} onChange={e => setDetailsForm({...detailsForm, phone: e.target.value})} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none" />
@@ -248,7 +248,7 @@ export default function RestaurantOnboarding() {
                 <label className="block text-slate-300 font-bold mb-1">Street Address *</label>
                 <input type="text" required value={detailsForm.address} onChange={e => setDetailsForm({...detailsForm, address: e.target.value})} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none" />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">Area / Locality</label>
                   <input type="text" value={detailsForm.area} onChange={e => setDetailsForm({...detailsForm, area: e.target.value})} className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none" />
