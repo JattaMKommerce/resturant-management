@@ -314,19 +314,18 @@ export default function RecipeInventoryPage() {
           </h2>
           <p className="text-slate-400 text-sm">Batch tracking, dynamic expiry calculations, FEFO stock protection, and recipe BOM management</p>
         </div>
-
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => setIsBatchModalOpen(true)}
-            className="py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/20 text-sm"
+            className="py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/20 text-xs sm:text-sm"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Receive Stock Batch</span>
           </button>
 
           <button
             onClick={() => setIsItemModalOpen(true)}
-            className="py-2.5 px-4 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 border border-slate-700 flex items-center gap-2 text-sm"
+            className="py-2.5 px-4 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 border border-slate-700 flex items-center gap-2 text-xs sm:text-sm"
           >
             <Plus className="w-4 h-4 text-amber-400" />
             <span>Add Raw Ingredient</span>
@@ -337,7 +336,7 @@ export default function RecipeInventoryPage() {
             className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
             title="Refresh Inventory"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
@@ -439,10 +438,10 @@ export default function RecipeInventoryPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-800 overflow-x-auto">
+      <div className="flex gap-2 border-b border-slate-800 overflow-x-auto custom-scrollbar pb-1 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('BATCHES')}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'BATCHES' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
@@ -452,37 +451,37 @@ export default function RecipeInventoryPage() {
 
         <button
           onClick={() => setActiveTab('STOCK')}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'STOCK' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <Boxes className="w-4 h-4" />
-          <span>Live Ingredient Stock View</span>
+          <span>Raw Stock Items ({inventoryItems.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('RECIPES')}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'RECIPES' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>Dish Recipes / BOM ({recipes.length})</span>
+          <span>Dish Recipe Mapping ({recipes.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('LEDGER')}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'LEDGER' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <History className="w-4 h-4" />
-          <span>Stock Deduction Ledger</span>
+          <span>Inventory Transactions Log</span>
         </button>
 
         <button
           onClick={() => setActiveTab('EXPIRY_REPORT')}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 shrink-0 ${
             activeTab === 'EXPIRY_REPORT' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
@@ -491,13 +490,12 @@ export default function RecipeInventoryPage() {
         </button>
       </div>
 
-      {/* TAB 1: BATCH INVENTORY & EXPIRY MANAGEMENT TABLE */}
+      {/* TAB 1: BATCH INVENTORY & EXPIRY TABLE */}
       {activeTab === 'BATCHES' && (
         <div className="space-y-4">
-          {/* Filters & Search Bar */}
-          <div className="glass-panel bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400 mr-1">Filter Expiry:</span>
+          <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto whitespace-nowrap">
+              <span className="text-xs font-semibold text-slate-400 mr-1 shrink-0">Filter Expiry:</span>
               {[
                 { key: 'ALL', label: 'All Batches' },
                 { key: 'EXPIRING_7', label: '🟠 Expiring in 7 Days' },
@@ -508,7 +506,7 @@ export default function RecipeInventoryPage() {
                 <button
                   key={f.key}
                   onClick={() => setStatusFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                     statusFilter === f.key
                       ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                       : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -519,15 +517,15 @@ export default function RecipeInventoryPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full md:w-60">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search item, batch no, supplier..."
-                  className="pl-9 pr-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-500 w-60"
+                  placeholder="Search item, batch no..."
+                  className="pl-9 pr-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-500 w-full"
                 />
               </div>
             </div>
@@ -535,8 +533,8 @@ export default function RecipeInventoryPage() {
 
           {/* Batch Table */}
           <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full min-w-[900px] text-left text-sm text-slate-300">
                 <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="px-5 py-4">Item & Category</th>
@@ -688,8 +686,8 @@ export default function RecipeInventoryPage() {
       {/* TAB 4: LEDGER */}
       {activeTab === 'LEDGER' && (
         <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[750px] text-left text-sm text-slate-300">
               <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                 <tr>
                   <th className="px-6 py-4">Transaction Date</th>
@@ -720,9 +718,9 @@ export default function RecipeInventoryPage() {
       {/* TAB 5: EXPIRY REPORT & CSV EXPORT */}
       {activeTab === 'EXPIRY_REPORT' && (
         <div className="space-y-4">
-          <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400">Report Scope:</span>
+          <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto whitespace-nowrap">
+              <span className="text-xs font-semibold text-slate-400 shrink-0">Report Scope:</span>
               {[
                 { key: 'ALL', label: 'All Active Batches' },
                 { key: 'EXPIRING_7', label: '7-Day Expiring' },
@@ -732,7 +730,7 @@ export default function RecipeInventoryPage() {
                 <button
                   key={r.key}
                   onClick={() => setReportFilter(r.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                     reportFilter === r.key
                       ? 'bg-amber-500 text-slate-950'
                       : 'bg-slate-800 text-slate-400 hover:text-white'
@@ -745,7 +743,7 @@ export default function RecipeInventoryPage() {
 
             <button
               onClick={() => exportToCSV(expiryReportData, `expiry_report_${reportFilter.toLowerCase()}.csv`)}
-              className="py-2 px-4 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+              className="py-2 px-4 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 flex items-center gap-2 shadow-lg shadow-emerald-500/20 shrink-0 w-full sm:w-auto justify-center"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV Report</span>
@@ -753,8 +751,8 @@ export default function RecipeInventoryPage() {
           </div>
 
           <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full min-w-[850px] text-left text-sm text-slate-300">
                 <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="px-5 py-4">Batch No.</th>

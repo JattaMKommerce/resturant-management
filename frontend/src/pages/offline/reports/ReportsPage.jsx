@@ -239,8 +239,8 @@ export default function ReportsPage() {
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">Top-Selling Menu Items</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[600px] text-left text-sm text-slate-300">
             <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-6 py-4">Item Name</th>
@@ -270,8 +270,8 @@ export default function ReportsPage() {
       </div>
 
       {/* Expiry Management Report Section */}
-      <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-4 p-5">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl space-y-4 p-4 sm:p-5">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
           <div>
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-amber-500" />
@@ -280,10 +280,10 @@ export default function ReportsPage() {
             <p className="text-xs text-slate-400 mt-0.5">Filter by expiry threshold and export audit spreadsheet</p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1 whitespace-nowrap">
               {[
-                { key: 'ALL', label: 'All Batches' },
+                { key: 'ALL', label: 'All' },
                 { key: 'EXPIRING_7', label: '7 Days' },
                 { key: 'EXPIRING_30', label: '30 Days' },
                 { key: 'EXPIRED', label: 'Expired' }
@@ -291,8 +291,10 @@ export default function ReportsPage() {
                 <button
                   key={f.key}
                   onClick={() => setExpiryFilter(f.key)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    expiryFilter === f.key ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    expiryFilter === f.key
+                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
                   {f.label}
@@ -302,7 +304,7 @@ export default function ReportsPage() {
 
             <button
               onClick={exportExpiryCSV}
-              className="py-2 px-3.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+              className="py-2 px-3.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 shrink-0"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
@@ -310,8 +312,8 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[850px] text-left text-sm text-slate-300">
             <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="px-5 py-3.5">Batch Number</th>

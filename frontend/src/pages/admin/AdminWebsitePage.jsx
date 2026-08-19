@@ -88,14 +88,14 @@ export default function AdminWebsitePage() {
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Website Status Hero Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white shadow-lg ${isPublished ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-slate-700'}`}>
-              <Globe className="w-7 h-7" />
+            <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-bold text-white shadow-lg shrink-0 ${isPublished ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-slate-700'}`}>
+              <Globe className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-800">Website Publishing State</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-800">Website Publishing State</h2>
                 <span className={`px-3 py-0.5 rounded-full text-xs font-bold ${isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                   {restaurant?.website_status}
                 </span>
@@ -106,13 +106,13 @@ export default function AdminWebsitePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
             {isPublished ? (
               <button onClick={handleUnpublish} disabled={actionLoading} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all">
                 Unpublish Website
               </button>
             ) : (
-              <button onClick={handlePublish} disabled={actionLoading} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all">
+              <button onClick={handlePublish} disabled={actionLoading} className="px-5 sm:px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all">
                 Publish Website Live 🚀
               </button>
             )}
@@ -123,23 +123,23 @@ export default function AdminWebsitePage() {
         </div>
 
         {/* Public URL Box */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-3">
           <h3 className="font-semibold text-slate-800 text-sm">Public Website Address</h3>
           <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono text-xs text-slate-700">
             <span className="flex-1 truncate">{publicUrl}</span>
-            <button onClick={() => { navigator.clipboard.writeText(publicUrl); alert('URL copied!'); }} className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 text-[11px] font-bold">
+            <button onClick={() => { navigator.clipboard.writeText(publicUrl); alert('URL copied!'); }} className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 text-[11px] font-bold shrink-0">
               Copy
             </button>
           </div>
         </div>
 
         {/* Online Ordering Toggle */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold text-slate-800 text-sm">Online Ordering Status</h3>
             <p className="text-xs text-slate-500 mt-0.5">Toggle customer order acceptance on your live website.</p>
           </div>
-          <button onClick={handleToggleOrdering} disabled={actionLoading} className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-white shadow-md transition-all ${restaurant?.is_online_ordering_enabled ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}>
+          <button onClick={handleToggleOrdering} disabled={actionLoading} className={`w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 text-white shadow-md transition-all ${restaurant?.is_online_ordering_enabled ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}>
             <Power className="w-4 h-4" />
             {restaurant?.is_online_ordering_enabled ? 'Store Open (Click to Pause)' : 'Store Paused (Click to Accept Orders)'}
           </button>

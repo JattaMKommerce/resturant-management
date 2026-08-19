@@ -83,7 +83,7 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold text-slate-300">Table Number *</label>
@@ -129,7 +129,7 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Floor</label>
             <input
@@ -152,7 +152,7 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Seating Capacity</label>
             <input

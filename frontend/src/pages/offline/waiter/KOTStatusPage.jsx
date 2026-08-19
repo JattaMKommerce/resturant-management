@@ -99,14 +99,14 @@ export default function KOTStatusPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Status Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto whitespace-nowrap">
           {['ALL', 'PENDING', 'PREPARING', 'READY', 'SERVED'].map((status) => (
             <button
               key={status}
               onClick={() => setSelectedStatus(status)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 selectedStatus === status
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                   : 'bg-slate-900/80 text-slate-400 hover:text-white border border-slate-800'
@@ -118,37 +118,39 @@ export default function KOTStatusPage() {
         </div>
 
         {/* Channel Filters */}
-        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-          <button
-            onClick={() => setChannelFilter('ALL')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'ALL' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            All Channels
-          </button>
-          <button
-            onClick={() => setChannelFilter('OFFLINE')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'OFFLINE' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            🍽️ Table Dine-In
-          </button>
-          <button
-            onClick={() => setChannelFilter('ONLINE')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'ONLINE' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            🌐 Online Delivery
-          </button>
+        <div className="overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto">
+          <div className="inline-flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs whitespace-nowrap">
+            <button
+              onClick={() => setChannelFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                channelFilter === 'ALL' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All Channels
+            </button>
+            <button
+              onClick={() => setChannelFilter('OFFLINE')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                channelFilter === 'OFFLINE' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🍽️ Table Dine-In
+            </button>
+            <button
+              onClick={() => setChannelFilter('ONLINE')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                channelFilter === 'ONLINE' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🌐 Online Delivery
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="h-48 rounded-2xl bg-slate-900/40 border border-slate-800 animate-pulse"></div>
           ))}
@@ -160,7 +162,7 @@ export default function KOTStatusPage() {
           <p className="text-xs text-slate-500 mt-1">No orders match the selected filter status.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredKots.map((kot) => {
             const isOnline = kot.order_type === 'ONLINE' || (!kot.table_number && !kot.room_number && (kot.online_customer_name || String(kot.order_number || '').includes('ORD')));
             const rawOrderNum = String(kot.order_number || (kot.order_id ? `ORD-${kot.order_id}` : 'N/A'));

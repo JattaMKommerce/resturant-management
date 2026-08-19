@@ -196,15 +196,15 @@ export default function AdminDashboardPage() {
 
         {/* Recent Orders Overview */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-            <h3 className="font-extrabold text-base text-slate-900">Recent Live Orders</h3>
+          <div className="p-4 sm:p-6 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="font-extrabold text-sm sm:text-base text-slate-900">Recent Live Orders</h3>
             <Link to={`/admin/${currentSlug}/orders`} className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1">
               View All Orders <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[650px] text-left text-xs text-slate-700">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="p-4">Order #</th>

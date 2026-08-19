@@ -244,8 +244,8 @@ export default function AdminMenuPage() {
 
         {/* Table */}
         <div className="glass-panel bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[700px] text-left text-xs text-slate-300">
               <thead className="bg-slate-950 text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-slate-800">
                 <tr>
                   <th className="p-4">Food Item</th>
@@ -264,9 +264,9 @@ export default function AdminMenuPage() {
                         <img
                           src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'}
                           alt={item.name}
-                          className="w-12 h-12 rounded-xl object-cover border border-slate-800"
+                          className="w-12 h-12 rounded-xl object-cover border border-slate-800 shrink-0"
                         />
-                        <div>
+                        <div className="min-w-0">
                           <span className="font-extrabold text-white block text-sm">{item.name}</span>
                           <span className="text-[11px] text-slate-400 line-clamp-1">{item.description}</span>
                         </div>
@@ -311,14 +311,14 @@ export default function AdminMenuPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleOpenEdit(item)}
-                          className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-orange-400 hover:bg-slate-800 rounded-lg transition-colors"
                           title="Edit Item"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
                           title="Delete Item"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -336,13 +336,13 @@ export default function AdminMenuPage() {
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-slate-200 shadow-2xl space-y-4 my-8">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-base text-slate-900">
                 {editingItem ? 'Edit Food Item' : 'Add New Food Item'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-slate-700">
+              <button onClick={() => setShowModal(false)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -385,7 +385,7 @@ export default function AdminMenuPage() {
                 ></textarea>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Original Price (₹) *</label>
                   <input
@@ -412,7 +412,7 @@ export default function AdminMenuPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Food Type</label>
                   <select

@@ -168,12 +168,12 @@ export default function AdminRidersPage() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 gap-2">
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-0 overflow-x-auto custom-scrollbar whitespace-nowrap">
           {[
             { id: 'applications', label: 'Pending Applications', icon: FileText, count: activeTab === 'applications' ? applications.length : null },
             { id: 'active', label: 'Active Delivery Riders', icon: Bike, count: activeTab === 'active' ? drivers.length : null },
-            { id: 'rejected', label: 'Rejected Applications', icon: XCircle },
-            { id: 'suspended', label: 'Suspended Riders', icon: ShieldAlert },
+            { id: 'rejected', label: 'Rejected Applications', icon: XCircle, count: null },
+            { id: 'suspended', label: 'Suspended Riders', icon: ShieldAlert, count: null },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -181,7 +181,7 @@ export default function AdminRidersPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-bold text-xs border-b-2 transition-all ${
+                className={`flex items-center gap-2 px-4 py-3 font-bold text-xs border-b-2 transition-all shrink-0 ${
                   isActive
                     ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -201,7 +201,7 @@ export default function AdminRidersPage() {
 
         {/* APPLICATIONS VIEW */}
         {(activeTab === 'applications' || activeTab === 'rejected') && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             {loading ? (
               <div className="py-12 text-center text-slate-400 text-sm">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-orange-500" />
@@ -212,8 +212,8 @@ export default function AdminRidersPage() {
                 No {activeTab} rider applications found for this restaurant.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[750px] text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
                     <tr>
                       <th className="p-4 pl-6">Applicant</th>
@@ -269,7 +269,7 @@ export default function AdminRidersPage() {
 
         {/* ACTIVE / SUSPENDED RIDERS VIEW */}
         {(activeTab === 'active' || activeTab === 'suspended') && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             {loading ? (
               <div className="py-12 text-center text-slate-400 text-sm">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-orange-500" />
@@ -280,8 +280,8 @@ export default function AdminRidersPage() {
                 No {activeTab} delivery riders assigned to this restaurant.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[750px] text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
                     <tr>
                       <th className="p-4 pl-6">Rider Name</th>
@@ -347,12 +347,12 @@ export default function AdminRidersPage() {
 
         {/* APPLICATION REVIEW MODAL */}
         {selectedApp && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-2xl w-full bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto space-y-6">
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="max-w-2xl w-full bg-white rounded-3xl p-4 sm:p-8 border border-slate-200 shadow-2xl my-auto max-h-[90vh] overflow-y-auto custom-scrollbar space-y-6">
               
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-xl font-extrabold text-slate-900">Application Review</h3>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-slate-900">Application Review</h3>
                   <p className="text-xs text-slate-500">Applicant: {selectedApp.full_name} (#{selectedApp.id})</p>
                 </div>
                 <button
@@ -371,7 +371,7 @@ export default function AdminRidersPage() {
               ) : (
                 <div className="space-y-6">
                   {/* Personal & Vehicle Info */}
-                  <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl text-xs">
                     <div>
                       <span className="text-slate-400 block font-semibold">Full Name:</span>
                       <span className="font-bold text-slate-900">{selectedApp.full_name}</span>
@@ -401,14 +401,14 @@ export default function AdminRidersPage() {
                   {/* Document Attachments */}
                   <div>
                     <h4 className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3">Submitted Identity Documents</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {appDetails?.documents?.map((doc) => (
                         <div key={doc.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                          <div>
-                            <span className="font-bold text-slate-800 block uppercase text-[10px]">{doc.document_type.replace(/_/g, ' ')}</span>
-                            <span className="text-[10px] text-slate-400">{doc.original_file_name || 'Attached File'}</span>
+                          <div className="min-w-0 pr-2">
+                            <span className="font-bold text-slate-800 block uppercase text-[10px] truncate">{doc.document_type.replace(/_/g, ' ')}</span>
+                            <span className="text-[10px] text-slate-400 truncate block">{doc.original_file_name || 'Attached File'}</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <a
                               href={getDocumentStreamUrl(appDetails.rider_id, doc.id)}
                               target="_blank"
@@ -428,18 +428,18 @@ export default function AdminRidersPage() {
 
                   {/* Actions */}
                   {selectedApp.application_status === 'PENDING' && (
-                    <div className="flex gap-4 pt-4 border-t border-slate-100">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t border-slate-100">
                       <button
                         onClick={() => setShowRejectModal(true)}
                         disabled={submittingAction}
-                        className="flex-1 py-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-2xl transition-all"
+                        className="w-full sm:flex-1 py-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-2xl transition-all"
                       >
                         Reject Application
                       </button>
                       <button
                         onClick={handleApproveApplication}
                         disabled={submittingAction}
-                        className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+                        className="w-full sm:flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
                       >
                         {submittingAction ? 'Approving...' : 'Approve Rider Application ✓'}
                       </button>

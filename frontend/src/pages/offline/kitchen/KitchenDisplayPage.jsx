@@ -352,9 +352,9 @@ export default function KitchenDisplayPage() {
       {/* COMPACT FILTER BAR WITH DUAL-COLUMN TOGGLE */}
       <div className="glass-panel bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row items-center justify-between gap-3">
         {/* Department & Channel Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto w-full md:w-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar w-full md:w-auto pb-1 md:pb-0 whitespace-nowrap">
           {/* Channel Filters */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 mr-2">
+          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 mr-2 shrink-0">
             <button
               onClick={() => { setViewLayout('SPLIT'); setChannelFilter('ALL'); }}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
