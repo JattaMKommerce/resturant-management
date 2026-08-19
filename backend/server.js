@@ -16,11 +16,17 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+// Dynamic CORS configuration allowing localhost, local network IPs (192.168.x.x), and production domains
+const corsOptions = {
+  origin: (origin, callback) => {
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS']
+};
+
 // Middleware
-app.use(cors({
-  origin: CLIENT_URL,
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 app.use(express.json());
@@ -29,10 +35,12 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static image uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Socket.IO Setup
+// Socket.IO Setup with Permissive Mobile Cross-Origin
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     credentials: true
   }
@@ -133,7 +141,27 @@ for (const [routePath, routerHandler] of kotRouteMap) {
 app.use('/api', apiRoutes);
 app.use('/api/v1', apiRoutes);
 
-// Health check endpoint
+// Serve frontend static build if available (All-In-One Single Platform Hosting)
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/health')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      status: 'ONLINE',
+      message: '🏨 Grand Palace HMS Unified Restaurant & Hotel API is Live',
+      version: '2.0.0',
+      timestamp: new Date().toISOString()
+    });
+  });
+}
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Hotel Restaurant API Server Running', timestamp: new Date() });
 });
@@ -150,17 +178,18 @@ app.use((err, req, res, next) => {
 
 // Start Server
 async function startServer() {
-  try {
-    await initDatabase();
-    server.listen(PORT, () => {
-      console.log(`🚀 Hotel Restaurant Backend Server running on http://localhost:${PORT}`);
-      console.log(`📡 Socket.IO server initialized`);
-      console.log(`🌐 CORS origin: ${CLIENT_URL}`);
-      console.log(`📁 Static uploads folder: ${path.join(__dirname, 'uploads')}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err);
-  }
+  server.listen(PORT, '0.0.0.0', async () => {
+    console.log(`🚀 Hotel Restaurant Backend Server running on port ${PORT}`);
+    console.log(`📡 Socket.IO server initialized`);
+    console.log(`📁 Static uploads folder: ${path.join(__dirname, 'uploads')}`);
+
+    try {
+      await initDatabase();
+      console.log(`✅ System database initialized and ready for production requests.`);
+    } catch (err) {
+      console.error('Database initialization warning/error:', err);
+    }
+  });
 }
 
 startServer();

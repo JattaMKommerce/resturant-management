@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building, User, Mail, Phone, Lock, MapPin, ShieldCheck, UtensilsCrossed, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Building, User, Mail, Phone, Lock, MapPin, ShieldCheck, UtensilsCrossed, ArrowRight, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 
@@ -13,6 +13,7 @@ export default function RegisterRestaurantPage() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPhone, setAdminPhone] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Restaurant Profile Details
   const [restaurantName, setRestaurantName] = useState('');
@@ -56,7 +57,14 @@ export default function RegisterRestaurantPage() {
         navigate('/admin');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to register restaurant. Please check all fields.');
+      const serverMsg = err.response?.data?.message;
+      if (serverMsg) {
+        setError(serverMsg);
+      } else if (err.message?.includes('Network Error') || !err.response) {
+        setError('Network Error: Cannot connect to backend server. Make sure the backend server is running and reachable.');
+      } else {
+        setError(err.message || 'Failed to register restaurant. Please check all fields.');
+      }
     } finally {
       setLoading(false);
     }
@@ -145,13 +153,20 @@ export default function RegisterRestaurantPage() {
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       placeholder="••••••••"
                       value={adminPassword}
                       onChange={(e) => setAdminPassword(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                      className="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-medium focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1 rounded-md"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
               </div>

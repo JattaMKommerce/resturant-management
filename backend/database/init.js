@@ -14,25 +14,38 @@ async function initDatabase() {
   console.log('🔄 Initializing MySQL Database setup...');
   let connection;
   try {
-    connection = await mysql.createConnection({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      multipleStatements: true
-    });
+    const isCloudDb = Boolean(process.env.DATABASE_URL || process.env.MYSQL_URL);
+    if (isCloudDb) {
+      const uri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+      connection = await mysql.createConnection({
+        uri,
+        multipleStatements: true,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      });
+      console.log('✅ Connected to Cloud MySQL server via DATABASE_URL');
+    } else {
+      connection = await mysql.createConnection({
+        host: dbHost,
+        port: dbPort,
+        user: dbUser,
+        password: dbPassword,
+        multipleStatements: true,
+        ssl: (process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') ? { rejectUnauthorized: false } : undefined
+      });
+      console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
 
-    console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
+      const forceReset = process.argv.includes('--reset');
+      if (forceReset) {
+        console.log('⚠️  Force reset requested. Dropping and recreating database...');
+        await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
+      }
 
-    const forceReset = process.argv.includes('--reset');
-    if (forceReset) {
-      console.log('⚠️  Force reset requested. Dropping and recreating database...');
-      await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
+      await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
+      console.log(`✅ Database \`${dbName}\` created or confirmed.`);
+      await connection.changeUser({ database: dbName });
     }
-
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
-    console.log(`✅ Database \`${dbName}\` created or confirmed.`);
-    await connection.changeUser({ database: dbName });
 
     // Read and execute schema
     const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
@@ -71,8 +84,8 @@ async function initDatabase() {
 async function addColumnIfNotExists(conn, table, column, definition) {
   try {
     const [cols] = await conn.query(
-      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-      [dbName, table, column]
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [table, column]
     );
     if (cols.length === 0) {
       await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
@@ -85,6 +98,12 @@ async function addColumnIfNotExists(conn, table, column, definition) {
 
 async function runMigrations(conn) {
   console.log('🔄 Running idempotent migrations...');
+
+  // Users columns
+  await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
+  try {
+    await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
+  } catch (e) {}
 
   // Restaurants columns
   await addColumnIfNotExists(conn, 'restaurants', 'status', "ENUM('PENDING','ACTIVE','SUSPENDED') NOT NULL DEFAULT 'PENDING'");
