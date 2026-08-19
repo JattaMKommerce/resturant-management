@@ -85,8 +85,6 @@ function requireRoles(...allowedRoles) {
     return sendError(res, 'Permission denied. Insufficient role access.', 403);
   };
 }
-  };
-}
 
 module.exports = {
   authenticateToken,
