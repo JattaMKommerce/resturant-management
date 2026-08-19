@@ -7,7 +7,7 @@ require('dotenv').config();
 const dbHost = process.env.DB_HOST || 'localhost';
 const dbPort = parseInt(process.env.DB_PORT || '3306');
 const dbUser = process.env.DB_USER || 'root';
-const dbPassword = process.env.DB_PASSWORD || 'db123';
+const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 const dbName = process.env.DB_NAME || 'hotel_db';
 
 async function initDatabase() {
@@ -52,11 +52,13 @@ async function initDatabase() {
     if (userRows[0].count <= 1 || menuRows[0].count === 0 || forceReset) {
       console.log('🌱 Seeding initial data...');
       await seedData(connection);
+      await ensureRestaurantMenu(connection, 1);
       console.log('✅ Seed data inserted successfully!');
     } else {
       console.log('ℹ️ Database already contains data.');
       await ensureRestaurantAdmins(connection);
       await ensureEssentialStaffUsers(connection);
+      await ensureRestaurantMenu(connection, 1);
       await seedKOTData(connection);
     }
 
@@ -119,6 +121,10 @@ async function runMigrations(conn) {
   await addColumnIfNotExists(conn, 'delivery_drivers', 'account_status', "ENUM('ACTIVE', 'SUSPENDED', 'DEACTIVATED') NOT NULL DEFAULT 'ACTIVE'");
   await addColumnIfNotExists(conn, 'delivery_drivers', 'last_location_at', "TIMESTAMP NULL DEFAULT NULL");
 
+  // Rider Applications columns
+  await addColumnIfNotExists(conn, 'rider_applications', 'password_hash', "VARCHAR(255) DEFAULT NULL");
+  await addColumnIfNotExists(conn, 'rider_applications', 'plain_password', "VARCHAR(255) DEFAULT NULL");
+
   try {
     await conn.query(`ALTER TABLE delivery_drivers MODIFY COLUMN vehicle_type VARCHAR(50) NOT NULL DEFAULT 'Bike'`);
     await conn.query(`ALTER TABLE rider_applications MODIFY COLUMN vehicle_type VARCHAR(50) NOT NULL DEFAULT 'Bike'`);
@@ -172,7 +178,8 @@ async function runMigrations(conn) {
   await addColumnIfNotExists(conn, 'order_items', 'kitchen_department_id', "INT DEFAULT NULL");
   await addColumnIfNotExists(conn, 'order_items', 'prep_time_minutes', "INT DEFAULT 15");
 
-  // Phone column length fix for +91 formatting
+  // Phone column length fix for +91 formatting and plain_password
+  await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
   try {
     await conn.query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(30) NOT NULL`);
     await conn.query(`ALTER TABLE restaurants MODIFY COLUMN phone VARCHAR(30) DEFAULT NULL`);
@@ -322,6 +329,10 @@ async function ensureEssentialStaffUsers(conn) {
       console.log('✅ Updated Waiter credentials: waiter@hotel.com (Password: 123456789)');
     }
 
+    // 3. Ensure Driver Accounts are approved and active
+    await conn.query(`UPDATE delivery_drivers SET approval_status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`);
+    console.log('✅ Approved and activated all delivery drivers');
+
     // Ensure restaurant 1 link
     await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [chefId]);
     await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [waiterId]);
@@ -395,13 +406,17 @@ async function seedData(conn) {
   const [d1Rows] = await conn.query('SELECT id FROM delivery_drivers WHERE user_id = ?', [driver1UserId]);
   if (d1Rows.length > 0) {
     driver1Id = d1Rows[0].id;
+    await conn.query(`UPDATE delivery_drivers SET approval_status = 'APPROVED', account_status = 'ACTIVE' WHERE id = ?`, [driver1Id]);
   } else {
     const [d1Res] = await conn.query(
-      `INSERT INTO delivery_drivers (user_id, full_name, mobile, email, vehicle_type, vehicle_number, license_number, is_active, account_status, availability_status, current_latitude, current_longitude) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'ACTIVE', 'AVAILABLE', 12.97500000, 77.59800000)`,
+      `INSERT INTO delivery_drivers (user_id, full_name, mobile, email, vehicle_type, vehicle_number, license_number, is_active, approval_status, account_status, availability_status, current_latitude, current_longitude) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'APPROVED', 'ACTIVE', 'AVAILABLE', 12.97500000, 77.59800000)`,
       [driver1UserId, 'Vikram Singh (Rider)', '+91 9988776655', 'driver1@hotel.com', 'Bike', 'KA-01-EQ-4589', 'DL-KA-2022-0941']
     );
     driver1Id = d1Res.insertId;
   }
+
+  // Ensure all registered drivers have APPROVED status
+  await conn.query(`UPDATE delivery_drivers SET approval_status = 'APPROVED', account_status = 'ACTIVE' WHERE approval_status = 'PENDING'`);
 
   // Ensure driver assignment
   await conn.query(
@@ -411,6 +426,261 @@ async function seedData(conn) {
 
   // Seed KOT offline restaurant & hotel room data
   await seedKOTData(conn);
+}
+
+async function ensureRestaurantMenu(conn, restaurantId = 1) {
+  console.log('🍕 Ensuring categories and menu items exist for restaurant', restaurantId);
+  const categoriesData = [
+    { name: 'Starters', description: 'Delicious appetizers and tandoori sizzlers', display_order: 1, image_url: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=400&q=80' },
+    { name: 'Main Course Indian', description: 'Rich royal Indian gravies and curries', display_order: 2, image_url: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=400&q=80' },
+    { name: 'Biryani & Rice', description: 'Aromatic basmati rice cooked with authentic royal spices', display_order: 3, image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=400&q=80' },
+    { name: 'Tandoori Breads', description: 'Freshly baked in traditional clay oven', display_order: 4, image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=400&q=80' },
+    { name: 'Chinese & Asian', description: 'Wok tossed noodles, fried rice, and starters', display_order: 5, image_url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=400&q=80' },
+    { name: 'Beverages & Mocktails', description: 'Refreshing coolers and authentic Indian drinks', display_order: 6, image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&q=80' },
+    { name: 'Desserts', description: 'Sweet traditional delicacies and ice creams', display_order: 7, image_url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80' }
+  ];
+
+  const catMap = {};
+  for (const cat of categoriesData) {
+    let [rows] = await conn.query('SELECT id FROM categories WHERE restaurant_id = ? AND name = ?', [restaurantId, cat.name]);
+    let catId;
+    if (rows.length === 0) {
+      const [res] = await conn.query(
+        'INSERT INTO categories (restaurant_id, name, description, image_url, display_order, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+        [restaurantId, cat.name, cat.description, cat.image_url, cat.display_order]
+      );
+      catId = res.insertId;
+      try {
+        await conn.query('INSERT INTO menu_categories (id, name, display_order, is_active) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE name=VALUES(name)', [catId, cat.name, cat.display_order]);
+      } catch (e) {}
+    } else {
+      catId = rows[0].id;
+    }
+    catMap[cat.name] = catId;
+  }
+
+  const menuItemsData = [
+    {
+      category: 'Starters',
+      name: 'Paneer Tikka Angara',
+      description: 'Charcoal grilled cottage cheese cubes marinated in Kashmiri red chili and royal spices.',
+      price: 280,
+      discounted_price: 250,
+      image_url: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 15,
+      ingredients: 'Paneer, Mustard Oil, Yogurt, Kashmiri Chili, Spices',
+      tags: 'Bestseller, Tandoor, Spicy',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Starters',
+      name: 'Murgh Malai Kebab',
+      description: 'Succulent chicken tenders marinated with cream cheese, cardamom, and gentle spices.',
+      price: 340,
+      discounted_price: 310,
+      image_url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=600&q=80',
+      is_veg: 0,
+      prep_time_minutes: 20,
+      ingredients: 'Chicken Boneless, Cream, Cheese, Green Cardamom, Spices',
+      tags: 'Chef Special, Mild, Non-Veg',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Starters',
+      name: 'Tandoori Mushroom Galouti',
+      description: 'Melt-in-mouth smoked button mushrooms stuffed with spiced cottage cheese and herbs.',
+      price: 260,
+      discounted_price: 230,
+      image_url: 'https://images.unsplash.com/photo-1628294895950-9805252327bc?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 15,
+      ingredients: 'Button Mushrooms, Cottage Cheese, Herbs, Spices',
+      tags: 'Vegetarian, Starter',
+      is_bestseller: 0,
+      is_recommended: 1
+    },
+    {
+      category: 'Main Course Indian',
+      name: 'Old Delhi Butter Chicken',
+      description: 'Tandoori roasted chicken slow-cooked in a silky, rich tomato and creamy cashew gravy.',
+      price: 380,
+      discounted_price: 350,
+      image_url: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=600&q=80',
+      is_veg: 0,
+      prep_time_minutes: 25,
+      ingredients: 'Chicken, Tomatoes, Fresh Cream, Butter, Cashews, Kasturi Methi',
+      tags: 'Bestseller, Royal, Classic',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Main Course Indian',
+      name: 'Paneer Butter Masala',
+      description: 'Fresh paneer cubes simmered in a luscious butter tomato gravy with hint of sweet fenugreek.',
+      price: 290,
+      discounted_price: 260,
+      image_url: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 20,
+      ingredients: 'Paneer, Butter, Tomatoes, Cream, Garam Masala',
+      tags: 'Popular, Vegetarian, Rich',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Main Course Indian',
+      name: 'Dal Makhani Royal',
+      description: 'Black lentils slow cooked overnight on charcoal embers with fresh cream and butter.',
+      price: 240,
+      discounted_price: 210,
+      image_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 15,
+      ingredients: 'Black Urad Dal, Kidney Beans, Butter, Cream, Spices',
+      tags: 'Classic, Creamy, Vegetarian',
+      is_bestseller: 1,
+      is_recommended: 0
+    },
+    {
+      category: 'Biryani & Rice',
+      name: 'Hyderabadi Dum Chicken Biryani',
+      description: 'Long-grain fragrant basmati rice layered with spiced chicken, caramelized onions, and saffron.',
+      price: 320,
+      discounted_price: 290,
+      image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80',
+      is_veg: 0,
+      prep_time_minutes: 25,
+      ingredients: 'Basmati Rice, Marinated Chicken, Saffron, Fried Onions, Ghee',
+      tags: 'Must Try, Hyderabadi, Authentic',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Biryani & Rice',
+      name: 'Royal Veg Dum Biryani',
+      description: 'Fragrant basmati rice layered with fresh garden vegetables, paneer cubes, mint, and pure ghee.',
+      price: 240,
+      discounted_price: 210,
+      image_url: 'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 20,
+      ingredients: 'Basmati Rice, Vegetables, Paneer, Mint, Saffron',
+      tags: 'Vegetarian, Saffron, Dum',
+      is_bestseller: 0,
+      is_recommended: 1
+    },
+    {
+      category: 'Tandoori Breads',
+      name: 'Butter Garlic Naan',
+      description: 'Crispy clay oven bread topped with minced garlic and brushed with aromatic melted butter.',
+      price: 60,
+      discounted_price: null,
+      image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 8,
+      ingredients: 'Wheat Flour, Garlic, Butter, Coriander',
+      tags: 'Tandoor, Bread',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Chinese & Asian',
+      name: 'Chilli Chicken Gravy',
+      description: 'Crisp chicken chunks tossed with bell peppers, onions, soy sauce, and fiery green chilies.',
+      price: 310,
+      discounted_price: 280,
+      image_url: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=600&q=80',
+      is_veg: 0,
+      prep_time_minutes: 18,
+      ingredients: 'Chicken, Capsicum, Onion, Soy Sauce, Green Chili',
+      tags: 'Indo-Chinese, Spicy',
+      is_bestseller: 1,
+      is_recommended: 0
+    },
+    {
+      category: 'Chinese & Asian',
+      name: 'Hakka Veg Noodles',
+      description: 'Wok tossed noodles loaded with crunchy julienned veggies, scallions, and Asian seasonings.',
+      price: 190,
+      discounted_price: 170,
+      image_url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 15,
+      ingredients: 'Noodles, Cabbage, Bell Peppers, Carrots, Soy Sauce',
+      tags: 'Kids Friendly, Indo-Chinese',
+      is_bestseller: 0,
+      is_recommended: 1
+    },
+    {
+      category: 'Beverages & Mocktails',
+      name: 'Virgin Mint Mojito',
+      description: 'Sparkling cooler with muddled fresh garden mint, lime wedges, and brown sugar crystals.',
+      price: 140,
+      discounted_price: 120,
+      image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 5,
+      ingredients: 'Fresh Mint, Lime, Soda, Sugar, Ice',
+      tags: 'Refreshing, Cold, Mocktail',
+      is_bestseller: 1,
+      is_recommended: 1
+    },
+    {
+      category: 'Beverages & Mocktails',
+      name: 'Fresh Lime Soda (Sweet & Salt)',
+      description: 'Crisp club soda with freshly squeezed lime juice, rock salt, and sugar syrup.',
+      price: 80,
+      discounted_price: null,
+      image_url: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 5,
+      ingredients: 'Fresh Lime, Soda, Rock Salt, Sugar',
+      tags: 'Classic, Beverage',
+      is_bestseller: 0,
+      is_recommended: 0
+    },
+    {
+      category: 'Desserts',
+      name: 'Royal Gulab Jamun (2 Pcs)',
+      description: 'Deep-fried golden milk solids steeped in warm cardamom and rose petal infused sugar syrup.',
+      price: 120,
+      discounted_price: 99,
+      image_url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
+      is_veg: 1,
+      prep_time_minutes: 5,
+      ingredients: 'Khoya, Rose Water, Cardamom, Sugar Syrup, Pistachio',
+      tags: 'Dessert, Sweet, Hot',
+      is_bestseller: 1,
+      is_recommended: 1
+    }
+  ];
+
+  for (const item of menuItemsData) {
+    const catId = catMap[item.category];
+    if (!catId) continue;
+    const [existing] = await conn.query(
+      'SELECT id FROM menu_items WHERE restaurant_id = ? AND name = ?',
+      [restaurantId, item.name]
+    );
+    if (existing.length === 0) {
+      await conn.query(
+        `INSERT INTO menu_items (
+          restaurant_id, category_id, name, description, price, discounted_price,
+          image_url, is_veg, prep_time_minutes, ingredients, tags,
+          is_bestseller, is_recommended, is_available, display_order, is_active, is_available_online
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1, 1)`,
+        [
+          restaurantId, catId, item.name, item.description, item.price, item.discounted_price,
+          item.image_url, item.is_veg, item.prep_time_minutes, item.ingredients, item.tags,
+          item.is_bestseller, item.is_recommended
+        ]
+      );
+    }
+  }
+  console.log('✅ Categories and menu items seeded successfully!');
 }
 
 async function seedKOTData(conn) {

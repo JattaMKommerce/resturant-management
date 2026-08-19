@@ -95,22 +95,22 @@ export default function AdminLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex font-sans antialiased">
       
       {/* Unified Sidebar */}
       <UnifiedSidebar restaurant={restaurant} currentSlug={currentSlug} />
 
       {/* Main Content Area */}
-      <div className="flex-1 pl-64 flex flex-col min-w-0">
+      <div className="flex-1 pl-[270px] flex flex-col min-w-0">
         
         {/* Top Header */}
-        <header className="sticky top-0 z-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-md px-8 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-[#D7E5E8] shadow-xs px-8 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-extrabold text-white">
+            <h2 className="text-xl font-bold text-[#1F2937] tracking-tight">
               {getPageTitle()}
             </h2>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
-              {restaurant?.name || 'Grand Palace'} • Unified Operational Control
+            <p className="text-xs text-[#64748B] font-semibold mt-0.5">
+              {restaurant?.name || 'Grand Palace'} • Operational Control
             </p>
           </div>
 
@@ -123,22 +123,22 @@ export default function AdminLayout({ children }) {
               const isActive = restaurant.status === 'ACTIVE';
 
               let statusText = 'ONLINE & ACCEPTING';
-              let statusClass = 'text-emerald-400';
+              let statusClass = 'text-emerald-800 font-bold';
               if (!isOrderingOn) {
                 statusText = 'OFFLINE (PAUSED)';
-                statusClass = 'text-rose-400';
+                statusClass = 'text-rose-800 font-bold';
               } else if (!isPublished) {
                 statusText = `OFFLINE (${restaurant.website_status || 'DRAFT'})`;
-                statusClass = 'text-amber-400';
+                statusClass = 'text-amber-800 font-bold';
               } else if (!isActive) {
                 statusText = 'OFFLINE (INACTIVE)';
-                statusClass = 'text-rose-400';
+                statusClass = 'text-rose-800 font-bold';
               }
 
               return (
-                <div className="flex items-center gap-3 bg-slate-950/80 p-2 px-3.5 rounded-xl border border-slate-800 shadow-xs">
+                <div className="flex items-center gap-3 bg-slate-50 p-2 px-3.5 rounded-xl border border-[#D7E5E8] shadow-2xs">
                   <div className="flex flex-col text-right">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">Online Ordering</span>
+                    <span className="text-[10px] font-bold uppercase text-[#64748B]">Online Ordering</span>
                     <span className={`text-xs font-black ${statusClass}`}>
                       {statusText}
                     </span>
@@ -147,10 +147,10 @@ export default function AdminLayout({ children }) {
                   <button
                     onClick={handleToggleOnlineOrdering}
                     disabled={loadingToggle}
-                    className={`p-2.5 rounded-xl transition-all font-bold flex items-center gap-1.5 text-xs text-white shadow-sm ${
+                    className={`p-2.5 rounded-xl transition-all font-bold flex items-center gap-1.5 text-xs text-white shadow-2xs ${
                       isOrderingOn
-                        ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
-                        : 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20'
+                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : 'bg-rose-600 hover:bg-rose-700'
                     }`}
                     title={!isPublished ? "Master toggle is ON, but website is in DRAFT state. Publish website in Website Controls." : "Toggle Online Store Order Acceptances"}
                   >
@@ -162,13 +162,13 @@ export default function AdminLayout({ children }) {
             })()}
 
             {/* Admin Profile */}
-            <div className="flex items-center gap-3 border-l border-slate-800 pl-6">
-              <div className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-sm shadow-md shadow-orange-500/20">
+            <div className="flex items-center gap-3 border-l border-[#D7E5E8] pl-6">
+              <div className="w-9 h-9 rounded-full bg-[#3A7D7C] text-white flex items-center justify-center font-bold text-sm shadow-xs">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
               </div>
               <div className="hidden sm:block">
-                <span className="font-bold text-xs text-white block leading-none">{user?.name || 'Admin User'}</span>
-                <span className="text-[10px] font-semibold text-slate-400 block mt-1">{user?.email}</span>
+                <span className="font-bold text-xs text-[#1F2937] block leading-none">{user?.name || 'Admin User'}</span>
+                <span className="text-[10px] font-bold text-[#64748B] block mt-1">{user?.email}</span>
               </div>
             </div>
 
@@ -176,7 +176,7 @@ export default function AdminLayout({ children }) {
         </header>
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-6 sm:p-8">
           {children}
         </main>
       </div>

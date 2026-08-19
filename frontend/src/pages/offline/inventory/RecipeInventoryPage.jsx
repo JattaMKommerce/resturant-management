@@ -292,52 +292,52 @@ export default function RecipeInventoryPage() {
   const getBadgeStyle = (status) => {
     switch (status) {
       case 'EXPIRED':
-        return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+        return 'bg-rose-50 text-rose-800 border-rose-200';
       case 'EXPIRING_7':
-        return 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse';
+        return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'EXPIRING_30':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+        return 'bg-amber-50 text-amber-800 border-amber-200';
       case 'SAFE':
       default:
-        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+        return 'bg-emerald-50 text-emerald-800 border-emerald-200';
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 antialiased font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
-            <Boxes className="w-7 h-7 text-amber-500" />
-            <span>INVENTORY & EXPIRY MANAGEMENT</span>
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1F2937] tracking-tight flex items-center gap-2">
+            <Boxes className="w-6 h-6 text-[#3A7D7C]" />
+            <span>Inventory & Expiry Management</span>
           </h2>
-          <p className="text-slate-400 text-sm">Batch tracking, dynamic expiry calculations, FEFO stock protection, and recipe BOM management</p>
+          <p className="text-[#64748B] text-xs sm:text-sm mt-0.5">Batch tracking, dynamic expiry calculations, FEFO stock protection, and recipe BOM management</p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsBatchModalOpen(true)}
-            className="py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/20 text-sm"
+            className="py-2.5 px-4 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold flex items-center gap-2 shadow-2xs text-xs"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             <span>Receive Stock Batch</span>
           </button>
 
           <button
             onClick={() => setIsItemModalOpen(true)}
-            className="py-2.5 px-4 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700 border border-slate-700 flex items-center gap-2 text-sm"
+            className="py-2.5 px-4 rounded-xl bg-white text-[#1F2937] font-semibold hover:bg-slate-50 border border-[#D7E5E8] flex items-center gap-2 text-xs shadow-2xs"
           >
-            <Plus className="w-4 h-4 text-amber-400" />
+            <Plus className="w-4 h-4 text-[#3A7D7C]" />
             <span>Add Raw Ingredient</span>
           </button>
 
           <button
             onClick={fetchData}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] transition-colors shadow-2xs"
             title="Refresh Inventory"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -347,73 +347,73 @@ export default function RecipeInventoryPage() {
         {/* Expiring in 30 Days */}
         <div
           onClick={() => { setActiveTab('BATCHES'); setStatusFilter('EXPIRING_30'); }}
-          className={`glass-panel bg-slate-900/80 border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xl ${
-            statusFilter === 'EXPIRING_30' ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-amber-500/30 hover:border-amber-500/60'
+          className={`bg-white border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xs ${
+            statusFilter === 'EXPIRING_30' ? 'border-[#3A7D7C] ring-2 ring-[#3A7D7C]/20' : 'border-[#D7E5E8] hover:border-[#3A7D7C]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Expiring in 30 Days</span>
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+            <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Expiring in 30 Days</span>
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
               <Calendar className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-black text-white">{expiryStats.expiring_30_count || 0}</div>
-          <p className="text-xs text-slate-400 mt-1">Click to filter 8 - 30 days batches</p>
+          <div className="text-3xl font-black text-[#1F2937]">{expiryStats.expiring_30_count || 0}</div>
+          <p className="text-xs text-[#64748B] mt-1">Click to filter 8 - 30 days batches</p>
         </div>
 
         {/* Expiring in 7 Days */}
         <div
           onClick={() => { setActiveTab('BATCHES'); setStatusFilter('EXPIRING_7'); }}
-          className={`glass-panel bg-slate-900/80 border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xl ${
-            statusFilter === 'EXPIRING_7' ? 'border-rose-500 ring-2 ring-rose-500/30' : 'border-rose-500/30 hover:border-rose-500/60'
+          className={`bg-white border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xs ${
+            statusFilter === 'EXPIRING_7' ? 'border-rose-400 ring-2 ring-rose-100' : 'border-[#D7E5E8] hover:border-rose-300'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">Expiring in 7 Days</span>
-            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 animate-pulse">
+            <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Expiring in 7 Days</span>
+            <div className="p-2 rounded-xl bg-rose-50 text-rose-700">
               <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-black text-rose-400">{expiryStats.expiring_7_count || 0}</div>
-          <p className="text-xs text-slate-400 mt-1">Click to filter urgent batches</p>
+          <div className="text-3xl font-black text-rose-700">{expiryStats.expiring_7_count || 0}</div>
+          <p className="text-xs text-[#64748B] mt-1">Click to filter urgent batches</p>
         </div>
 
         {/* Expired */}
         <div
           onClick={() => { setActiveTab('BATCHES'); setStatusFilter('EXPIRED'); }}
-          className={`glass-panel bg-slate-900/80 border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xl ${
-            statusFilter === 'EXPIRED' ? 'border-rose-600 ring-2 ring-rose-600/30' : 'border-rose-600/30 hover:border-rose-600/60'
+          className={`bg-white border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xs ${
+            statusFilter === 'EXPIRED' ? 'border-rose-600 ring-2 ring-rose-100' : 'border-[#D7E5E8] hover:border-rose-400'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Expired Batches</span>
-            <div className="p-2 rounded-xl bg-rose-950 text-rose-500">
+            <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Expired Batches</span>
+            <div className="p-2 rounded-xl bg-rose-50 text-rose-700">
               <ShieldAlert className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-black text-rose-500">{expiryStats.expired_count || 0}</div>
-          <p className="text-xs text-slate-400 mt-1">Protected from FEFO order use</p>
+          <div className="text-3xl font-black text-rose-800">{expiryStats.expired_count || 0}</div>
+          <p className="text-xs text-[#64748B] mt-1">Protected from FEFO order use</p>
         </div>
 
         {/* Total Batches */}
         <div
           onClick={() => { setActiveTab('BATCHES'); setStatusFilter('ALL'); }}
-          className={`glass-panel bg-slate-900/80 border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xl ${
-            statusFilter === 'ALL' ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-slate-800 hover:border-slate-700'
+          className={`bg-white border p-5 rounded-2xl cursor-pointer transition-all hover:scale-[1.02] shadow-xs ${
+            statusFilter === 'ALL' ? 'border-[#3A7D7C] ring-2 ring-[#3A7D7C]/20' : 'border-[#D7E5E8] hover:border-[#3A7D7C]'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Active Batches</span>
-            <div className="p-2 rounded-xl bg-slate-800 text-slate-300">
+            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Total Active Batches</span>
+            <div className="p-2 rounded-xl bg-slate-100 text-[#3A7D7C]">
               <Boxes className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-3xl font-black text-white">{expiryStats.total_batches_count || 0}</div>
-          <p className="text-xs text-slate-400 mt-1">Click to view all stock batches</p>
+          <div className="text-3xl font-black text-[#1F2937]">{expiryStats.total_batches_count || 0}</div>
+          <p className="text-xs text-[#64748B] mt-1">Click to view all stock batches</p>
         </div>
       </div>
 
-      {/* 8. ALERTS BANNER */}
+      {/* ALERTS BANNER */}
       {alerts && alerts.length > 0 && (
         <div className="space-y-2">
           {alerts.map((alt, idx) => (
@@ -422,58 +422,60 @@ export default function RecipeInventoryPage() {
               onClick={() => { setActiveTab('BATCHES'); setStatusFilter(alt.filter_status); }}
               className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all hover:opacity-90 ${
                 alt.type === 'EXPIRED'
-                  ? 'bg-rose-950/60 border-rose-500/60 text-rose-200'
+                  ? 'bg-rose-50 border-rose-200 text-rose-900'
                   : alt.type === 'EXPIRING_7'
-                  ? 'bg-rose-900/40 border-rose-500/40 text-rose-300'
-                  : 'bg-amber-900/30 border-amber-500/40 text-amber-300'
+                  ? 'bg-rose-50/70 border-rose-200 text-rose-800'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
               }`}
             >
-              <div className="flex items-center gap-3 text-sm font-bold">
-                <AlertTriangle className="w-5 h-5 shrink-0" />
-                <span>{alt.message}</span>
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div className="text-xs">
+                  <span className="font-bold">{alt.title}</span> — {alt.message}
+                </div>
               </div>
-              <span className="text-xs font-semibold underline underline-offset-2">View Filtered List &rarr;</span>
+              <span className="text-xs font-bold underline shrink-0">View Batches →</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-800 overflow-x-auto">
+      {/* NAVIGATION TABS */}
+      <div className="flex border-b border-[#D7E5E8] gap-4 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('BATCHES')}
           className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'BATCHES' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
+            activeTab === 'BATCHES' ? 'border-[#3A7D7C] text-[#3A7D7C]' : 'border-transparent text-[#64748B] hover:text-[#1F2937]'
           }`}
         >
-          <Calendar className="w-4 h-4" />
-          <span>Batch Inventory & Expiry Table ({batches.length})</span>
+          <Boxes className="w-4 h-4" />
+          <span>Batch Tracking & Expiry</span>
         </button>
 
         <button
           onClick={() => setActiveTab('STOCK')}
           className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'STOCK' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
+            activeTab === 'STOCK' ? 'border-[#3A7D7C] text-[#3A7D7C]' : 'border-transparent text-[#64748B] hover:text-[#1F2937]'
           }`}
         >
           <Boxes className="w-4 h-4" />
-          <span>Live Ingredient Stock View</span>
+          <span>Raw Ingredient Stock</span>
         </button>
 
         <button
           onClick={() => setActiveTab('RECIPES')}
           className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'RECIPES' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
+            activeTab === 'RECIPES' ? 'border-[#3A7D7C] text-[#3A7D7C]' : 'border-transparent text-[#64748B] hover:text-[#1F2937]'
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>Dish Recipes / BOM ({recipes.length})</span>
+          <span>Recipe BOM Mapping</span>
         </button>
 
         <button
           onClick={() => setActiveTab('LEDGER')}
           className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'LEDGER' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
+            activeTab === 'LEDGER' ? 'border-[#3A7D7C] text-[#3A7D7C]' : 'border-transparent text-[#64748B] hover:text-[#1F2937]'
           }`}
         >
           <History className="w-4 h-4" />
@@ -483,7 +485,7 @@ export default function RecipeInventoryPage() {
         <button
           onClick={() => setActiveTab('EXPIRY_REPORT')}
           className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'EXPIRY_REPORT' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-white'
+            activeTab === 'EXPIRY_REPORT' ? 'border-[#3A7D7C] text-[#3A7D7C]' : 'border-transparent text-[#64748B] hover:text-[#1F2937]'
           }`}
         >
           <FileSpreadsheet className="w-4 h-4" />
@@ -495,9 +497,9 @@ export default function RecipeInventoryPage() {
       {activeTab === 'BATCHES' && (
         <div className="space-y-4">
           {/* Filters & Search Bar */}
-          <div className="glass-panel bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400 mr-1">Filter Expiry:</span>
+              <span className="text-xs font-bold text-[#64748B] mr-1">Filter Expiry:</span>
               {[
                 { key: 'ALL', label: 'All Batches' },
                 { key: 'EXPIRING_7', label: '🟠 Expiring in 7 Days' },
@@ -508,10 +510,10 @@ export default function RecipeInventoryPage() {
                 <button
                   key={f.key}
                   onClick={() => setStatusFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                     statusFilter === f.key
-                      ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                      : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                      ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-2xs'
+                      : 'bg-white text-[#1F2937] border-[#D7E5E8] hover:border-[#3A7D7C]'
                   }`}
                 >
                   {f.label}
@@ -521,23 +523,23 @@ export default function RecipeInventoryPage() {
 
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#64748B]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search item, batch no, supplier..."
-                  className="pl-9 pr-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-500 w-60"
+                  className="pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] placeholder-[#64748B] text-xs focus:outline-none focus:border-[#3A7D7C] w-60 font-semibold"
                 />
               </div>
             </div>
           </div>
 
           {/* Batch Table */}
-          <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+              <table className="w-full text-left text-sm text-[#1F2937]">
+                <thead className="bg-slate-50 text-xs font-bold text-[#64748B] uppercase tracking-wider border-b border-[#D7E5E8]">
                   <tr>
                     <th className="px-5 py-4">Item & Category</th>
                     <th className="px-5 py-4">Batch Number</th>
@@ -550,54 +552,54 @@ export default function RecipeInventoryPage() {
                     <th className="px-5 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-[#D7E5E8]">
                   {loading ? (
                     <tr>
-                      <td colSpan="9" className="text-center py-8 text-slate-400 text-xs">Loading stock batches...</td>
+                      <td colSpan="9" className="text-center py-8 text-[#64748B] text-xs">Loading stock batches...</td>
                     </tr>
                   ) : batches.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="text-center py-12 text-slate-500">
-                        <Boxes className="w-10 h-10 mx-auto mb-2 text-slate-700" />
-                        <p className="font-bold text-slate-400 text-sm">No Stock Batches Found</p>
-                        <p className="text-xs text-slate-500 mt-1">Try adjusting filter or receive a new batch.</p>
+                      <td colSpan="9" className="text-center py-12 text-[#64748B]">
+                        <Boxes className="w-10 h-10 mx-auto mb-2 text-[#64748B]/40" />
+                        <p className="font-bold text-[#1F2937] text-sm">No Stock Batches Found</p>
+                        <p className="text-xs text-[#64748B] mt-1">Try adjusting filter or receive a new batch.</p>
                       </td>
                     </tr>
                   ) : (
                     batches.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-800/40 transition-colors">
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-5 py-4">
-                          <div className="font-bold text-white text-sm">{b.item_name}</div>
-                          <div className="text-[11px] text-amber-400 font-semibold">{b.category_name}</div>
+                          <div className="font-bold text-[#1F2937] text-sm">{b.item_name}</div>
+                          <div className="text-[11px] text-[#3A7D7C] font-semibold">{b.category_name}</div>
                         </td>
-                        <td className="px-5 py-4 font-mono font-bold text-amber-300 text-xs">
+                        <td className="px-5 py-4 font-mono font-bold text-[#3A7D7C] text-xs">
                           {b.batch_number}
                         </td>
                         <td className="px-5 py-4">
-                          <div className="font-bold text-white">
-                            {b.current_quantity} <span className="text-xs text-slate-400 font-normal">{b.unit}</span>
+                          <div className="font-bold text-[#1F2937]">
+                            {b.current_quantity} <span className="text-xs text-[#64748B] font-normal">{b.unit}</span>
                           </div>
-                          <div className="text-[11px] text-slate-500">Init: {b.initial_quantity} {b.unit}</div>
+                          <div className="text-[11px] text-[#64748B]">Init: {b.initial_quantity} {b.unit}</div>
                         </td>
-                        <td className="px-5 py-4 text-xs text-slate-300">
+                        <td className="px-5 py-4 text-xs text-[#64748B]">
                           <div className="flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                            <Building2 className="w-3.5 h-3.5 text-[#3A7D7C]" />
                             <span>{b.supplier_display_name}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-xs text-slate-400 font-mono">
+                        <td className="px-5 py-4 text-xs text-[#64748B] font-mono">
                           {new Date(b.purchase_date).toLocaleDateString()}
                         </td>
-                        <td className="px-5 py-4 text-xs font-mono font-bold text-white">
+                        <td className="px-5 py-4 text-xs font-mono font-bold text-[#1F2937]">
                           {new Date(b.expiry_date).toLocaleDateString()}
                         </td>
                         <td className="px-5 py-4 font-mono text-xs font-bold">
-                          <span className={b.days_remaining < 0 ? 'text-rose-400 font-black' : b.days_remaining <= 7 ? 'text-rose-300' : b.days_remaining <= 30 ? 'text-amber-400' : 'text-emerald-400'}>
+                          <span className={b.days_remaining < 0 ? 'text-rose-700 font-bold' : b.days_remaining <= 7 ? 'text-rose-600' : b.days_remaining <= 30 ? 'text-amber-800' : 'text-emerald-700'}>
                             {b.days_text}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-black border uppercase tracking-wider ${getBadgeStyle(b.expiry_status)}`}>
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border uppercase tracking-wider ${getBadgeStyle(b.expiry_status)}`}>
                             {b.expiry_status === 'EXPIRED' ? '⛔ EXPIRED' : b.expiry_status === 'EXPIRING_7' ? '🔴 EXPIRING IN 7 DAYS' : b.expiry_status === 'EXPIRING_30' ? '🟠 EXPIRING IN 30 DAYS' : '🟢 SAFE'}
                           </span>
                         </td>
@@ -620,14 +622,14 @@ export default function RecipeInventoryPage() {
                                 setEditDateError('');
                                 setIsEditBatchModalOpen(true);
                               }}
-                              className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700"
+                              className="p-1.5 rounded-lg bg-slate-100 text-[#1F2937] hover:text-[#3A7D7C] hover:bg-slate-200"
                               title="Edit Batch"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteBatch(b.id)}
-                              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700"
+                              className="p-1.5 rounded-lg bg-slate-100 text-[#64748B] hover:text-rose-600 hover:bg-slate-200"
                               title="Delete Batch"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -657,7 +659,7 @@ export default function RecipeInventoryPage() {
           <div className="flex justify-end">
             <button
               onClick={() => setIsRecipeModalOpen(true)}
-              className="py-2 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 flex items-center gap-2"
+              className="py-2 px-4 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs flex items-center gap-2 shadow-2xs"
             >
               <Plus className="w-4 h-4" />
               <span>Map Dish Recipe</span>
@@ -666,16 +668,16 @@ export default function RecipeInventoryPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {recipes.map((rec) => (
-              <div key={rec.recipe_id} className="glass-panel bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                <h4 className="text-base font-bold text-white">{rec.menu_item_name}</h4>
-                <p className="text-xs text-amber-400 font-semibold mb-3">{rec.category_name}</p>
+              <div key={rec.recipe_id} className="bg-white border border-[#D7E5E8] rounded-2xl p-4 shadow-xs">
+                <h4 className="text-base font-bold text-[#1F2937]">{rec.menu_item_name}</h4>
+                <p className="text-xs text-[#3A7D7C] font-semibold mb-3">{rec.category_name}</p>
 
-                <div className="space-y-2 pt-2 border-t border-slate-800">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Required Ingredients</span>
+                <div className="space-y-2 pt-2 border-t border-[#D7E5E8]">
+                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider">Required Ingredients</span>
                   {rec.ingredients && rec.ingredients.map((ing, idx) => (
-                    <div key={idx} className="flex justify-between text-xs text-slate-300 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                    <div key={idx} className="flex justify-between text-xs text-[#1F2937] bg-slate-50 p-2 rounded-lg border border-[#D7E5E8]">
                       <span>{ing.item_name}</span>
-                      <span className="font-bold text-amber-400">{ing.quantity} {ing.unit}</span>
+                      <span className="font-bold text-[#3A7D7C]">{ing.quantity} {ing.unit}</span>
                     </div>
                   ))}
                 </div>
@@ -687,10 +689,10 @@ export default function RecipeInventoryPage() {
 
       {/* TAB 4: LEDGER */}
       {activeTab === 'LEDGER' && (
-        <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+            <table className="w-full text-left text-sm text-[#1F2937]">
+              <thead className="bg-slate-50 text-xs font-bold text-[#64748B] uppercase tracking-wider border-b border-[#D7E5E8]">
                 <tr>
                   <th className="px-6 py-4">Transaction Date</th>
                   <th className="px-6 py-4">Ingredient</th>
@@ -699,16 +701,16 @@ export default function RecipeInventoryPage() {
                   <th className="px-6 py-4">Reference Key</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[#D7E5E8]">
                 {transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 text-xs text-slate-400">{new Date(tx.created_at).toLocaleString()}</td>
-                    <td className="px-6 py-4 font-bold text-white">{tx.item_name}</td>
-                    <td className={`px-6 py-4 font-mono font-bold ${parseFloat(tx.change_quantity) < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4 text-xs text-[#64748B]">{new Date(tx.created_at).toLocaleString()}</td>
+                    <td className="px-6 py-4 font-bold text-[#1F2937]">{tx.item_name}</td>
+                    <td className={`px-6 py-4 font-mono font-bold ${parseFloat(tx.change_quantity) < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
                       {parseFloat(tx.change_quantity) > 0 ? `+${tx.change_quantity}` : tx.change_quantity} {tx.unit}
                     </td>
-                    <td className="px-6 py-4 text-xs font-semibold text-amber-400">{tx.type}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-400">{tx.reference_id}</td>
+                    <td className="px-6 py-4 text-xs font-semibold text-[#3A7D7C]">{tx.type}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-[#64748B]">{tx.reference_id}</td>
                   </tr>
                 ))}
               </tbody>
@@ -720,9 +722,9 @@ export default function RecipeInventoryPage() {
       {/* TAB 5: EXPIRY REPORT & CSV EXPORT */}
       {activeTab === 'EXPIRY_REPORT' && (
         <div className="space-y-4">
-          <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400">Report Scope:</span>
+              <span className="text-xs font-bold text-[#64748B]">Report Scope:</span>
               {[
                 { key: 'ALL', label: 'All Active Batches' },
                 { key: 'EXPIRING_7', label: '7-Day Expiring' },
@@ -732,10 +734,10 @@ export default function RecipeInventoryPage() {
                 <button
                   key={r.key}
                   onClick={() => setReportFilter(r.key)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                     reportFilter === r.key
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'bg-slate-800 text-slate-400 hover:text-white'
+                      ? 'bg-[#3A7D7C] text-white border-[#3A7D7C]'
+                      : 'bg-white text-[#1F2937] border-[#D7E5E8] hover:border-[#3A7D7C]'
                   }`}
                 >
                   {r.label}
@@ -745,17 +747,17 @@ export default function RecipeInventoryPage() {
 
             <button
               onClick={() => exportToCSV(expiryReportData, `expiry_report_${reportFilter.toLowerCase()}.csv`)}
-              className="py-2 px-4 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+              className="py-2 px-4 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs flex items-center gap-2 shadow-2xs"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV Report</span>
             </button>
           </div>
 
-          <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+              <table className="w-full text-left text-sm text-[#1F2937]">
+                <thead className="bg-slate-50 text-xs font-bold text-[#64748B] uppercase tracking-wider border-b border-[#D7E5E8]">
                   <tr>
                     <th className="px-5 py-4">Batch No.</th>
                     <th className="px-5 py-4">Item Name</th>
@@ -767,18 +769,18 @@ export default function RecipeInventoryPage() {
                     <th className="px-5 py-4">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-[#D7E5E8]">
                   {expiryReportData.map((row) => (
-                    <tr key={row.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="px-5 py-4 font-mono font-bold text-amber-400 text-xs">{row.batch_number}</td>
-                      <td className="px-5 py-4 font-bold text-white">{row.item_name}</td>
+                    <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-4 font-mono font-bold text-[#3A7D7C] text-xs">{row.batch_number}</td>
+                      <td className="px-5 py-4 font-bold text-[#1F2937]">{row.item_name}</td>
                       <td className="px-5 py-4 font-bold">{row.current_quantity} {row.unit}</td>
-                      <td className="px-5 py-4 font-mono text-xs">{new Date(row.expiry_date).toLocaleDateString()}</td>
-                      <td className="px-5 py-4 font-mono text-xs font-bold text-amber-300">{row.days_text}</td>
-                      <td className="px-5 py-4 text-xs text-slate-400">{row.supplier}</td>
-                      <td className="px-5 py-4 font-bold text-emerald-400">₹{parseFloat(row.estimated_value || 0).toFixed(2)}</td>
+                      <td className="px-5 py-4 font-mono text-xs text-[#64748B]">{new Date(row.expiry_date).toLocaleDateString()}</td>
+                      <td className="px-5 py-4 font-mono text-xs font-bold text-amber-800">{row.days_text}</td>
+                      <td className="px-5 py-4 text-xs text-[#64748B]">{row.supplier}</td>
+                      <td className="px-5 py-4 font-bold text-emerald-800">₹{parseFloat(row.estimated_value || 0).toFixed(2)}</td>
                       <td className="px-5 py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${getBadgeStyle(row.status)}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getBadgeStyle(row.status)}`}>
                           {row.status}
                         </span>
                       </td>
@@ -795,14 +797,14 @@ export default function RecipeInventoryPage() {
       <Modal isOpen={isBatchModalOpen} onClose={() => setIsBatchModalOpen(false)} title="Receive New Stock Batch" maxWidth="max-w-lg">
         <form onSubmit={handleSaveBatch} className="space-y-4">
           {batchDateError && (
-            <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{batchDateError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Select Raw Ingredient *</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Select Raw Ingredient *</label>
             <select
               value={batchForm.inventory_item_id}
               onChange={(e) => {
@@ -811,7 +813,7 @@ export default function RecipeInventoryPage() {
                 setBatchForm({ ...batchForm, inventory_item_id: itemId, batch_number: autoBatch });
               }}
               required
-              className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs focus:outline-none focus:border-[#3A7D7C]"
             >
               <option value="">Choose Raw Ingredient</option>
               {inventoryItems.map(i => <option key={i.id} value={i.id}>{i.item_name} ({i.unit})</option>)}
@@ -820,57 +822,57 @@ export default function RecipeInventoryPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Batch Number *</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Batch Number *</label>
               <input
                 type="text"
                 value={batchForm.batch_number}
                 onChange={(e) => setBatchForm({ ...batchForm, batch_number: e.target.value })}
                 required
                 placeholder="e.g. CHK-2026-001"
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-mono"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Initial Received Qty *</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Initial Received Qty *</label>
               <input
                 type="number"
                 step="0.001"
                 value={batchForm.initial_quantity}
                 onChange={(e) => setBatchForm({ ...batchForm, initial_quantity: parseFloat(e.target.value) })}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-bold"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Purchase Date *</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Purchase Date *</label>
               <input
                 type="date"
                 value={batchForm.purchase_date}
                 onChange={(e) => setBatchForm({ ...batchForm, purchase_date: e.target.value })}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Expiry Date *</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Expiry Date *</label>
               <input
                 type="date"
                 value={batchForm.expiry_date}
                 onChange={(e) => setBatchForm({ ...batchForm, expiry_date: e.target.value })}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-bold text-amber-400"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold text-[#3A7D7C]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Supplier</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Supplier</label>
               <select
                 value={batchForm.supplier_id}
                 onChange={(e) => {
@@ -882,7 +884,7 @@ export default function RecipeInventoryPage() {
                     supplier_name: sObj ? sObj.name : ''
                   });
                 }}
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               >
                 <option value="">Select Supplier</option>
                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -890,31 +892,31 @@ export default function RecipeInventoryPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Purchase Price per Unit (₹)</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Purchase Price per Unit (₹)</label>
               <input
                 type="number"
                 step="0.01"
                 value={batchForm.unit_price}
                 onChange={(e) => setBatchForm({ ...batchForm, unit_price: parseFloat(e.target.value) })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Notes / Internal Reference</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Notes / Internal Reference</label>
             <input
               type="text"
               value={batchForm.notes}
               onChange={(e) => setBatchForm({ ...batchForm, notes: e.target.value })}
               placeholder="e.g. Cold storage shelf A-3"
-              className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
-            <button type="button" onClick={() => setIsBatchModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-xs">Cancel</button>
-            <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400">Save Stock Batch</button>
+          <div className="pt-3 border-t border-[#D7E5E8] flex justify-end gap-2">
+            <button type="button" onClick={() => setIsBatchModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-[#1F2937] text-xs font-bold">Cancel</button>
+            <button type="submit" className="px-5 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs">Save Stock Batch</button>
           </div>
         </form>
       </Modal>
@@ -923,74 +925,74 @@ export default function RecipeInventoryPage() {
       <Modal isOpen={isEditBatchModalOpen} onClose={() => setIsEditBatchModalOpen(false)} title={`Edit Batch #${editBatchForm.batch_number}`} maxWidth="max-w-md">
         <form onSubmit={handleUpdateBatch} className="space-y-4">
           {editDateError && (
-            <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{editDateError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Item Name</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Item Name</label>
             <input
               type="text"
               disabled
               value={editBatchForm.item_name}
-              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs font-bold"
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 border border-[#D7E5E8] text-[#64748B] text-xs font-bold"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Current Stock Qty</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Current Stock Qty</label>
               <input
                 type="number"
                 step="0.001"
                 value={editBatchForm.current_quantity}
                 onChange={(e) => setEditBatchForm({ ...editBatchForm, current_quantity: parseFloat(e.target.value) })}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-bold"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Unit Price (₹)</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Unit Price (₹)</label>
               <input
                 type="number"
                 step="0.01"
                 value={editBatchForm.unit_price}
                 onChange={(e) => setEditBatchForm({ ...editBatchForm, unit_price: parseFloat(e.target.value) })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Purchase Date</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Purchase Date</label>
               <input
                 type="date"
                 value={editBatchForm.purchase_date}
                 onChange={(e) => setEditBatchForm({ ...editBatchForm, purchase_date: e.target.value })}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Expiry Date</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Expiry Date</label>
               <input
                 type="date"
                 value={editBatchForm.expiry_date}
                 onChange={(e) => setEditBatchForm({ ...editBatchForm, expiry_date: e.target.value })}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs font-bold text-amber-400"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold text-[#3A7D7C]"
               />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
-            <button type="button" onClick={() => setIsEditBatchModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-xs">Cancel</button>
-            <button type="submit" className="px-5 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400">Update Batch</button>
+          <div className="pt-3 border-t border-[#D7E5E8] flex justify-end gap-2">
+            <button type="button" onClick={() => setIsEditBatchModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-100 text-[#1F2937] text-xs font-bold">Cancel</button>
+            <button type="submit" className="px-5 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs">Update Batch</button>
           </div>
         </form>
       </Modal>
@@ -999,24 +1001,24 @@ export default function RecipeInventoryPage() {
       <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title="Add Raw Ingredient" maxWidth="max-w-md">
         <form onSubmit={handleSaveItem} className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Ingredient Name *</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Ingredient Name *</label>
             <input
               type="text"
               value={itemForm.item_name}
               onChange={(e) => setItemForm({ ...itemForm, item_name: e.target.value })}
               required
               placeholder="e.g. Fresh Paneer"
-              className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs focus:outline-none focus:border-[#3A7D7C]"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Unit *</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Unit *</label>
               <select
                 value={itemForm.unit}
                 onChange={(e) => setItemForm({ ...itemForm, unit: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               >
                 <option value="kg">kg</option>
                 <option value="g">g</option>
@@ -1026,20 +1028,20 @@ export default function RecipeInventoryPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Initial Stock</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Initial Stock</label>
               <input
                 type="number"
                 step="0.001"
                 value={itemForm.current_stock}
                 onChange={(e) => setItemForm({ ...itemForm, current_stock: parseFloat(e.target.value) })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
               />
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
-            <button type="button" onClick={() => setIsItemModalOpen(false)} className="px-3 py-2 rounded-xl bg-slate-800 text-xs">Cancel</button>
-            <button type="submit" className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Save</button>
+          <div className="pt-3 border-t border-[#D7E5E8] flex justify-end gap-2">
+            <button type="button" onClick={() => setIsItemModalOpen(false)} className="px-3 py-2 rounded-xl bg-slate-100 text-[#1F2937] text-xs font-bold">Cancel</button>
+            <button type="submit" className="px-4 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs">Save</button>
           </div>
         </form>
       </Modal>
@@ -1048,12 +1050,12 @@ export default function RecipeInventoryPage() {
       <Modal isOpen={isRecipeModalOpen} onClose={() => setIsRecipeModalOpen(false)} title="Map Recipe BOM to Dish" maxWidth="max-w-md">
         <form onSubmit={handleSaveRecipe} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Select Menu Item *</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Select Menu Item *</label>
             <select
               value={selectedMenuItemId}
               onChange={(e) => setSelectedMenuItemId(e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
             >
               <option value="">Choose Food Item</option>
               {menuItems.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
@@ -1061,7 +1063,7 @@ export default function RecipeInventoryPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">Ingredients Required per Dish Portion</label>
+            <label className="block text-xs font-bold text-[#1F2937]">Ingredients Required per Dish Portion</label>
             {recipeIngredients.map((ing, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <select
@@ -1071,7 +1073,7 @@ export default function RecipeInventoryPage() {
                     copy[idx].inventory_item_id = e.target.value;
                     setRecipeIngredients(copy);
                   }}
-                  className="flex-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                  className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
                 >
                   <option value="">Select Ingredient</option>
                   {inventoryItems.map(ii => <option key={ii.id} value={ii.id}>{ii.item_name} ({ii.unit})</option>)}
@@ -1087,7 +1089,7 @@ export default function RecipeInventoryPage() {
                     setRecipeIngredients(copy);
                   }}
                   placeholder="Qty"
-                  className="w-20 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs"
+                  className="w-20 px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
                 />
               </div>
             ))}
@@ -1095,15 +1097,15 @@ export default function RecipeInventoryPage() {
             <button
               type="button"
               onClick={() => setRecipeIngredients([...recipeIngredients, { inventory_item_id: '', quantity: 0.1, unit: 'kg' }])}
-              className="text-xs text-amber-400 font-semibold hover:underline"
+              className="text-xs text-[#3A7D7C] font-bold hover:underline"
             >
               + Add Another Ingredient
             </button>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
-            <button type="button" onClick={() => setIsRecipeModalOpen(false)} className="px-3 py-2 rounded-xl bg-slate-800 text-xs">Cancel</button>
-            <button type="submit" className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Save Recipe</button>
+          <div className="pt-3 border-t border-[#D7E5E8] flex justify-end gap-2">
+            <button type="button" onClick={() => setIsRecipeModalOpen(false)} className="px-3 py-2 rounded-xl bg-slate-100 text-[#1F2937] text-xs font-bold">Cancel</button>
+            <button type="submit" className="px-4 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs">Save Recipe</button>
           </div>
         </form>
       </Modal>

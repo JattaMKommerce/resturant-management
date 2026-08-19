@@ -99,43 +99,46 @@ export default function BillingPage() {
     if (channelFilter === 'ONLINE' && bill.channel !== 'ONLINE') return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchBill = String(bill.bill_number || '').toLowerCase().includes(q);
-      const matchOrder = String(bill.order_number || '').toLowerCase().includes(q);
-      const matchCustomer = String(bill.customer_name || '').toLowerCase().includes(q);
-      const matchTable = String(bill.table_number || '').toLowerCase().includes(q);
-      if (!matchBill && !matchOrder && !matchCustomer && !matchTable) return false;
+      return (
+        bill.bill_number?.toLowerCase().includes(q) ||
+        bill.order_number?.toLowerCase().includes(q) ||
+        bill.customer_name?.toLowerCase().includes(q) ||
+        String(bill.table_number).includes(q)
+      );
     }
     return true;
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 antialiased font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
-            <Receipt className="w-7 h-7 text-amber-500" />
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1F2937] tracking-tight flex items-center gap-2">
+            <Receipt className="w-6 h-6 text-[#3A7D7C]" />
             <span>Billing, Invoices & Room Charges</span>
           </h2>
-          <p className="text-slate-400 text-sm">Restaurant tax invoices, online order billing receipts, payment collection, and Room Folio postings</p>
+          <p className="text-[#64748B] text-xs sm:text-sm mt-0.5 font-medium">
+            Restaurant tax invoices, online order billing receipts, payment collection, and Room Folio postings
+          </p>
         </div>
 
         <button
           onClick={fetchBillingData}
-          className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors self-start sm:self-auto flex items-center gap-1.5 text-xs font-bold"
+          className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] transition-colors self-start sm:self-auto flex items-center gap-1.5 text-xs font-bold shadow-2xs"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4 text-[#3A7D7C]" />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* Filter Tabs & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center bg-slate-50 p-1 rounded-xl border border-[#D7E5E8] text-xs">
           <button
             onClick={() => setChannelFilter('ALL')}
             className={`px-3.5 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'ALL' ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-white'
+              channelFilter === 'ALL' ? 'bg-[#3A7D7C] text-white shadow-2xs' : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
             All Invoices ({bills.length})
@@ -143,53 +146,53 @@ export default function BillingPage() {
           <button
             onClick={() => setChannelFilter('OFFLINE')}
             className={`px-3.5 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'OFFLINE' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              channelFilter === 'OFFLINE' ? 'bg-[#3A7D7C] text-white shadow-2xs' : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
-            🍽️ Offline Restaurant ({bills.filter(b => b.channel !== 'ONLINE').length})
+            🍽️ Offline ({bills.filter(b => b.channel !== 'ONLINE').length})
           </button>
           <button
             onClick={() => setChannelFilter('ONLINE')}
             className={`px-3.5 py-1.5 rounded-lg font-bold transition-all ${
-              channelFilter === 'ONLINE' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              channelFilter === 'ONLINE' ? 'bg-[#3A7D7C] text-white shadow-2xs' : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
-            🌐 Online Delivery ({bills.filter(b => b.channel === 'ONLINE').length})
+            🌐 Online ({bills.filter(b => b.channel === 'ONLINE').length})
           </button>
         </div>
 
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search bill #, order #, customer..."
-            className="pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 w-full sm:w-64"
+            className="pl-9 pr-4 py-2 bg-slate-50 border border-[#D7E5E8] rounded-xl text-xs text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] w-full sm:w-64 font-semibold"
           />
         </div>
       </div>
 
       {/* Orders Ready for Billing (Top Section) */}
       {unbilledOrders.length > 0 && (
-        <div className="glass-panel bg-amber-950/20 border border-amber-500/30 rounded-2xl p-5 space-y-3">
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl p-5 space-y-3 shadow-xs">
+          <h3 className="text-xs font-bold text-[#3A7D7C] uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#3A7D7C] animate-ping"></span>
             <span>Served Orders Pending Bill Generation ({unbilledOrders.length})</span>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {unbilledOrders.map((ord) => (
-              <div key={ord.id} className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div key={ord.id} className="p-4 rounded-xl bg-slate-50 border border-[#D7E5E8] flex items-center justify-between shadow-2xs">
                 <div>
-                  <h4 className="text-sm font-bold text-white">Order #{ord.order_number}</h4>
-                  <p className="text-xs text-slate-400">{ord.table_number ? `Table ${ord.table_number}` : 'Room Service'}</p>
-                  <div className="text-xs font-black text-amber-400 mt-1">₹{parseFloat(ord.total_amount).toFixed(2)}</div>
+                  <h4 className="text-sm font-bold text-[#1F2937]">Order #{ord.order_number}</h4>
+                  <p className="text-xs text-[#64748B] font-semibold">{ord.table_number ? `Table ${ord.table_number}` : 'Room Service'}</p>
+                  <div className="text-xs font-bold text-[#3A7D7C] mt-1">₹{parseFloat(ord.total_amount).toFixed(2)}</div>
                 </div>
 
                 <button
                   onClick={() => handleGenerateBill(ord.id)}
-                  className="py-2 px-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20"
+                  className="py-2 px-3.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs transition-colors shadow-2xs uppercase tracking-wider"
                 >
                   Generate Bill
                 </button>
@@ -200,10 +203,10 @@ export default function BillingPage() {
       )}
 
       {/* Bills Ledger Table */}
-      <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+          <table className="w-full text-left text-sm text-[#1F2937]">
+            <thead className="bg-slate-50 text-xs font-bold text-[#64748B] uppercase tracking-wider border-b border-[#D7E5E8]">
               <tr>
                 <th className="px-6 py-4">Bill / Invoice #</th>
                 <th className="px-6 py-4">Order #</th>
@@ -215,14 +218,14 @@ export default function BillingPage() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-[#D7E5E8]">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center text-slate-500">Loading bills ledger...</td>
+                  <td colSpan="8" className="px-6 py-8 text-center text-[#64748B] font-semibold">Loading bills ledger...</td>
                 </tr>
               ) : filteredBills.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center text-slate-500">No bills or invoices found.</td>
+                  <td colSpan="8" className="px-6 py-8 text-center text-[#64748B] font-semibold">No bills or invoices found.</td>
                 </tr>
               ) : (
                 filteredBills.map((bill) => {
@@ -232,36 +235,36 @@ export default function BillingPage() {
                   const last5 = cleanDigits.length >= 5 ? cleanDigits.slice(-5) : rawOrderNum.slice(-5) || '-----';
 
                   return (
-                    <tr key={bill.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 font-bold text-white font-mono flex items-center gap-2">
+                    <tr key={bill.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-6 py-4 font-bold text-[#1F2937] font-mono flex items-center gap-2">
                         {isOnline ? (
-                          <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-bold">
                             ONLINE
                           </span>
                         ) : null}
                         <span>{bill.bill_number}</span>
                       </td>
-                      <td className="px-6 py-4 text-slate-300 text-xs">
-                        <div className="font-bold text-slate-100">#{bill.order_number}</div>
-                        {isOnline && <span className="text-[10px] text-amber-400 font-mono">Token: #{last5}</span>}
+                      <td className="px-6 py-4 text-[#64748B] text-xs">
+                        <div className="font-bold text-[#1F2937]">#{bill.order_number}</div>
+                        {isOnline && <span className="text-[10px] text-[#3A7D7C] font-mono font-bold">Token: #{last5}</span>}
                       </td>
-                      <td className="px-6 py-4 text-slate-300 font-medium">
+                      <td className="px-6 py-4 text-[#1F2937] font-medium">
                         {isOnline ? (
                           <div>
-                            <span className="text-cyan-400 font-bold">🌐 Online Delivery</span>
-                            {bill.customer_name && <div className="text-xs text-slate-400">👤 {bill.customer_name}</div>}
+                            <span className="text-[#3A7D7C] font-bold">🌐 Online Delivery</span>
+                            {bill.customer_name && <div className="text-xs text-[#64748B] font-normal">👤 {bill.customer_name}</div>}
                           </div>
                         ) : bill.table_number ? (
-                          <span className="text-amber-400 font-bold">🍽️ Table {bill.table_number}</span>
+                          <span className="text-[#3A7D7C] font-bold">🍽️ Table {bill.table_number}</span>
                         ) : bill.room_number ? (
-                          <span className="text-sky-400 font-bold">🏨 Room {bill.room_number}</span>
+                          <span className="text-sky-900 font-bold">🏨 Room {bill.room_number}</span>
                         ) : (
                           'Takeaway'
                         )}
                       </td>
-                      <td className="px-6 py-4 font-mono">₹{parseFloat(bill.subtotal || 0).toFixed(2)}</td>
-                      <td className="px-6 py-4 font-mono">₹{parseFloat(bill.tax_amount || 0).toFixed(2)}</td>
-                      <td className="px-6 py-4 font-black text-amber-400 font-mono">₹{parseFloat(bill.grand_total || 0).toFixed(2)}</td>
+                      <td className="px-6 py-4 font-mono font-semibold">₹{parseFloat(bill.subtotal || 0).toFixed(2)}</td>
+                      <td className="px-6 py-4 font-mono font-semibold">₹{parseFloat(bill.tax_amount || 0).toFixed(2)}</td>
+                      <td className="px-6 py-4 font-bold text-[#1F2937] font-mono">₹{parseFloat(bill.grand_total || 0).toFixed(2)}</td>
                       <td className="px-6 py-4">
                         <Badge status={bill.payment_status} />
                       </td>
@@ -269,10 +272,10 @@ export default function BillingPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenInvoice(bill.id)}
-                            className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center gap-1 text-xs font-bold"
+                            className="p-2 rounded-xl bg-slate-100 text-[#1F2937] hover:bg-slate-200 transition-colors flex items-center gap-1 text-xs font-bold border border-[#D7E5E8]"
                             title="View & Print Tax Invoice"
                           >
-                            <Printer className="w-4 h-4" />
+                            <Printer className="w-4 h-4 text-[#3A7D7C]" />
                             <span>Invoice</span>
                           </button>
 
@@ -285,7 +288,7 @@ export default function BillingPage() {
                                   setIsPaymentModalOpen(true);
                                 }
                               }}
-                              className="py-1.5 px-3 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-1"
+                              className="py-1.5 px-3 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs transition-colors shadow-2xs flex items-center gap-1"
                             >
                               <CreditCard className="w-3.5 h-3.5" />
                               <span>Collect Payment</span>
@@ -311,14 +314,14 @@ export default function BillingPage() {
           maxWidth="max-w-md"
         >
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">
-              <span className="text-xs text-slate-400 uppercase font-semibold">Total Amount Due</span>
-              <h3 className="text-3xl font-black text-amber-400 mt-1">₹{parseFloat(selectedBill.grand_total).toFixed(2)}</h3>
-              <p className="text-xs text-slate-500 mt-1">{selectedBill.table_number ? `Table ${selectedBill.table_number}` : `Room ${selectedBill.room_number || 'N/A'}`}</p>
+            <div className="p-4 rounded-xl bg-slate-50 border border-[#D7E5E8] text-center">
+              <span className="text-xs text-[#64748B] uppercase font-bold">Total Amount Due</span>
+              <h3 className="text-3xl font-bold text-[#1F2937] mt-1">₹{parseFloat(selectedBill.grand_total).toFixed(2)}</h3>
+              <p className="text-xs text-[#64748B] font-semibold mt-1">{selectedBill.table_number ? `Table ${selectedBill.table_number}` : `Room ${selectedBill.room_number || 'N/A'}`}</p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Select Payment Method</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Select Payment Method</label>
               <div className="grid grid-cols-2 gap-2">
                 {['CASH', 'CARD', 'UPI', 'ROOM_CHARGE'].map((method) => (
                   <button
@@ -327,8 +330,8 @@ export default function BillingPage() {
                     onClick={() => setPaymentMethod(method)}
                     className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-colors ${
                       paymentMethod === method
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
-                        : 'bg-slate-800 text-slate-300 border-slate-700'
+                        ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-2xs'
+                        : 'bg-slate-50 text-[#1F2937] border-[#D7E5E8] hover:bg-slate-100'
                     }`}
                   >
                     {method}
@@ -338,27 +341,27 @@ export default function BillingPage() {
             </div>
 
             {paymentMethod === 'ROOM_CHARGE' && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+              <div className="p-3 rounded-xl bg-[#EAF4F7] border border-[#D7E5E8] text-[#3A7D7C] text-xs font-semibold">
                 Charge will be posted to Open Room Folio for {selectedBill.room_number ? `Room ${selectedBill.room_number}` : 'associated room'}.
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Transaction Ref / Note (Optional)</label>
+              <label className="block text-xs font-bold text-[#1F2937] mb-1">Transaction Ref / Note (Optional)</label>
               <input
                 type="text"
                 value={transactionRef}
                 onChange={(e) => setTransactionRef(e.target.value)}
                 placeholder="e.g. UPI Ref #987213, Card Slip #123"
-                className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs focus:outline-none focus:border-[#3A7D7C] font-semibold"
               />
             </div>
 
-            <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
+            <div className="pt-4 border-t border-[#D7E5E8] flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 text-[#1F2937] text-xs font-bold hover:bg-slate-200"
               >
                 Cancel
               </button>
@@ -366,7 +369,7 @@ export default function BillingPage() {
                 type="button"
                 onClick={handleProcessPayment}
                 disabled={submittingPayment}
-                className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs shadow-2xs disabled:opacity-50"
               >
                 {submittingPayment ? 'Processing...' : 'Complete Payment'}
               </button>
@@ -384,7 +387,7 @@ export default function BillingPage() {
           maxWidth="max-w-md"
         >
           <div className="flex flex-col items-center">
-            <div className="printable-area receipt-container invoice-print bg-white text-black font-mono p-5 rounded border border-slate-300 w-full max-w-xs text-xs shadow-lg mb-6">
+            <div className="printable-area receipt-container invoice-print bg-white text-black font-mono p-5 rounded-xl border border-slate-300 w-full max-w-xs text-xs shadow-sm mb-6">
               <div className="text-center font-bold text-sm border-b-2 border-black pb-2 mb-3">
                 GRAND PALACE HOTEL & RESTAURANT
                 <div className="text-[10px] font-normal text-slate-600">GSTIN: 27AAAAA0000A1Z5</div>
@@ -433,9 +436,9 @@ export default function BillingPage() {
 
             <button
               onClick={() => window.print()}
-              className="w-full py-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 no-print"
+              className="w-full py-3 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs uppercase tracking-wider shadow-2xs flex items-center justify-center gap-2 no-print"
             >
-              <Printer className="w-5 h-5" />
+              <Printer className="w-4 h-4" />
               <span>Print Tax Invoice</span>
             </button>
           </div>

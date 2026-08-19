@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Bike, Lock, Mail, ArrowRight, UserPlus, AlertCircle } from 'lucide-react';
+import { Bike, Lock, Mail, ArrowRight, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function DriverLoginPage() {
-  const [loginInput, setLoginInput] = useState('driver1@hotel.com');
-  const [password, setPassword] = useState('driver123');
+  const [loginInput, setLoginInput] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -18,14 +19,14 @@ export default function DriverLoginPage() {
     setError('');
 
     try {
-      const res = await login(loginInput, password);
+      const res = await login(loginInput.trim(), password);
       if (res.success && (res.user.role === 'DRIVER' || res.user.role === 'SUPER_ADMIN')) {
         navigate('/driver/dashboard');
       } else {
         setError('Access denied. Only approved delivery partners can log in here.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid login or password.');
+      setError(err.response?.data?.message || 'Invalid login or password. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
@@ -40,7 +41,7 @@ export default function DriverLoginPage() {
             <Bike className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-black text-white mt-4">Delivery Partner Portal</h2>
-          <p className="text-xs text-slate-400 mt-1">Sign in with email/mobile to access your delivery dashboard</p>
+          <p className="text-xs text-slate-400 mt-1">Sign in with your Email (Gmail) and Password to start deliveries</p>
         </div>
 
         {error && (
@@ -52,7 +53,7 @@ export default function DriverLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold text-slate-300 mb-1">Email or Mobile Number</label>
+            <label className="block font-bold text-slate-300 mb-1">Email / Gmail or Mobile Number *</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -60,24 +61,31 @@ export default function DriverLoginPage() {
                 required
                 value={loginInput}
                 onChange={(e) => setLoginInput(e.target.value)}
-                placeholder="driver1@hotel.com or +91 9988776655"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
+                placeholder="your.email@gmail.com or mobile"
+                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-bold text-slate-300 mb-1">Password</label>
+            <label className="block font-bold text-slate-300 mb-1">Password *</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
+                placeholder="Enter your account password"
+                className="w-full pl-10 pr-11 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

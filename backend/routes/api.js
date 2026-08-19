@@ -183,7 +183,7 @@ router.get('/admin/rider-applications', ...adminAuth, riderAppController.getAdmi
 router.get('/admin/rider-applications/:id', ...adminAuth, riderAppController.getAdminApplicationById);
 router.patch('/admin/rider-applications/:id/approve', ...adminAuth, riderAppController.approveApplication);
 router.patch('/admin/rider-applications/:id/reject', ...adminAuth, riderAppController.rejectApplication);
-router.get('/admin/riders/:riderId/documents/:documentId', authenticateToken, riderAppController.streamDocument);
+router.get('/admin/riders/:riderId/documents/:documentId', authenticateToken, resolveRestaurantAccess, riderAppController.streamDocument);
 router.patch('/admin/riders/:riderId/documents/:documentId/verify', ...adminAuth, riderAppController.verifyDocument);
 router.get('/admin/riders', ...adminAuth, driverController.getAdminDrivers);
 router.patch('/admin/riders/:id/status', ...adminAuth, driverController.updateDriverStatus);

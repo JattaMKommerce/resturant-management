@@ -2,35 +2,36 @@ import React from 'react';
 
 const statusColorMap = {
   // Table Statuses
-  AVAILABLE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  OCCUPIED: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-  ORDERING: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
-  RESERVED: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-  BILL_REQUESTED: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  BILL_PAID: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
-  CLEANING: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
-  OUT_OF_SERVICE: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+  AVAILABLE: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  OCCUPIED: 'bg-blue-100 text-blue-800 border-blue-300',
+  ORDERING: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  RESERVED: 'bg-purple-100 text-purple-800 border-purple-300',
+  BILL_REQUESTED: 'bg-amber-100 text-amber-900 border-amber-300 animate-pulse',
+  BILL_PAID: 'bg-cyan-100 text-cyan-900 border-cyan-300',
+  CLEANING: 'bg-teal-100 text-teal-900 border-teal-300',
+  OUT_OF_SERVICE: 'bg-rose-100 text-rose-900 border-rose-300',
 
   // Order / KOT Statuses
-  PENDING: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
-  ACCEPTED: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-  PREPARING: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  READY: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  SERVED: 'bg-sky-500/10 text-sky-400 border-sky-500/30',
-  COMPLETED: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  CANCELLED: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+  PENDING: 'bg-amber-100 text-amber-900 border-amber-300',
+  ACCEPTED: 'bg-blue-100 text-blue-900 border-blue-300',
+  PREPARING: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+  READY: 'bg-emerald-600 text-white border-transparent shadow-xs',
+  SERVED: 'bg-slate-200 text-slate-800 border-slate-300',
+  COMPLETED: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+  CANCELLED: 'bg-rose-100 text-rose-900 border-rose-300',
 
   // QR Statuses
-  ACTIVE: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  INACTIVE: 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+  ACTIVE: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  INACTIVE: 'bg-slate-200 text-slate-700 border-slate-300'
 };
 
 export default function Badge({ status, text }) {
-  const colorClass = statusColorMap[status] || 'bg-slate-800 text-slate-300 border-slate-700';
+  const colorClass = statusColorMap[status] || 'bg-slate-100 text-slate-800 border-slate-300';
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${colorClass}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${colorClass}`}>
       {text || status}
     </span>
   );
 }
+

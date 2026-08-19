@@ -25,30 +25,30 @@ export default function AuditLogsPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 antialiased font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
-            <ShieldAlert className="w-7 h-7 text-amber-500" />
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1F2937] tracking-tight flex items-center gap-2">
+            <ShieldAlert className="w-6 h-6 text-[#3A7D7C]" />
             <span>System Audit Logs</span>
           </h2>
-          <p className="text-slate-400 text-sm">Security audit trail recording table operations, QR regenerations, KOT transitions, billing, and inventory stock changes</p>
+          <p className="text-[#64748B] text-xs sm:text-sm mt-0.5">Security audit trail recording table operations, QR regenerations, KOT transitions, billing, and inventory changes</p>
         </div>
 
         <button
           onClick={fetchAuditLogs}
-          className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+          className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] transition-colors shadow-2xs"
         >
-          <RefreshCw className="w-5 h-5" />
+          <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
       {/* Audit Log Table */}
-      <div className="glass-panel bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
+          <table className="w-full text-left text-sm text-[#1F2937]">
+            <thead className="bg-slate-50 text-xs font-bold text-[#64748B] uppercase tracking-wider border-b border-[#D7E5E8]">
               <tr>
                 <th className="px-6 py-4">Timestamp</th>
                 <th className="px-6 py-4">User</th>
@@ -58,28 +58,28 @@ export default function AuditLogsPage() {
                 <th className="px-6 py-4">IP Address</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-[#D7E5E8]">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-slate-500">Loading audit trail...</td>
+                  <td colSpan="6" className="px-6 py-8 text-center text-[#64748B]">Loading audit trail...</td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-slate-500">No audit logs recorded yet.</td>
+                  <td colSpan="6" className="px-6 py-8 text-center text-[#64748B]">No audit logs recorded yet.</td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 text-xs text-slate-400 font-mono">
+                  <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-4 text-xs text-[#64748B] font-mono">
                       {new Date(log.created_at).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 font-bold text-white">
+                    <td className="px-6 py-4 font-bold text-[#1F2937]">
                       {log.user_name || 'System / Customer'}
                     </td>
-                    <td className="px-6 py-4 text-amber-400 font-semibold">{log.action}</td>
-                    <td className="px-6 py-4 text-slate-300">{log.entity}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-400">#{log.entity_id || 'N/A'}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-500">{log.ip_address || '127.0.0.1'}</td>
+                    <td className="px-6 py-4 text-[#3A7D7C] font-bold">{log.action}</td>
+                    <td className="px-6 py-4 text-[#1F2937]">{log.entity}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-[#64748B]">#{log.entity_id || 'N/A'}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-[#64748B]">{log.ip_address || '127.0.0.1'}</td>
                   </tr>
                 ))
               )}

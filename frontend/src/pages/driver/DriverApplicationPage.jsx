@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building, User, Camera, FileText, Bike, CheckCircle2, ChevronRight, ChevronLeft, 
-  Upload, Shield, AlertCircle, ArrowLeft, RefreshCw, Smartphone, MapPin
+  Upload, Shield, AlertCircle, ArrowLeft, RefreshCw, Smartphone, MapPin,
+  Lock, Eye, EyeOff, KeyRound
 } from 'lucide-react';
 import api from '../../api/axios';
 
@@ -22,6 +23,8 @@ export default function DriverApplicationPage() {
     fullName: '',
     mobile: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     dateOfBirth: '',
     homeCity: 'Hubballi',
     currentCity: 'Bengaluru',
@@ -30,6 +33,9 @@ export default function DriverApplicationPage() {
     vehicleType: 'Bike',
     vehicleNumber: ''
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Files State
   const [files, setFiles] = useState({
@@ -136,7 +142,19 @@ export default function DriverApplicationPage() {
     }
     if (step === 2) {
       if (!formData.fullName || !formData.mobile || !formData.email) {
-        setError('Full Name, Mobile, and Email are required.');
+        setError('Full Name, Mobile, and Email Address are required.');
+        return;
+      }
+      if (!formData.password) {
+        setError('Please create a password for your driver account.');
+        return;
+      }
+      if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters long.');
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match. Please re-enter matching passwords.');
         return;
       }
     }
@@ -175,6 +193,7 @@ export default function DriverApplicationPage() {
       data.append('fullName', formData.fullName);
       data.append('mobile', formData.mobile);
       data.append('email', formData.email);
+      data.append('password', formData.password);
       data.append('dateOfBirth', formData.dateOfBirth);
       data.append('homeCity', formData.homeCity);
       data.append('currentCity', formData.currentCity);
@@ -225,7 +244,7 @@ export default function DriverApplicationPage() {
           <p className="text-slate-300 text-sm leading-relaxed">
             Your application to join <strong className="text-orange-400">{successData.restaurantName}</strong> as a delivery partner has been received.
           </p>
-          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-700 text-left space-y-2 text-xs">
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-700 text-left space-y-2.5 text-xs">
             <div className="flex justify-between text-slate-400">
               <span>Application ID:</span>
               <span className="font-mono text-white font-bold">#{successData.applicationId}</span>
@@ -234,16 +253,24 @@ export default function DriverApplicationPage() {
               <span>Status:</span>
               <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold uppercase text-[10px]">PENDING REVIEW</span>
             </div>
+            <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-2">
+              <span>Login Email:</span>
+              <span className="font-bold text-white">{formData.email}</span>
+            </div>
+            <div className="flex justify-between text-slate-400">
+              <span>Password:</span>
+              <span className="font-mono text-emerald-400">•••••••• (Created during registration)</span>
+            </div>
           </div>
-          <p className="text-slate-400 text-xs">
-            The restaurant admin will review your selfie, Aadhaar, driving licence, and vehicle details. Once approved, you will be notified to log in.
+          <p className="text-slate-400 text-xs leading-relaxed">
+            The restaurant admin will review your identity documents and vehicle details. Once approved, you can sign in to your Driver Portal using your <strong className="text-white">Email ({formData.email})</strong> and <strong className="text-white">Password</strong>!
           </p>
           <div className="pt-2">
             <button
               onClick={() => navigate('/driver/login')}
-              className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 rounded-2xl font-bold text-white shadow-lg shadow-orange-500/25 transition-all text-sm"
+              className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 rounded-2xl font-bold text-white shadow-lg shadow-orange-500/25 transition-all text-sm flex items-center justify-center gap-2"
             >
-              Go to Driver Login
+              Go to Driver Sign In <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -426,6 +453,66 @@ export default function DriverApplicationPage() {
                     onChange={handleInputChange}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-orange-500 focus:outline-none"
                   />
+                </div>
+
+                {/* Password & Confirm Password */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Create Password * <span className="text-[10px] text-slate-400 font-normal">(Min 6 chars)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="Enter new password"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-11 py-3 text-white text-sm focus:border-orange-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Confirm Password *</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      placeholder="Re-enter password"
+                      className={`w-full bg-slate-900 border rounded-xl pl-4 pr-11 py-3 text-white text-sm focus:outline-none ${
+                        formData.confirmPassword && formData.password !== formData.confirmPassword
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-slate-700 focus:border-orange-500'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                    <span className="text-[11px] text-red-400 font-medium block mt-1">Passwords do not match</span>
+                  )}
+                </div>
+
+                {/* Account Security Notice */}
+                <div className="sm:col-span-2 p-3.5 bg-orange-500/10 border border-orange-500/20 rounded-2xl text-xs text-slate-300 flex items-start gap-2.5">
+                  <KeyRound className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">
+                    <strong className="text-orange-300">Driver Portal Sign-In:</strong> You will use this <strong className="text-white">Email Address</strong> and <strong className="text-white">Password</strong> to log in to the Driver App once your application is reviewed and approved.
+                  </span>
                 </div>
 
                 <div>
@@ -690,6 +777,10 @@ export default function DriverApplicationPage() {
                 <div className="flex justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400">Mobile & Email:</span>
                   <span className="font-semibold text-white">{formData.mobile} | {formData.email}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800 pb-2">
+                  <span className="text-slate-400">Portal Password:</span>
+                  <span className="font-mono text-emerald-400">•••••••• (Configured)</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400">Cities:</span>

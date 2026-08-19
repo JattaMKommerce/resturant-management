@@ -73,8 +73,8 @@ export default function AdminWebsitePage() {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="text-center py-16 text-[#64748B] text-xs">
+          Loading website configuration...
         </div>
       </AdminLayout>
     );
@@ -85,61 +85,61 @@ export default function AdminWebsitePage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6 antialiased font-sans">
 
         {/* Website Status Hero Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-[#D7E5E8] p-5 sm:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white shadow-lg ${isPublished ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-slate-700'}`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white shadow-2xs ${isPublished ? 'bg-emerald-600' : 'bg-[#3A7D7C]'}`}>
               <Globe className="w-7 h-7" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-800">Website Publishing State</h2>
-                <span className={`px-3 py-0.5 rounded-full text-xs font-bold ${isPublished ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                <h2 className="text-lg sm:text-xl font-bold text-[#1F2937]">Website Publishing State</h2>
+                <span className={`px-3 py-0.5 rounded-full text-xs font-bold border ${isPublished ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-[#64748B] border-[#D7E5E8]'}`}>
                   {restaurant?.website_status}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                {isPublished ? 'Your website is live and visible to customers.' : 'Your website is in DRAFT state. Complete setup and publish.'}
+              <p className="text-xs text-[#64748B] mt-1 font-medium">
+                {isPublished ? 'Your storefront is live and customers can place online orders.' : 'Your website is in DRAFT state. Complete setup and publish.'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
             {isPublished ? (
-              <button onClick={handleUnpublish} disabled={actionLoading} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all">
+              <button onClick={handleUnpublish} disabled={actionLoading} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1F2937] text-xs font-bold rounded-xl transition-colors border border-[#D7E5E8]">
                 Unpublish Website
               </button>
             ) : (
-              <button onClick={handlePublish} disabled={actionLoading} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all">
+              <button onClick={handlePublish} disabled={actionLoading} className="px-6 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-bold rounded-xl shadow-2xs transition-colors">
                 Publish Website Live 🚀
               </button>
             )}
-            <a href={`/restaurant/${restaurant?.slug}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg shadow-orange-500/20 transition-all">
-              <Eye className="w-4 h-4" /> Live Website ↗
+            <a href={`/restaurant/${restaurant?.slug}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1F2937] text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors border border-[#D7E5E8]">
+              <Eye className="w-4 h-4 text-[#3A7D7C]" /> Live Website ↗
             </a>
           </div>
         </div>
 
         {/* Public URL Box */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3">
-          <h3 className="font-semibold text-slate-800 text-sm">Public Website Address</h3>
-          <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono text-xs text-slate-700">
+        <div className="bg-white rounded-2xl border border-[#D7E5E8] p-5 sm:p-6 shadow-xs space-y-3">
+          <h3 className="font-bold text-[#1F2937] text-sm">Public Storefront Address</h3>
+          <div className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-[#D7E5E8] font-mono text-xs text-[#1F2937]">
             <span className="flex-1 truncate">{publicUrl}</span>
-            <button onClick={() => { navigator.clipboard.writeText(publicUrl); alert('URL copied!'); }} className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 text-[11px] font-bold">
+            <button onClick={() => { navigator.clipboard.writeText(publicUrl); alert('URL copied to clipboard!'); }} className="px-3 py-1 bg-white border border-[#D7E5E8] rounded-lg text-[#1F2937] hover:bg-slate-100 text-[11px] font-bold shadow-2xs transition-colors">
               Copy
             </button>
           </div>
         </div>
 
         {/* Online Ordering Toggle */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-[#D7E5E8] p-5 sm:p-6 shadow-xs flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-slate-800 text-sm">Online Ordering Status</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Toggle customer order acceptance on your live website.</p>
+            <h3 className="font-bold text-[#1F2937] text-sm">Online Ordering Status</h3>
+            <p className="text-xs text-[#64748B] mt-0.5 font-medium">Toggle customer order acceptance on your live website.</p>
           </div>
-          <button onClick={handleToggleOrdering} disabled={actionLoading} className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-white shadow-md transition-all ${restaurant?.is_online_ordering_enabled ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}>
+          <button onClick={handleToggleOrdering} disabled={actionLoading} className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 text-white shadow-2xs transition-colors ${restaurant?.is_online_ordering_enabled ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
             <Power className="w-4 h-4" />
             {restaurant?.is_online_ordering_enabled ? 'Store Open (Click to Pause)' : 'Store Paused (Click to Accept Orders)'}
           </button>
@@ -147,18 +147,18 @@ export default function AdminWebsitePage() {
 
         {/* Onboarding Setup Progress Card */}
         {progress && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="bg-white rounded-2xl border border-[#D7E5E8] p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-800 text-sm">Setup Checklist ({progress.completedCount}/7)</h3>
-              <Link to={`/admin/${restaurant?.slug}/onboarding`} className="text-xs text-orange-600 font-bold hover:underline flex items-center gap-1">
+              <h3 className="font-bold text-[#1F2937] text-sm">Setup Checklist ({progress.completedCount}/7)</h3>
+              <Link to={`/admin/${restaurant?.slug}/onboarding`} className="text-xs text-[#3A7D7C] font-bold hover:underline flex items-center gap-1">
                 Open Wizard <Sparkles className="w-3.5 h-3.5" />
               </Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {Object.entries(progress.steps).map(([key, isDone]) => (
-                <div key={key} className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${isDone ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                <div key={key} className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${isDone ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-slate-50 border-[#D7E5E8] text-[#64748B]'}`}>
                   <CheckCircle className={`w-4 h-4 ${isDone ? 'text-emerald-600' : 'text-slate-300'}`} />
-                  <span className="capitalize font-medium">{key}</span>
+                  <span className="capitalize font-semibold">{key}</span>
                 </div>
               ))}
             </div>
