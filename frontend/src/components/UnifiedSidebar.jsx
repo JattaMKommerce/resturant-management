@@ -23,7 +23,18 @@ import {
   Boxes,
   BarChart3,
   ChevronDown,
+<<<<<<< HEAD
   Building
+=======
+  ChevronLeft,
+  ChevronRight,
+  Building,
+  History,
+  Users,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen
+>>>>>>> origin/master
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -39,6 +50,11 @@ export default function UnifiedSidebar({ restaurant, currentSlug = 'grand-palace
   const onlineNavItems = [
     { name: 'Online Dashboard', path: basePath, icon: LayoutDashboard, exact: true },
     { name: 'Orders Pipeline', path: `${basePath}/orders`, icon: ShoppingBag },
+<<<<<<< HEAD
+=======
+    { name: 'Order History & Archive', path: `${basePath}/history`, icon: History },
+    { name: 'Staff Management', path: `${basePath}/staff`, icon: Users },
+>>>>>>> origin/master
     { name: 'Delivery Riders', path: `${basePath}/riders`, icon: UtensilsCrossed },
     { name: 'Active Fleet Monitor', path: `${basePath}/deliveries`, icon: Globe },
     { name: 'Menu Items', path: `${basePath}/menu`, icon: Utensils },
@@ -51,6 +67,7 @@ export default function UnifiedSidebar({ restaurant, currentSlug = 'grand-palace
   const offlineNavItems = [
     { name: 'Dashboard', path: '/admin/offline/dashboard', icon: LayoutDashboard },
     { name: 'Live Operation', path: '/admin/offline/operations', icon: Activity },
+    { name: 'Staff & Access', path: '/admin/offline/staff', icon: Users },
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2 },
     { name: 'Menu Management', path: '/admin/offline/menu', icon: UtensilsCrossed },
     { name: 'Orders', path: '/admin/offline/orders', icon: ShoppingBag },

@@ -1,7 +1,13 @@
-const { verifyToken } = require('../utils/token');
+const jwt = require('jsonwebtoken');
 const { sendError } = require('../utils/response');
-const pool = require('../config/database');
+const { query } = require('../config/db');
+require('dotenv').config();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
+
+/**
+ * Uniform Authentication Middleware for KOT and Table/Operations routes
+ */
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
@@ -15,33 +21,27 @@ async function authenticateToken(req, res, next) {
   }
 
   try {
-    const decoded = verifyToken(token);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
 
-    // Fetch live user role and info from database if available
-    if (req.user && req.user.id) {
-      try {
-        const [users] = await pool.query('SELECT id, name, email, role, status FROM users WHERE id = ?', [req.user.id]);
-        if (users.length > 0) {
-          req.user.role = users[0].role || req.user.role;
-          req.user.name = users[0].name || req.user.name;
-          req.user.status = users[0].status || 'ACTIVE';
-        }
+    // Standardize role aliases
+    if (req.user.role === 'ADMIN') req.user.role = 'RESTAURANT_ADMIN';
+    if (req.user.role === 'CHEF') req.user.role = 'KITCHEN';
 
-        // Resolve restaurant_id if not present
-        if (!req.user.restaurant_id) {
-          const [admins] = await pool.query(
-            'SELECT restaurant_id FROM restaurant_admins WHERE user_id = ? ORDER BY is_primary DESC LIMIT 1',
-            [req.user.id]
-          );
-          if (admins.length > 0) {
-            req.user.restaurant_id = admins[0].restaurant_id;
-          } else {
-            req.user.restaurant_id = 1;
-          }
+    // Resolve restaurant_id if not present in token
+    if (req.user && req.user.id && !req.user.restaurant_id) {
+      try {
+        const rows = await query(
+          'SELECT restaurant_id FROM restaurant_admins WHERE user_id = ? ORDER BY is_primary DESC LIMIT 1',
+          [req.user.id]
+        );
+        if (rows && rows.length > 0) {
+          req.user.restaurant_id = rows[0].restaurant_id;
+        } else {
+          req.user.restaurant_id = 1;
         }
       } catch (dbErr) {
-        console.warn('kotAuth: DB enrichment fallback:', dbErr.message);
+        req.user.restaurant_id = 1;
       }
     }
 
@@ -51,15 +51,18 @@ async function authenticateToken(req, res, next) {
   }
 }
 
+/**
+ * Role authorization middleware supporting RESTAURANT_ADMIN, KITCHEN, WAITER, MANAGER, SUPER_ADMIN
+ */
 function requireRoles(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user) {
       return sendError(res, 'Permission denied. Not authenticated.', 401);
     }
     
-    const userRole = String(req.user.role || req.user.role_name || (req.user.role_id === 1 ? 'ADMIN' : 'USER')).toUpperCase();
+    const userRole = String(req.user.role || req.user.role_name || 'CUSTOMER').toUpperCase();
     
-    // Super Admin, Restaurant Admin, Admin, Manager have full access across all operations
+    // Super Admin, Restaurant Admin, Admin, Manager have full administrative access
     if (['ADMIN', 'SUPER_ADMIN', 'RESTAURANT_ADMIN', 'HOTEL_ADMIN', 'OWNER', 'MANAGER'].includes(userRole)) {
       return next();
     }
@@ -75,11 +78,13 @@ function requireRoles(...allowedRoles) {
       mappedAllowed.push('KITCHEN');
     }
 
-    if (mappedAllowed.includes(userRole)) {
+    if (mappedAllowed.includes(userRole) || allowedRoles.includes(userRole)) {
       return next();
     }
 
     return sendError(res, 'Permission denied. Insufficient role access.', 403);
+  };
+}
   };
 }
 

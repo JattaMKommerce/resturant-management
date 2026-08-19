@@ -40,6 +40,7 @@ import AdminWebsitePage from './pages/admin/AdminWebsitePage';
 import RestaurantOnboarding from './pages/admin/RestaurantOnboarding';
 import AdminRidersPage from './pages/admin/AdminRidersPage';
 import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
+import StaffManagementPage from './pages/admin/StaffManagementPage';
 
 // Offline Restaurant & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
@@ -294,6 +295,13 @@ export default function App() {
             <AdminHistoryPage />
           </ProtectedRoute>
         } />
+        <Route path="/admin/:slug/staff" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <StaffManagementPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/admin/:slug/riders" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
             <AdminRidersPage />
@@ -325,6 +333,15 @@ export default function App() {
         {/* ========================================================= */}
         <Route path="/admin/offline" element={<Navigate to="/admin/offline/dashboard" replace />} />
         
+        {/* Staff Management */}
+        <Route path="/admin/offline/staff" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <StaffManagementPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+
         {/* 1. Offline Dashboard */}
         <Route path="/admin/offline/dashboard" element={
           <ProtectedRoute allowedRoles={adminRoles}>

@@ -76,6 +76,51 @@ function emitToDriver(driverId, restaurantId, event, payload) {
   }
 }
 
+// User Presence Tracking
+const connectedUsers = new Map(); // userId -> Set(socketIds)
+
+function trackUserConnection(socket, user) {
+  if (!user || !user.id) return;
+  const userId = parseInt(user.id, 10);
+  if (!connectedUsers.has(userId)) {
+    connectedUsers.set(userId, new Set());
+  }
+  connectedUsers.get(userId).add(socket.id);
+
+  if (user.restaurant_id) {
+    emitToTenant(user.restaurant_id, 'admin', 'staff_presence_change', {
+      userId,
+      isOnline: true,
+      role: user.role
+    });
+  }
+}
+
+function trackUserDisconnection(socket, user) {
+  if (!user || !user.id) return;
+  const userId = parseInt(user.id, 10);
+  if (connectedUsers.has(userId)) {
+    const sockets = connectedUsers.get(userId);
+    sockets.delete(socket.id);
+    if (sockets.size === 0) {
+      connectedUsers.delete(userId);
+      if (user.restaurant_id) {
+        emitToTenant(user.restaurant_id, 'admin', 'staff_presence_change', {
+          userId,
+          isOnline: false,
+          role: user.role
+        });
+      }
+    }
+  }
+}
+
+function isUserOnline(userId) {
+  if (!userId) return false;
+  const id = parseInt(userId, 10);
+  return connectedUsers.has(id) && connectedUsers.get(id).size > 0;
+}
+
 module.exports = {
   setSocketIO,
   getIO,
@@ -83,5 +128,8 @@ module.exports = {
   broadcastEvent,
   emitToTenant,
   emitToOrder,
-  emitToDriver
+  emitToDriver,
+  trackUserConnection,
+  trackUserDisconnection,
+  isUserOnline
 };
