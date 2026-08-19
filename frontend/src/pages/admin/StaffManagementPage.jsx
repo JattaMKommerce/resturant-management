@@ -202,42 +202,42 @@ export default function StaffManagementPage() {
   });
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto text-slate-100 min-h-screen">
+    <div className="space-y-6 antialiased font-sans text-[#1F2937]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 backdrop-blur-xl p-6 rounded-2xl shadow-xl">
+      <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20">
-              <Users className="w-7 h-7" />
+            <div className="p-2.5 bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] rounded-xl">
+              <Users className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1F2937] flex items-center gap-2">
                 Staff & Access Management
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]">
                   Live Presence
                 </span>
               </h1>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-[#64748B] mt-0.5 font-medium">
                 Generate login accounts for Chefs & Waiters and monitor their live active status.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={fetchStaff}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700/50"
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] transition-colors border border-[#D7E5E8] shadow-2xs"
             title="Refresh Staff Roster"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-orange-400' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-[#3A7D7C] ${loading ? 'animate-spin' : ''}`} />
           </button>
 
           <button
             onClick={() => handleOpenCreateModal('KITCHEN')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold bg-[#3A7D7C] hover:bg-[#2F6665] text-white shadow-2xs transition-all text-xs"
           >
-            <Plus className="w-5 h-5 font-black" />
+            <Plus className="w-4 h-4" />
             <span>Add Staff Member</span>
           </button>
         </div>
@@ -246,74 +246,74 @@ export default function StaffManagementPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Staff */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm flex items-center justify-between">
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Staff Roster</p>
-            <h3 className="text-3xl font-black text-white mt-1">{totalStaff}</h3>
-            <p className="text-xs text-slate-500 mt-1">Across all kitchen & service roles</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Total Staff Roster</p>
+            <h3 className="text-2xl font-bold text-[#1F2937] mt-1">{totalStaff}</h3>
+            <p className="text-xs text-[#64748B] mt-1">Across all kitchen & service roles</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-700/50">
-            <Users className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-[#EAF4F7] flex items-center justify-center text-[#3A7D7C] border border-[#D7E5E8]">
+            <Users className="w-5 h-5" />
           </div>
         </div>
 
         {/* Kitchen Staff */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm flex items-center justify-between">
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Kitchen & Chefs (KDS)</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Kitchen & Chefs (KDS)</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <h3 className="text-3xl font-black text-white">{kitchenStaff.length}</h3>
-              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 className="text-2xl font-bold text-[#1F2937]">{kitchenStaff.length}</h3>
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 {onlineKitchenCount} Online
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Direct Kitchen Order Display</p>
+            <p className="text-xs text-[#64748B] mt-1">Direct Kitchen Order Display</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
-            <ChefHat className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700 border border-amber-200">
+            <ChefHat className="w-5 h-5" />
           </div>
         </div>
 
         {/* Waiter Staff */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-sm flex items-center justify-between">
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-sky-400">Service Waiters</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#3A7D7C]">Service Waiters</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <h3 className="text-3xl font-black text-white">{waiterStaff.length}</h3>
-              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 className="text-2xl font-bold text-[#1F2937]">{waiterStaff.length}</h3>
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 {onlineWaiterCount} Online
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">Table Service & Order Punching</p>
+            <p className="text-xs text-[#64748B] mt-1">Table Service & Order Punching</p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20">
-            <UserCheck className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-xl bg-[#EAF4F7] flex items-center justify-center text-[#3A7D7C] border border-[#D7E5E8]">
+            <UserCheck className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Tabs & Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white border border-[#D7E5E8] p-3 rounded-2xl shadow-xs">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-slate-950/60 rounded-xl border border-slate-800 overflow-x-auto">
+        <div className="flex items-center gap-1 p-1 bg-slate-50 rounded-xl border border-[#D7E5E8] overflow-x-auto">
           <button
             onClick={() => setSelectedTab('ALL')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               selectedTab === 'ALL'
-                ? 'bg-orange-500 text-slate-950 shadow-md shadow-orange-500/20'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
             All Staff ({staff.length})
           </button>
           <button
             onClick={() => setSelectedTab('KITCHEN')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               selectedTab === 'KITCHEN'
-                ? 'bg-orange-500 text-slate-950 shadow-md shadow-orange-500/20'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
             <ChefHat className="w-3.5 h-3.5" />
@@ -321,10 +321,10 @@ export default function StaffManagementPage() {
           </button>
           <button
             onClick={() => setSelectedTab('WAITER')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               selectedTab === 'WAITER'
-                ? 'bg-orange-500 text-slate-950 shadow-md shadow-orange-500/20'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
@@ -332,10 +332,10 @@ export default function StaffManagementPage() {
           </button>
           <button
             onClick={() => setSelectedTab('MANAGEMENT')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0 ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 ${
               selectedTab === 'MANAGEMENT'
-                ? 'bg-orange-500 text-slate-950 shadow-md shadow-orange-500/20'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                : 'text-[#64748B] hover:text-[#1F2937]'
             }`}
           >
             <Shield className="w-3.5 h-3.5" />
@@ -345,44 +345,52 @@ export default function StaffManagementPage() {
 
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
           <input
             type="text"
-            placeholder="Search by name, email, or phone..."
+            placeholder="Search staff by name, email, phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-950/60 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+            className="w-full bg-slate-50 border border-[#D7E5E8] rounded-xl pl-10 pr-4 py-2 text-xs font-semibold text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] transition-colors"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1F2937]"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Staff Cards List */}
+      {/* Staff Cards Grid */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center space-y-4">
-          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm text-slate-400 font-medium">Loading staff roster...</p>
+        <div className="p-12 text-center text-[#64748B] bg-white border border-[#D7E5E8] rounded-2xl">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#3A7D7C]" />
+          <p className="font-bold text-xs">Loading staff roster...</p>
         </div>
       ) : filteredStaff.length === 0 ? (
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl py-16 px-6 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800 mx-auto flex items-center justify-center text-slate-500 border border-slate-700/50">
-            <Users className="w-8 h-8" />
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl py-14 px-6 text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-full bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center mx-auto border border-[#D7E5E8]">
+            <Users className="w-6 h-6" />
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-white">No Staff Members Found</h3>
-            <p className="text-sm text-slate-400 mt-1 max-w-md mx-auto">
-              {searchQuery ? 'No results matched your search term.' : 'You have not added any staff members in this category yet.'}
-            </p>
-          </div>
+          <h3 className="text-base font-bold text-[#1F2937]">No Staff Found</h3>
+          <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+            {searchQuery 
+              ? 'No staff matched your search query. Try a different search.' 
+              : `No staff configured in the ${selectedTab} category yet.`}
+          </p>
           <button
             onClick={() => handleOpenCreateModal(selectedTab === 'WAITER' ? 'WAITER' : 'KITCHEN')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-slate-950 font-bold text-sm transition-colors shadow-lg shadow-orange-500/20"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#3A7D7C] hover:bg-[#2F6665] text-white transition-all shadow-2xs"
           >
             <Plus className="w-4 h-4" />
             <span>Add New {selectedTab === 'WAITER' ? 'Waiter' : 'Chef'}</span>
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredStaff.map((member) => {
             const isChef = member.role === 'KITCHEN' || member.role === 'CHEF';
             const isWaiter = member.role === 'WAITER';
@@ -392,17 +400,17 @@ export default function StaffManagementPage() {
             return (
               <div 
                 key={member.id}
-                className="bg-slate-900/80 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-5 backdrop-blur-xl shadow-lg transition-all flex flex-col justify-between space-y-4 relative group"
+                className="bg-white border border-[#D7E5E8] hover:border-[#3A7D7C] rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between space-y-4 relative group"
               >
                 <div>
                   {/* Top Bar: Role badge & Online status */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                       isChef 
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
                         : isWaiter
-                        ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                        : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                        ? 'bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]'
+                        : 'bg-purple-50 text-purple-700 border border-purple-200'
                     }`}>
                       {isChef && <ChefHat className="w-3.5 h-3.5" />}
                       {isWaiter && <UserCheck className="w-3.5 h-3.5" />}
@@ -413,42 +421,42 @@ export default function StaffManagementPage() {
                     {/* Live Online Badge */}
                     <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                       isOnline 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-                        : 'bg-slate-800 text-slate-400 border border-slate-700/50'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'bg-slate-100 text-[#64748B] border border-[#D7E5E8]'
                     }`}>
-                      <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
+                      <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
                       <span>{isOnline ? 'Online' : 'Offline'}</span>
                     </div>
                   </div>
 
                   {/* Staff Info */}
                   <div className="mt-4">
-                    <h3 className="text-lg font-bold text-white truncate">{member.name}</h3>
+                    <h3 className="text-base font-bold text-[#1F2937] truncate">{member.name}</h3>
                     
-                    <div className="space-y-1.5 mt-2.5 text-xs text-slate-400">
+                    <div className="space-y-1.5 mt-2 text-xs text-[#64748B]">
                       <div className="flex items-center gap-2 truncate">
-                        <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span className="font-mono text-slate-300 select-all truncate">{member.email}</span>
+                        <Mail className="w-3.5 h-3.5 text-[#3A7D7C] shrink-0" />
+                        <span className="font-mono text-[#1F2937] select-all truncate">{member.email}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                        <span className="font-mono text-slate-300">{member.phone}</span>
+                        <Phone className="w-3.5 h-3.5 text-[#3A7D7C] shrink-0" />
+                        <span className="font-mono text-[#1F2937]">{member.phone}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Credentials Box */}
-                  <div className="mt-4 bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="mt-4 bg-slate-50 border border-[#D7E5E8] rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
                       <span className="flex items-center gap-1">
-                        <KeyRound className="w-3 h-3 text-orange-400" />
+                        <KeyRound className="w-3 h-3 text-[#3A7D7C]" />
                         Password
                       </span>
                       {member.plain_password && (
                         <button
                           type="button"
                           onClick={() => togglePasswordVisibility(member.id)}
-                          className="text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1 normal-case font-normal text-xs"
+                          className="text-[#3A7D7C] hover:text-[#2F6665] transition-colors flex items-center gap-1 normal-case font-bold text-[11px]"
                         >
                           {showPlain ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           <span>{showPlain ? 'Hide' : 'Reveal'}</span>
@@ -456,7 +464,7 @@ export default function StaffManagementPage() {
                       )}
                     </div>
 
-                    <div className="font-mono text-xs font-bold text-amber-300 truncate select-all">
+                    <div className="font-mono text-xs font-bold text-[#1F2937] truncate select-all">
                       {member.plain_password 
                         ? (showPlain ? member.plain_password : '••••••••••••')
                         : 'Encrypted (Contact Admin)'}
@@ -465,19 +473,19 @@ export default function StaffManagementPage() {
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                <div className="pt-3 border-t border-[#D7E5E8] flex items-center justify-between gap-2">
                   <button
                     onClick={() => handleCopyCredentials(member)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700/50 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-xs font-bold text-[#1F2937] border border-[#D7E5E8] transition-colors shadow-2xs"
                   >
                     {copiedId === member.id ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">Copied!</span>
+                        <Check className="w-3.5 h-3.5 text-emerald-700" />
+                        <span className="text-emerald-700">Copied!</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3.5 h-3.5 text-slate-400" />
+                        <Copy className="w-3.5 h-3.5 text-[#3A7D7C]" />
                         <span>Copy Login</span>
                       </>
                     )}
@@ -485,7 +493,7 @@ export default function StaffManagementPage() {
 
                   <button
                     onClick={() => handleOpenEditModal(member)}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition-colors"
+                    className="p-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] transition-colors shadow-2xs"
                     title="Edit details or password"
                   >
                     <Edit3 className="w-4 h-4" />
@@ -493,10 +501,10 @@ export default function StaffManagementPage() {
 
                   <button
                     onClick={() => handleToggleStatus(member)}
-                    className={`p-2 rounded-xl border transition-colors ${
+                    className={`p-2 rounded-xl border transition-colors shadow-2xs ${
                       member.status === 'ACTIVE'
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
-                        : 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                        : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
                     }`}
                     title={member.status === 'ACTIVE' ? 'Deactivate Account' : 'Activate Account'}
                   >
@@ -505,7 +513,7 @@ export default function StaffManagementPage() {
 
                   <button
                     onClick={() => handleDeleteStaff(member)}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700/50 transition-colors"
+                    className="p-2 rounded-xl bg-white hover:bg-rose-50 text-[#64748B] hover:text-rose-700 border border-[#D7E5E8] transition-colors shadow-2xs"
                     title="Delete Staff Member"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -519,19 +527,19 @@ export default function StaffManagementPage() {
 
       {/* Create / Edit Staff Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white border border-[#D7E5E8] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+            <div className="p-5 border-b border-[#D7E5E8] flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                <div className="p-2.5 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]">
                   {modalMode === 'CREATE' ? <Plus className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-base font-bold text-[#1F2937]">
                     {modalMode === 'CREATE' ? 'Add New Staff Member' : 'Edit Staff Details'}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[#64748B]">
                     {modalMode === 'CREATE' 
                       ? 'Generate login credentials for kitchen or waiter staff' 
                       : `Update account details for ${editingStaff?.name}`}
@@ -540,7 +548,7 @@ export default function StaffManagementPage() {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                className="p-2 rounded-xl bg-white hover:bg-slate-100 text-[#64748B] hover:text-[#1F2937] transition-colors border border-[#D7E5E8]"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -549,7 +557,7 @@ export default function StaffManagementPage() {
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {formError && (
-                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{formError}</span>
                 </div>
@@ -557,7 +565,7 @@ export default function StaffManagementPage() {
 
               {/* Role Selection */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#64748B] mb-2">
                   Staff Role *
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -566,14 +574,14 @@ export default function StaffManagementPage() {
                     onClick={() => setFormData(prev => ({ ...prev, role: 'KITCHEN' }))}
                     className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
                       formData.role === 'KITCHEN'
-                        ? 'bg-amber-500/15 border-amber-500 text-white shadow-md shadow-amber-500/10'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-[#EAF4F7] border-[#3A7D7C] text-[#1F2937] shadow-xs'
+                        : 'bg-slate-50 border-[#D7E5E8] text-[#64748B] hover:border-[#3A7D7C]'
                     }`}
                   >
-                    <ChefHat className={`w-5 h-5 ${formData.role === 'KITCHEN' ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <ChefHat className={`w-5 h-5 ${formData.role === 'KITCHEN' ? 'text-[#3A7D7C]' : 'text-[#64748B]'}`} />
                     <div>
-                      <p className="text-sm font-bold">Kitchen Chef</p>
-                      <p className="text-[11px] text-slate-500">Access Kitchen KDS screen</p>
+                      <p className="text-sm font-bold text-[#1F2937]">Kitchen Chef</p>
+                      <p className="text-[11px] text-[#64748B]">Access Kitchen KDS screen</p>
                     </div>
                   </button>
 
@@ -582,14 +590,14 @@ export default function StaffManagementPage() {
                     onClick={() => setFormData(prev => ({ ...prev, role: 'WAITER' }))}
                     className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${
                       formData.role === 'WAITER'
-                        ? 'bg-sky-500/15 border-sky-500 text-white shadow-md shadow-sky-500/10'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-[#EAF4F7] border-[#3A7D7C] text-[#1F2937] shadow-xs'
+                        : 'bg-slate-50 border-[#D7E5E8] text-[#64748B] hover:border-[#3A7D7C]'
                     }`}
                   >
-                    <UserCheck className={`w-5 h-5 ${formData.role === 'WAITER' ? 'text-sky-400' : 'text-slate-500'}`} />
+                    <UserCheck className={`w-5 h-5 ${formData.role === 'WAITER' ? 'text-[#3A7D7C]' : 'text-[#64748B]'}`} />
                     <div>
-                      <p className="text-sm font-bold">Service Waiter</p>
-                      <p className="text-[11px] text-slate-500">Punch table orders & bills</p>
+                      <p className="text-sm font-bold text-[#1F2937]">Service Waiter</p>
+                      <p className="text-[11px] text-[#64748B]">Punch table orders & bills</p>
                     </div>
                   </button>
                 </div>
@@ -597,7 +605,7 @@ export default function StaffManagementPage() {
 
               {/* Name */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#64748B] mb-1.5">
                   Full Name *
                 </label>
                 <input
@@ -606,13 +614,13 @@ export default function StaffManagementPage() {
                   placeholder="e.g. Sanjeev Kumar"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-slate-50 border border-[#D7E5E8] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] transition-colors"
                 />
               </div>
 
               {/* Login Email / Username */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#64748B] mb-1.5">
                   Login Email / Username *
                 </label>
                 <input
@@ -621,20 +629,20 @@ export default function StaffManagementPage() {
                   placeholder="e.g. chef1@hotel.com"
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-slate-50 border border-[#D7E5E8] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] transition-colors"
                 />
               </div>
 
               {/* Password */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#64748B]">
                     {modalMode === 'CREATE' ? 'Password *' : 'New Password (leave empty to keep current)'}
                   </label>
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, password: generateRandomPassword() }))}
-                    className="text-xs text-orange-400 hover:text-orange-300 font-semibold flex items-center gap-1"
+                    className="text-xs text-[#3A7D7C] hover:text-[#2F6665] font-bold flex items-center gap-1"
                   >
                     <Sparkles className="w-3 h-3" />
                     <span>Auto-Generate</span>
@@ -646,13 +654,13 @@ export default function StaffManagementPage() {
                   placeholder={modalMode === 'CREATE' ? 'Enter permanent password' : 'Enter new password'}
                   value={formData.password}
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-mono text-amber-300 placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-slate-50 border border-[#D7E5E8] rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] transition-colors"
                 />
               </div>
 
               {/* Phone */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#64748B] mb-1.5">
                   Phone Number *
                 </label>
                 <input
@@ -661,28 +669,28 @@ export default function StaffManagementPage() {
                   placeholder="e.g. +91 9876543210"
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition-colors"
+                  className="w-full bg-slate-50 border border-[#D7E5E8] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] transition-colors"
                 />
               </div>
 
               {/* Submit Buttons */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#D7E5E8]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm font-bold text-slate-300 transition-colors"
+                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-xs font-bold text-[#1F2937] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-slate-950 shadow-lg shadow-orange-500/20 transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold bg-[#3A7D7C] hover:bg-[#2F6665] text-white shadow-2xs transition-all disabled:opacity-50 text-xs"
                 >
                   {submitting ? (
-                    <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <CheckCircle2 className="w-5 h-5" />
+                    <CheckCircle2 className="w-4 h-4" />
                   )}
                   <span>{modalMode === 'CREATE' ? 'Create Staff Account' : 'Save Changes'}</span>
                 </button>
