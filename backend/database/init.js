@@ -54,7 +54,6 @@ async function initDatabase() {
       });
       console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
 
-      const forceReset = process.argv.includes('--reset') && process.env.NODE_ENV !== 'production';
       if (forceReset) {
         console.log('⚠️  Force reset requested (Development only). Dropping and recreating database...');
         await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
