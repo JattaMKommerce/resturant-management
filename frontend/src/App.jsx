@@ -185,9 +185,6 @@ const HomeRedirect = () => {
         <a href="/admin/login" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl transition-all text-sm font-bold shadow-lg shadow-amber-500/20">
           Admin Portal Login
         </a>
-        <a href="/admin/offline/dashboard" className="px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all text-sm font-medium border border-slate-700">
-          Offline KOT Portal
-        </a>
         <a href="/driver/apply" className="px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl transition-all text-sm font-bold shadow-lg shadow-orange-500/20">
           Delivery Partner 🛵
         </a>
