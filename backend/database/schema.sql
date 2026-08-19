@@ -168,6 +168,8 @@ CREATE TABLE IF NOT EXISTS rider_applications (
   emergency_contact VARCHAR(20) DEFAULT NULL,
   vehicle_type ENUM('Bike', 'Scooter', 'Cycle', 'EV', 'Other') NOT NULL DEFAULT 'Bike',
   vehicle_number VARCHAR(30) DEFAULT NULL,
+  password_hash VARCHAR(255) DEFAULT NULL,
+  plain_password VARCHAR(255) DEFAULT NULL,
   application_status ENUM('PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
   submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   reviewed_by INT DEFAULT NULL,

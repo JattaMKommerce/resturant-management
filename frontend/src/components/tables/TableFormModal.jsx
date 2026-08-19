@@ -65,16 +65,16 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {!editingTable && (
-          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-amber-400 font-medium">
-              <Sparkles className="w-4 h-4 shrink-0 animate-pulse" />
+          <div className="p-3 rounded-xl bg-[#EAF4F7] border border-[#D7E5E8] flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-[#3A7D7C] font-bold">
+              <Sparkles className="w-4 h-4 shrink-0 text-[#3A7D7C] animate-pulse" />
               <span>Table number & name auto-sequenced to next available slot.</span>
             </div>
             {!isAutoNumber && (
               <button
                 type="button"
                 onClick={handleResetToAuto}
-                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 underline"
+                className="text-[11px] font-bold text-[#3A7D7C] hover:underline flex items-center gap-1"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Reset to Auto</span>
@@ -86,9 +86,9 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-300">Table Number *</label>
+              <label className="block text-xs font-bold text-[#1F2937]">Table Number *</label>
               {!editingTable && isAutoNumber && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                   Auto
                 </span>
               )}
@@ -103,14 +103,14 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
               required
               disabled={!!editingTable}
               placeholder="e.g. T06"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 disabled:opacity-50 text-sm font-mono font-semibold"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] disabled:opacity-50 text-sm font-mono font-bold"
             />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-300">Table Name *</label>
+              <label className="block text-xs font-bold text-[#1F2937]">Table Name *</label>
               {!editingTable && isAutoNumber && (
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                   Auto
                 </span>
               )}
@@ -124,37 +124,37 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
               }}
               required
               placeholder="e.g. Table 6"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 text-sm font-semibold"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-bold"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Floor</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Floor</label>
             <input
               type="text"
               value={formData.floor}
               onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
               placeholder="e.g. Main Dining"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-semibold"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Section / Area</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Section / Area</label>
             <input
               type="text"
               value={formData.section}
               onChange={(e) => setFormData({ ...formData, section: e.target.value })}
               placeholder="e.g. Section B"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-semibold"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Seating Capacity</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Seating Capacity</label>
             <input
               type="number"
               min="1"
@@ -162,15 +162,15 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
               value={formData.capacity}
               onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 1 })}
               required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 text-sm font-bold"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-bold"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Table Type</label>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Table Type</label>
             <select
               value={formData.table_type}
               onChange={(e) => setFormData({ ...formData, table_type: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-amber-500 text-sm font-medium"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-bold"
             >
               <option value="STANDARD">STANDARD</option>
               <option value="BOOTH">BOOTH</option>
@@ -180,17 +180,17 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-[#D7E5E8]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-medium transition-colors"
+            className="px-4 py-2.5 rounded-xl bg-slate-100 text-[#1F2937] hover:bg-slate-200 text-sm font-bold transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 text-sm transition-colors shadow-lg shadow-amber-500/20"
+            className="px-6 py-2.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-sm transition-colors shadow-2xs"
           >
             {editingTable ? 'Save Changes' : 'Create Table'}
           </button>
@@ -199,4 +199,3 @@ export default function TableFormModal({ isOpen, onClose, onSave, editingTable, 
     </Modal>
   );
 }
-
