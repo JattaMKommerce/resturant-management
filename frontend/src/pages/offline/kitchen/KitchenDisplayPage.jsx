@@ -110,17 +110,33 @@ export default function KitchenDisplayPage() {
       };
 
       socket.on('new_kot', handleNewKOT);
+      socket.on('new_order', () => fetchKOTs());
       socket.on('kot_updated', () => fetchKOTs());
       socket.on('kot_item_updated', () => fetchKOTs());
       socket.on('kot_delayed', () => fetchKOTs());
+      socket.on('table_status_changed', () => fetchKOTs());
+
+      // Resilient 5-second background sync for guaranteed zero-refresh live data
+      const autoSyncInterval = setInterval(() => {
+        fetchKOTs();
+      }, 5000);
 
       return () => {
+        clearInterval(autoSyncInterval);
         leaveRoom('kitchen');
         socket.off('new_kot', handleNewKOT);
+        socket.off('new_order');
         socket.off('kot_updated');
         socket.off('kot_item_updated');
         socket.off('kot_delayed');
+        socket.off('table_status_changed');
       };
+    } else {
+      // Polling fallback when socket is connecting
+      const fallbackInterval = setInterval(() => {
+        fetchKOTs();
+      }, 5000);
+      return () => clearInterval(fallbackInterval);
     }
   }, [selectedDept, selectedStatus, delayedOnly, socket]);
 
