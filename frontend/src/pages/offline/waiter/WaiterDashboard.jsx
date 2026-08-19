@@ -262,44 +262,44 @@ export default function WaiterDashboard() {
         )}
 
         {/* Header & Quick Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
             <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Ready for Pickup</p>
-              <h3 className="text-2xl font-black text-amber-400 mt-1">{readyKOTs.length}</h3>
+              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Ready Food</p>
+              <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5 sm:mt-1">{readyKOTs.length}</h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <ConciergeBell className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <ConciergeBell className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
             <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Occupied Tables</p>
-              <h3 className="text-2xl font-black text-sky-400 mt-1">{occupiedTablesCount}</h3>
+              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Occupied</p>
+              <h3 className="text-xl sm:text-2xl font-black text-sky-400 mt-0.5 sm:mt-1">{occupiedTablesCount}</h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-              <Users className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
             <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Available Tables</p>
-              <h3 className="text-2xl font-black text-emerald-400 mt-1">{availableTablesCount}</h3>
+              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Available</p>
+              <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 sm:mt-1">{availableTablesCount}</h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Grid2X2 className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <Grid2X2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between shadow-lg">
             <div>
-              <p className="text-[10px] uppercase font-bold text-slate-400">Bill Requests</p>
-              <h3 className="text-2xl font-black text-violet-400 mt-1">{billRequestedCount}</h3>
+              <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Bill Requests</p>
+              <h3 className="text-xl sm:text-2xl font-black text-violet-400 mt-0.5 sm:mt-1">{billRequestedCount}</h3>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-400">
-              <Receipt className="w-5 h-5" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-400 shrink-0">
+              <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
         </div>
@@ -448,10 +448,10 @@ export default function WaiterDashboard() {
           </div>
         </div>
 
-        {/* Selected Table Drawer */}
+        {/* Selected Table Modal */}
         {selectedTable && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div>
                   <h3 className="text-base font-black text-white">Table #{selectedTable.table_number}</h3>
@@ -480,20 +480,20 @@ export default function WaiterDashboard() {
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center gap-2">
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
                 <button
                   onClick={() => {
                     handleRequestBill(selectedTable.id);
                     setSelectedTable(null);
                   }}
-                  className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-violet-600/20"
+                  className="w-full sm:flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-violet-600/20"
                 >
                   <Receipt className="w-3.5 h-3.5" />
                   <span>Request Bill</span>
                 </button>
                 <button
                   onClick={() => setSelectedTable(null)}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors"
                 >
                   Close
                 </button>
