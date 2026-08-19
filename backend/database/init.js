@@ -12,6 +12,7 @@ const dbName = process.env.DB_NAME || 'hotel_db';
 
 async function initDatabase() {
   console.log('🔄 Initializing MySQL Database setup...');
+  const forceReset = process.argv.includes('--reset') && process.env.NODE_ENV !== 'production';
   let connection;
   try {
     let rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;

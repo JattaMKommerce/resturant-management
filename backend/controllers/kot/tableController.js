@@ -33,7 +33,8 @@ function calculateNextTableNumber(tables) {
 
 async function getNextTableNumberHandler(req, res, next) {
   try {
-    const [rows] = await pool.query(`SELECT table_number, table_name FROM restaurant_tables WHERE is_active = TRUE`);
+    const restaurantId = req.user?.restaurant_id || 1;
+    const [rows] = await pool.query(`SELECT table_number, table_name FROM restaurant_tables WHERE is_active = TRUE AND (restaurant_id = ? OR restaurant_id IS NULL)`, [restaurantId]);
     const nextTable = calculateNextTableNumber(rows);
     return sendSuccess(res, nextTable, 'Next available table number calculated');
   } catch (err) {
@@ -44,13 +45,14 @@ async function getNextTableNumberHandler(req, res, next) {
 async function getTables(req, res, next) {
   try {
     const { floor, section, status, search } = req.query;
+    const restaurantId = req.user?.restaurant_id || 1;
     let query = `
       SELECT t.*, 
         (SELECT COUNT(*) FROM restaurant_orders o WHERE o.table_id = t.id AND o.order_status NOT IN ('COMPLETED', 'CANCELLED')) as active_orders_count
       FROM restaurant_tables t
-      WHERE 1=1
+      WHERE (t.restaurant_id = ? OR t.restaurant_id IS NULL)
     `;
-    const params = [];
+    const params = [restaurantId];
 
     if (floor) {
       query += ` AND t.floor = ?`;
@@ -86,10 +88,11 @@ async function createTable(req, res, next) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    const restaurantId = req.user?.restaurant_id || 1;
     let { table_number, table_name, floor, section, capacity, table_type } = req.body;
 
     // Auto-generate if not provided or empty
-    const [allTables] = await connection.query(`SELECT table_number, table_name FROM restaurant_tables WHERE is_active = TRUE`);
+    const [allTables] = await connection.query(`SELECT table_number, table_name FROM restaurant_tables WHERE is_active = TRUE AND (restaurant_id = ? OR restaurant_id IS NULL)`, [restaurantId]);
     const autoGen = calculateNextTableNumber(allTables);
 
     if (!table_number || String(table_number).trim() === '') {
@@ -102,8 +105,11 @@ async function createTable(req, res, next) {
     table_number = String(table_number).trim();
     table_name = String(table_name).trim();
 
-    // Check duplicate
-    const [existing] = await connection.query(`SELECT id FROM restaurant_tables WHERE table_number = ?`, [table_number]);
+    // Check duplicate per restaurant
+    const [existing] = await connection.query(
+      `SELECT id FROM restaurant_tables WHERE table_number = ? AND (restaurant_id = ? OR restaurant_id IS NULL)`,
+      [table_number, restaurantId]
+    );
     if (existing.length > 0) {
       return sendError(res, `Table number "${table_number}" already exists.`, 400);
     }
@@ -111,9 +117,9 @@ async function createTable(req, res, next) {
     const qrToken = crypto.randomBytes(32).toString('hex');
 
     const [result] = await connection.query(
-      `INSERT INTO restaurant_tables (table_number, table_name, floor, section, capacity, table_type, qr_token, status, qr_status, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 'ACTIVE', 1)`,
-      [table_number, table_name, floor || 'Main Dining', section || 'General', capacity || 4, table_type || 'STANDARD', qrToken]
+      `INSERT INTO restaurant_tables (table_number, table_name, floor, section, capacity, table_type, qr_token, status, qr_status, is_active, restaurant_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 'ACTIVE', 1, ?)`,
+      [table_number, table_name, floor || 'Main Dining', section || 'General', capacity || 4, table_type || 'STANDARD', qrToken, restaurantId]
     );
 
     const tableId = result.insertId;

@@ -5,6 +5,7 @@ const { sendSuccess, sendError } = require('../../utils/response');
 async function getKOTs(req, res, next) {
   try {
     const { status, kitchen_department_id, table_id, order_type, delayed_only } = req.query;
+    const restaurantId = req.user?.restaurant_id || 1;
     let query = `
       SELECT k.*, kd.name as kitchen_department_name, kd.code as kitchen_department_code, 
              t.table_number, t.table_name, t.floor, r.room_number,
@@ -21,9 +22,9 @@ async function getKOTs(req, res, next) {
       LEFT JOIN rooms r ON k.room_id = r.id
       LEFT JOIN restaurant_orders o ON k.order_id = o.id
       LEFT JOIN orders ord ON k.order_id = ord.id
-      WHERE 1=1
+      WHERE (k.restaurant_id = ? OR k.restaurant_id IS NULL OR o.restaurant_id = ? OR ord.restaurant_id = ?)
     `;
-    const params = [];
+    const params = [restaurantId, restaurantId, restaurantId];
 
     if (status) {
       if (status === 'ACTIVE') {

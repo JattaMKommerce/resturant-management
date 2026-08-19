@@ -17,6 +17,7 @@ const driverController = require('../controllers/driverController');
 const riderAppController = require('../controllers/riderApplicationController');
 const notificationController = require('../controllers/notificationController');
 const superAdminController = require('../controllers/superAdminController');
+const staffController = require('../controllers/staffController');
 
 // Rate limiters
 const applicationLimiter = createRateLimiter(15 * 60 * 1000, 10); // 10 application requests per 15 min
@@ -186,7 +187,15 @@ router.patch('/admin/rider-applications/:id/approve', ...adminAuth, riderAppCont
 router.patch('/admin/rider-applications/:id/reject', ...adminAuth, riderAppController.rejectApplication);
 router.get('/admin/riders/:riderId/documents/:documentId', authenticateToken, riderAppController.streamDocument);
 router.patch('/admin/riders/:riderId/documents/:documentId/verify', ...adminAuth, riderAppController.verifyDocument);
-router.get('/admin/riders', ...adminAuth, driverController.getAdminDrivers);
+// Staff Management (Chefs & Waiters)
+router.get('/admin/staff', ...adminAuth, staffController.getRestaurantStaff);
+router.post('/admin/staff', ...adminAuth, staffController.createStaffMember);
+router.put('/admin/staff/:id', ...adminAuth, staffController.updateStaffMember);
+router.patch('/admin/staff/:id/status', ...adminAuth, staffController.toggleStaffStatus);
+router.delete('/admin/staff/:id', ...adminAuth, staffController.deleteStaffMember);
+
+// Drivers
+router.get('/admin/drivers', ...adminAuth, driverController.getAdminDrivers);
 router.patch('/admin/riders/:id/status', ...adminAuth, driverController.updateDriverStatus);
 
 // ═══════════════════════════════════════════════
