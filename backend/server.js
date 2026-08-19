@@ -11,7 +11,7 @@ require('dotenv').config();
 const { initDatabase } = require('./database/init');
 const apiRoutes = require('./routes/api');
 const { setSocketIO } = require('./services/NotificationService');
-const { setSocketIO: setKOTSocketIO } = require('./config/socket');
+const { setSocketIO: setKOTSocketIO, trackUserConnection, trackUserDisconnection } = require('./config/socket');
 const { setSocketIOInstance, processDriverLocationUpdate } = require('./services/DriverLocationService');
 const { pool, testConnection } = require('./config/db');
 
@@ -124,6 +124,16 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   const userId = socket.user?.id || 'GUEST';
   const userRole = socket.user?.role || 'GUEST';
+
+  if (socket.user) {
+    trackUserConnection(socket, socket.user);
+  }
+
+  socket.on('disconnect', () => {
+    if (socket.user) {
+      trackUserDisconnection(socket, socket.user);
+    }
+  });
 
   // Room Join Authorization
   socket.on('join_room', (room) => {

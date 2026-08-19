@@ -1,6 +1,6 @@
 const pool = require('../../config/database');
 
-async function getOperationsOverview() {
+async function getOperationsOverview(restaurantId = 1) {
   const connection = await pool.getConnection();
   try {
     const todayStart = new Date();
@@ -10,8 +10,9 @@ async function getOperationsOverview() {
     const [tables] = await connection.query(
       `SELECT id, table_number, table_name, floor, section, capacity, table_type, status, updated_at
        FROM restaurant_tables
-       WHERE is_active = TRUE
-       ORDER BY table_number ASC`
+       WHERE is_active = TRUE AND (restaurant_id = ? OR restaurant_id IS NULL)
+       ORDER BY table_number ASC`,
+      [restaurantId]
     );
 
     const tableCounts = {
