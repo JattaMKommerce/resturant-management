@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Bike, MapPin, Navigation, RefreshCw, AlertTriangle, CheckCircle2, 
+import {
+  Bike, MapPin, Navigation, RefreshCw, AlertTriangle, CheckCircle2,
   User, Phone, ShoppingBag, RotateCcw
 } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
@@ -110,7 +110,7 @@ export default function AdminDeliveriesPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 font-sans">
-        
+
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -156,7 +156,7 @@ export default function AdminDeliveriesPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-xs text-slate-900">#{fOrder.order_number}</span>
-                      <span className="text-xs font-semibold text-slate-600">— {fOrder.customer_name}</span>
+                      <span className="text-xs font-semibold text-slate-600"> - {fOrder.customer_name}</span>
                     </div>
                     <p className="text-xs text-red-600 font-bold mt-1">Reason: {fOrder.delivery_failure_reason || 'Not specified'}</p>
                   </div>
@@ -260,7 +260,7 @@ export default function AdminDeliveriesPage() {
                     >
                       {drivers.map(d => (
                         <option key={d.id} value={d.id}>
-                          {d.full_name || d.name} ({d.vehicle_number}) — Status: {d.availability_status}
+                          {d.full_name || d.name} ({d.vehicle_number}) - Status: {d.availability_status}
                         </option>
                       ))}
                     </select>
