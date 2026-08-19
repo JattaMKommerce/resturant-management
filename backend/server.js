@@ -141,15 +141,26 @@ for (const [routePath, routerHandler] of kotRouteMap) {
 app.use('/api', apiRoutes);
 app.use('/api/v1', apiRoutes);
 
-// Health & Root Status Endpoints
-app.get('/', (req, res) => {
-  res.json({
-    status: 'ONLINE',
-    message: '🏨 Grand Palace HMS Unified Restaurant & Hotel API is Live',
-    version: '2.0.0',
-    timestamp: new Date().toISOString()
+// Serve frontend static build if available (All-In-One Single Platform Hosting)
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/health')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
-});
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      status: 'ONLINE',
+      message: '🏨 Grand Palace HMS Unified Restaurant & Hotel API is Live',
+      version: '2.0.0',
+      timestamp: new Date().toISOString()
+    });
+  });
+}
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Hotel Restaurant API Server Running', timestamp: new Date() });
