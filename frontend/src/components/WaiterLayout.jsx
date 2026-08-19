@@ -4,7 +4,7 @@ import {
   ConciergeBell, 
   Grid2X2, 
   ShoppingBag, 
-  CheckSquare, 
+  CheckSquare2, 
   Receipt, 
   LogOut, 
   User, 
@@ -18,7 +18,9 @@ import {
   Menu,
   X,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  ChefHat,
+  Layers
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -66,8 +68,8 @@ export default function WaiterLayout({ children, readyCount = 0 }) {
   };
 
   const navItems = [
-    { name: 'Live Orders & Tables', shortName: 'Tables', path: '/waiter/dashboard', icon: Grid2X2, exact: true },
-    { name: 'Ready Food for Pickup', shortName: 'Ready', path: '/waiter/ready', icon: ConciergeBell, badge: readyCount }
+    { name: 'Live Orders & Tables', path: '/waiter/dashboard', icon: Grid2X2, exact: true },
+    { name: 'Ready Food for Pickup', path: '/waiter/ready', icon: ConciergeBell, badge: readyCount }
   ];
 
   return (
@@ -93,31 +95,19 @@ export default function WaiterLayout({ children, readyCount = 0 }) {
         `}
       >
         {/* Brand Header */}
-        <div className={`p-4 border-b border-slate-800/80 bg-slate-950/90 flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} h-16`}>
-          {/* Expanded Header */}
-          <div className={`flex items-center gap-3 min-w-0 ${isCollapsed ? 'lg:hidden' : 'flex'}`}>
+        <div className={`p-4 border-b border-slate-800/80 bg-slate-950/90 flex items-center ${isCollapsed ? 'lg:justify-center' : 'justify-between'} justify-between h-16`}>
+          {/* Brand Logo & Title */}
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-orange-500/20 shrink-0">
               <ConciergeBell className="w-5 h-5 text-slate-950" />
             </div>
-            <div className="min-w-0">
+            <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : 'block'}`}>
               <h1 className="text-sm font-black text-white leading-tight truncate">Service Staff</h1>
               <p className="text-[10px] text-amber-400 font-bold tracking-wider uppercase">Waiter Station</p>
             </div>
           </div>
 
-          {/* Collapsed Header Logo Button */}
-          {isCollapsed && (
-            <button
-              type="button"
-              onClick={toggleCollapse}
-              className="hidden lg:flex w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-400 text-slate-950 font-black items-center justify-center shadow-lg shadow-orange-500/20 hover:scale-105 transition-transform"
-              title="Expand Sidebar"
-            >
-              <ConciergeBell className="w-5 h-5" />
-            </button>
-          )}
-
-          {/* Mobile Close Button */}
+          {/* Mobile Close Button (Always visible on mobile drawer) */}
           <button
             type="button"
             onClick={() => setIsMobileOpen(false)}
@@ -128,88 +118,73 @@ export default function WaiterLayout({ children, readyCount = 0 }) {
           </button>
 
           {/* Desktop Collapse Button */}
-          {!isCollapsed && (
-            <button
-              type="button"
-              onClick={toggleCollapse}
-              className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              title="Collapse Sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            className={`hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ${isCollapsed ? 'hidden' : ''}`}
+            title="Collapse Sidebar"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Waiter Profile Badge */}
-        <div className={`transition-all ${isCollapsed ? 'lg:px-2 lg:pt-3' : 'px-3 pt-3'}`}>
-          {isCollapsed ? (
-            <div className="hidden lg:flex justify-center group relative">
-              <div 
-                className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold"
-                title={user?.name || 'Waiter'}
-              >
+        <div className={`p-3 ${isCollapsed ? 'lg:p-2' : ''}`}>
+          <div className={`p-3 bg-slate-800/80 rounded-xl border border-slate-700/60 flex items-center ${isCollapsed ? 'lg:justify-center lg:p-2' : 'justify-between'}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold shrink-0">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'W'}
               </div>
-              <div className="fixed left-20 ml-2 px-2.5 py-1 bg-slate-950 border border-slate-700 text-white text-[11px] font-bold rounded-lg shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
-                {user?.name || 'Waiter'} (Shift Active)
+              <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : 'block'}`}>
+                <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider truncate">Active Waiter</span>
+                <span className="font-bold text-white text-xs block truncate">{user?.name || 'Service Staff'}</span>
               </div>
             </div>
-          ) : (
-            <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/60 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold shrink-0">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'W'}
-                </div>
-                <div className="min-w-0">
-                  <span className="text-[9px] uppercase font-black text-slate-400 block tracking-wider truncate">Active Waiter</span>
-                  <span className="font-bold text-white text-xs block truncate">{user?.name || 'Service Staff'}</span>
-                </div>
-              </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" title="Online & Connected"></span>
-            </div>
-          )}
+            <span className={`w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0 ${isCollapsed ? 'lg:hidden' : 'block'}`} title="Online & Connected"></span>
+          </div>
         </div>
 
         {/* Navigation Items */}
-        <div className={`flex-1 overflow-y-auto ${isCollapsed ? 'lg:px-2' : 'px-3'} py-3 space-y-1.5 sidebar-scroll`}>
-          {!isCollapsed && (
-            <p className="px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Service Navigation</p>
-          )}
+        <div className={`flex-1 overflow-y-auto ${isCollapsed ? 'lg:px-2' : 'px-3'} px-3 py-2 space-y-1.5 sidebar-scroll`}>
+          <p className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500 ${isCollapsed ? 'lg:hidden' : 'block'}`}>
+            Service Navigation
+          </p>
+
           {navItems.map((item, idx) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
             return (
               <NavLink
                 key={idx}
                 to={item.path}
+                end={item.exact}
                 onClick={() => setIsMobileOpen(false)}
                 className={({ isActive }) =>
-                  isCollapsed
-                    ? `group relative hidden lg:flex w-10 h-10 rounded-xl items-center justify-center transition-all ${
-                        isActive
-                          ? 'bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 font-black shadow-lg shadow-orange-500/25 ring-1 ring-amber-400/50'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
-                      }`
-                    : `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                        isActive
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-orange-500/20'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                      }`
+                  `flex items-center ${
+                    isCollapsed
+                      ? 'lg:justify-center lg:w-10 lg:h-10 lg:p-0 lg:mx-auto group relative'
+                      : 'justify-between'
+                  } px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 shadow-md shadow-orange-500/20'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  }`
                 }
               >
                 <div className="flex items-center gap-2.5">
-                  <Icon className={isCollapsed ? 'w-4 h-4' : 'w-4 h-4 shrink-0'} />
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'inline'}`}>{item.name}</span>
                 </div>
-                {item.badge > 0 && !isCollapsed && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isActive ? 'bg-slate-950 text-amber-400' : 'bg-rose-500 text-white animate-bounce'}`}>
+
+                {/* Badge for regular & mobile view */}
+                {item.badge > 0 && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${isCollapsed ? 'lg:hidden' : 'inline-block'} bg-rose-500 text-white animate-bounce`}>
                     {item.badge}
                   </span>
                 )}
 
-                {/* Collapsed Tooltip */}
+                {/* Collapsed Tooltip (desktop only) */}
                 {isCollapsed && (
-                  <div className="fixed left-20 ml-2 px-2.5 py-1 bg-slate-950 border border-slate-700 text-white text-xs font-bold rounded-lg shadow-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap flex items-center gap-1.5">
+                  <div className="fixed left-20 ml-2 px-2.5 py-1 bg-slate-950 border border-slate-700 text-white text-xs font-bold rounded-lg shadow-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden lg:flex items-center gap-1.5">
                     <span>{item.name}</span>
                     {item.badge > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-black">
@@ -225,36 +200,26 @@ export default function WaiterLayout({ children, readyCount = 0 }) {
 
         {/* Sidebar Footer */}
         <div className={`p-3 border-t border-slate-800 bg-slate-950/80 ${isCollapsed ? 'lg:p-2 lg:flex lg:flex-col lg:items-center lg:gap-2' : 'space-y-2'}`}>
-          {!isCollapsed && (
-            <div className="flex items-center justify-between px-2 text-[11px] text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <Coffee className="w-3.5 h-3.5 text-amber-400" />
-                <span>Shift Active</span>
-              </span>
-              <span className="text-emerald-400 font-bold">● Ready</span>
-            </div>
-          )}
+          <div className={`flex items-center justify-between px-2 text-[11px] text-slate-400 ${isCollapsed ? 'lg:hidden' : 'flex'}`}>
+            <span className="flex items-center gap-1.5">
+              <Coffee className="w-3.5 h-3.5 text-amber-400" />
+              <span>Shift Active</span>
+            </span>
+            <span className="text-emerald-400 font-bold">● Ready</span>
+          </div>
 
           <button
             onClick={handleLogout}
-            className={
-              isCollapsed
-                ? 'group relative hidden lg:flex w-10 h-10 rounded-xl items-center justify-center text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors'
-                : 'w-full flex items-center justify-center gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-colors'
-            }
+            className={`w-full flex items-center ${
+              isCollapsed ? 'lg:justify-center lg:w-10 lg:h-10 lg:p-0' : 'justify-center'
+            } gap-2 px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-colors`}
             title="End Shift / Log Out"
           >
             <LogOut className="w-3.5 h-3.5 shrink-0" />
             <span className={isCollapsed ? 'lg:hidden' : 'inline'}>End Shift / Log Out</span>
-
-            {isCollapsed && (
-              <div className="fixed left-20 ml-2 px-2.5 py-1 bg-slate-950 border border-slate-700 text-rose-300 text-xs font-bold rounded-lg shadow-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">
-                End Shift / Log Out
-              </div>
-            )}
           </button>
 
-          {/* Expand button in collapsed footer */}
+          {/* Expand trigger button when collapsed on desktop */}
           {isCollapsed && (
             <button
               type="button"
