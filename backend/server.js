@@ -237,6 +237,8 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/health/db', async (req, res) => {
+  const targetHost = pool.pool?.config?.connectionConfig?.host || 'unknown';
+  const targetDb = pool.pool?.config?.connectionConfig?.database || 'unknown';
   try {
     const isHealthy = await testConnection();
     if (isHealthy) {
@@ -244,15 +246,18 @@ app.get('/health/db', async (req, res) => {
         success: true,
         status: 'OK',
         database: 'CONNECTED',
+        host: targetHost,
+        db: targetDb,
         timestamp: new Date().toISOString()
       });
     }
-    return res.status(503).json({ success: false, status: 'ERROR', database: 'DISCONNECTED' });
+    return res.status(503).json({ success: false, status: 'ERROR', database: 'DISCONNECTED', host: targetHost });
   } catch (err) {
     return res.status(503).json({
       success: false,
       status: 'ERROR',
       database: 'UNAVAILABLE',
+      targetHost: targetHost,
       error: err.message,
       code: err.code
     });
