@@ -30,11 +30,6 @@ export default function WaiterLoginPage() {
     }
   };
 
-  const handleQuickFill = () => {
-    setEmail('waiter@hotel.com');
-    setPassword('123456789');
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 relative overflow-hidden">
@@ -111,20 +106,8 @@ export default function WaiterLoginPage() {
           </button>
         </form>
 
-        {/* Demo Quick Fill Button */}
-        <div className="pt-2 border-t border-slate-800/80">
-          <button
-            type="button"
-            onClick={handleQuickFill}
-            className="w-full py-2 px-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white text-xs font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Fill Demo Waiter Login (waiter@hotel.com)</span>
-          </button>
-        </div>
-
         {/* Link to Registration */}
-        <div className="text-center text-xs text-slate-400 pt-1">
+        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/80">
           <span>New staff member? </span>
           <Link to="/waiter/register" className="text-amber-400 hover:text-amber-300 font-bold underline underline-offset-2">
             Register as Waiter
