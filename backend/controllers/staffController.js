@@ -184,14 +184,14 @@ async function toggleStaffStatus(req, res) {
     const restaurantId = req.adminRestaurantId || req.user?.restaurant_id || 1;
     const { id } = req.params;
 
-    const [rows] = await query(
+    const rows = await query(
       `SELECT u.id, u.status FROM users u
        JOIN restaurant_admins ra ON u.id = ra.user_id
        WHERE u.id = ? AND ra.restaurant_id = ?`,
       [id, restaurantId]
     );
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Staff member not found.' });
     }
 
