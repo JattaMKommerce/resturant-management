@@ -8,18 +8,36 @@ export const SocketProvider = ({ children }) => {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    const host = window.location.hostname;
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    const defaultSocketUrl = `${protocol}//${host}:5000`;
-    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || defaultSocketUrl;
+    let SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
+    
+    if (!SOCKET_URL && typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      
+      if (host === 'localhost' || host === '127.0.0.1') {
+        SOCKET_URL = 'http://localhost:5000';
+      } else if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+        // Local Network IP testing (e.g. 192.168.1.XX)
+        SOCKET_URL = `${protocol}//${host}:5000`;
+      } else {
+        // Deployed Production Web URL (e.g. Vercel)
+        SOCKET_URL = window.location.origin;
+      }
+    }
 
     const socketInstance = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
-      withCredentials: true
+      withCredentials: true,
+      reconnectionAttempts: 5,
+      timeout: 10000
     });
 
     socketInstance.on('connect', () => {
       console.log('⚡ Connected to Socket.IO Server');
+    });
+
+    socketInstance.on('connect_error', (err) => {
+      // Suppress spamming on deployed environments without active socket backend
     });
 
     socketInstance.on('notification', (data) => {
