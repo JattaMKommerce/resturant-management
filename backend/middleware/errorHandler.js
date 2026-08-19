@@ -59,18 +59,16 @@ function errorHandler(err, req, res, next) {
     });
   }
 
-  if (err.code === 'ER_NO_REFERENCED_ROW_2' || err.code === 'ER_ROW_IS_REFERENCED_2') {
-    return res.status(400).json({
+  if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+    return res.status(503).json({
       success: false,
-      message: 'Cannot perform operation due to foreign key constraints.',
-      code: 'FOREIGN_KEY_VIOLATION'
+      message: 'Database connection failed. Please ensure DATABASE_URL is properly configured.',
+      code: 'DATABASE_UNAVAILABLE'
     });
   }
 
   // Safe client response (no stack trace or internal SQL leak in production)
-  const safeMessage = isProduction && statusCode === 500
-    ? 'An unexpected internal error occurred. Please try again later.'
-    : err.message || 'Internal Server Error';
+  const safeMessage = err.message || 'Internal Server Error';
 
   return res.status(statusCode).json({
     success: false,
