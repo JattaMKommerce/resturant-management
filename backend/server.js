@@ -347,18 +347,18 @@ app.use(errorHandler);
 // 8. SERVER STARTUP & GRACEFUL SHUTDOWN
 // ──────────────────────────────────────────────────────────
 async function startServer() {
-  server.listen(PORT, '0.0.0.0', async () => {
+  try {
+    await initDatabase();
+    console.log(`✅ System database initialized and ready for production requests.`);
+  } catch (err) {
+    console.error('Database initialization warning/error:', err.message);
+  }
+
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Hotel Restaurant Backend Server running on port ${PORT}`);
     console.log(`📡 Socket.IO server bound to 0.0.0.0:${PORT}`);
     console.log(`🛡️  Security headers and rate limiting active`);
     console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
-
-    try {
-      await initDatabase();
-      console.log(`✅ System database initialized and ready for production requests.`);
-    } catch (err) {
-      console.error('Database initialization error:', err.message);
-    }
   });
 }
 
