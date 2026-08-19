@@ -112,7 +112,7 @@ io.use((socket, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         socket.user = decoded;
       } catch (e) {
-        // Expired or invalid token — socket remains unauthenticated/guest
+        // Expired or invalid token -s socket remains unauthenticated/guest
       }
     }
     next();
@@ -253,7 +253,8 @@ app.get('/health/db', async (req, res) => {
       success: false,
       status: 'ERROR',
       database: 'UNAVAILABLE',
-      message: isProduction ? 'Database connection failure.' : err.message
+      error: err.message,
+      code: err.code
     });
   }
 });
@@ -374,12 +375,12 @@ async function gracefulShutdown(signal) {
     try {
       io.close();
       console.log('  ↳ Terminated Socket.IO connection manager.');
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       await pool.end();
       console.log('  ↳ Closed MySQL database connection pool.');
-    } catch (e) {}
+    } catch (e) { }
 
     console.log('✅ Graceful shutdown completed cleanly.');
     process.exit(0);

@@ -4,27 +4,45 @@ require('dotenv').config();
 const isProduction = process.env.NODE_ENV === 'production';
 const connectionLimit = parseInt(process.env.DB_CONNECTION_LIMIT || '15', 10);
 
-// Base connection configuration
-let poolConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '3306', 10),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'db123',
-  database: process.env.DB_NAME || 'hotel_db',
-  waitForConnections: true,
-  connectionLimit: connectionLimit,
-  queueLimit: 0,
-  connectTimeout: 15000,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
-  multipleStatements: true
-};
+// Resolve configuration options
+const host = process.env.DB_HOST || process.env.MYSQLHOST || 'localhost';
+const port = parseInt(process.env.DB_PORT || process.env.MYSQLPORT || '3306', 10);
+const user = process.env.DB_USER || process.env.MYSQLUSER || 'root';
+const password = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || 'db123';
+const database = process.env.DB_NAME || process.env.MYSQLDATABASE || 'hotel_db';
 
-// Check for unified DATABASE_URL / MYSQL_URL (common on Railway / cloud providers)
 const connectionUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+let pool;
+
 if (connectionUri) {
-  poolConfig = {
-    uri: connectionUri,
+  const isRailwayInternal = connectionUri.includes('railway.internal');
+  const isLocalhost = connectionUri.includes('localhost') || connectionUri.includes('127.0.0.1');
+  const useSsl = process.env.DB_SSL === 'true' && !isRailwayInternal && !isLocalhost;
+
+  if (useSsl) {
+    pool = mysql.createPool({
+      uri: connectionUri,
+      waitForConnections: true,
+      connectionLimit: connectionLimit,
+      queueLimit: 0,
+      connectTimeout: 15000,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
+      multipleStatements: true,
+      ssl: { rejectUnauthorized: false }
+    });
+  } else {
+    // Pure connection string for Railway private network
+    pool = mysql.createPool(connectionUri);
+  }
+} else {
+  pool = mysql.createPool({
+    host,
+    port,
+    user,
+    password,
+    database,
     waitForConnections: true,
     connectionLimit: connectionLimit,
     queueLimit: 0,
@@ -32,21 +50,8 @@ if (connectionUri) {
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
     multipleStatements: true
-  };
+  });
 }
-
-// SSL Configuration for cloud databases (Avoid SSL on Railway internal private domain)
-const isRailwayInternal = Boolean(connectionUri && connectionUri.includes('railway.internal'));
-const isLocalhost = Boolean((connectionUri && connectionUri.includes('localhost')) || (!connectionUri && poolConfig.host === 'localhost'));
-const useSsl = process.env.DB_SSL === 'true' && !isRailwayInternal && !isLocalhost;
-
-if (useSsl) {
-  poolConfig.ssl = {
-    rejectUnauthorized: false
-  };
-}
-
-const pool = mysql.createPool(poolConfig);
 
 /**
  * Execute a query with parameters using the connection pool
@@ -59,7 +64,7 @@ async function query(sql, params = []) {
     if (!isProduction) {
       console.error('MySQL Query Error:', err.message, '| SQL:', sql);
     } else {
-      console.error('MySQL Query Error [Code:', err.code, ']:', err.message);
+      console.error(`MySQL Query Error [Code: ${err.code}]:`, err.message);
     }
     throw err;
   }
@@ -74,10 +79,6 @@ async function getConnection() {
 
 /**
  * Execute multi-step atomic operations inside a transaction.
- * Automatically handles BEGIN, COMMIT, and ROLLBACK with connection release.
- *
- * @param {Function} callback - async (connection) => { ... }
- * @returns {Promise<*>} Result of the callback
  */
 async function withTransaction(callback) {
   const connection = await pool.getConnection();
