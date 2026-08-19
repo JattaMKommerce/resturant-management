@@ -11,7 +11,21 @@ const user = process.env.DB_USER || process.env.MYSQLUSER || 'root';
 const password = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || 'db123';
 const database = process.env.DB_NAME || process.env.MYSQLDATABASE || 'hotel_db';
 
-const connectionUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+let rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+function isValidUri(uri) {
+  if (!uri || typeof uri !== 'string') return false;
+  const trimmed = uri.trim();
+  if (trimmed.startsWith('mysql://:@') || trimmed === 'mysql://:@:/' || trimmed.length < 12) return false;
+  try {
+    const parsed = new URL(trimmed);
+    return Boolean(parsed.hostname && parsed.hostname.length > 0 && parsed.hostname !== ':');
+  } catch (e) {
+    return false;
+  }
+}
+
+const connectionUri = isValidUri(rawUri) ? rawUri.trim() : null;
 
 let pool;
 
@@ -33,7 +47,6 @@ if (connectionUri) {
       ssl: { rejectUnauthorized: false }
     });
   } else {
-    // Pure connection string for Railway private network
     pool = mysql.createPool(connectionUri);
   }
 } else {

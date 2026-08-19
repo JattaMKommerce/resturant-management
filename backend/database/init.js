@@ -14,15 +14,30 @@ async function initDatabase() {
   console.log('🔄 Initializing MySQL Database setup...');
   let connection;
   try {
-    const isCloudDb = Boolean(process.env.DATABASE_URL || process.env.MYSQL_URL);
-    if (isCloudDb) {
-      const uri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+    let rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+
+    function isValidUri(uri) {
+      if (!uri || typeof uri !== 'string') return false;
+      const trimmed = uri.trim();
+      if (trimmed.startsWith('mysql://:@') || trimmed === 'mysql://:@:/' || trimmed.length < 12) return false;
+      try {
+        const parsed = new URL(trimmed);
+        return Boolean(parsed.hostname && parsed.hostname.length > 0 && parsed.hostname !== ':');
+      } catch (e) {
+        return false;
+      }
+    }
+
+    const uri = isValidUri(rawUri) ? rawUri.trim() : null;
+
+    if (uri) {
       const isRailwayInternal = uri.includes('railway.internal');
+      const isLocalhost = uri.includes('localhost') || uri.includes('127.0.0.1');
       const connConfig = {
         uri,
         multipleStatements: true
       };
-      if (process.env.DB_SSL === 'true' && !isRailwayInternal) {
+      if (process.env.DB_SSL === 'true' && !isRailwayInternal && !isLocalhost) {
         connConfig.ssl = { rejectUnauthorized: false };
       }
       connection = await mysql.createConnection(connConfig);
