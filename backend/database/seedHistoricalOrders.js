@@ -4,20 +4,24 @@ require('dotenv').config();
 const dbHost = process.env.DB_HOST || 'localhost';
 const dbPort = parseInt(process.env.DB_PORT || '3306');
 const dbUser = process.env.DB_USER || 'root';
-const dbPassword = process.env.DB_PASSWORD || 'db123';
+const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 const dbName = process.env.DB_NAME || 'hotel_db';
 
-async function seedHistoricalOrders() {
+async function seedHistoricalOrders(existingConn = null) {
   console.log('🌱 Seeding rich historical orders for past dates & channels...');
-  let connection;
+  let connection = existingConn;
+  let shouldClose = false;
   try {
-    connection = await mysql.createConnection({
-      host: dbHost,
-      port: dbPort,
-      user: dbUser,
-      password: dbPassword,
-      database: dbName
-    });
+    if (!connection) {
+      connection = await mysql.createConnection({
+        host: dbHost,
+        port: dbPort,
+        user: dbUser,
+        password: dbPassword,
+        database: dbName
+      });
+      shouldClose = true;
+    }
 
     console.log('✅ Connected to database.');
 
@@ -455,7 +459,7 @@ async function seedHistoricalOrders() {
   } catch (err) {
     console.error('❌ Error seeding historical orders:', err);
   } finally {
-    if (connection) await connection.end();
+    if (connection && shouldClose) await connection.end();
   }
 }
 

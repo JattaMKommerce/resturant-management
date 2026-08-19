@@ -35,7 +35,7 @@ async function authenticateToken(req, res, next) {
           'SELECT restaurant_id FROM restaurant_admins WHERE user_id = ? ORDER BY is_primary DESC LIMIT 1',
           [req.user.id]
         );
-        if (rows.length > 0) {
+        if (rows && rows.length > 0) {
           req.user.restaurant_id = rows[0].restaurant_id;
         } else {
           req.user.restaurant_id = 1;
@@ -59,24 +59,32 @@ function requireRoles(...allowedRoles) {
     if (!req.user) {
       return sendError(res, 'Permission denied. Not authenticated.', 401);
     }
-    const userRole = req.user.role === 'ADMIN' ? 'RESTAURANT_ADMIN' : (req.user.role || 'CUSTOMER');
     
-    // Super Admin and Restaurant Admin have full administrative permissions across tables, KOTs, and operations
-    if (userRole === 'SUPER_ADMIN' || userRole === 'RESTAURANT_ADMIN' || userRole === 'ADMIN') {
+    const userRole = String(req.user.role || req.user.role_name || 'CUSTOMER').toUpperCase();
+    
+    // Super Admin, Restaurant Admin, Admin, Manager have full administrative access
+    if (['ADMIN', 'SUPER_ADMIN', 'RESTAURANT_ADMIN', 'HOTEL_ADMIN', 'OWNER', 'MANAGER'].includes(userRole)) {
       return next();
     }
-
-    const mappedAllowed = allowedRoles.map(r => {
-      if (r === 'ADMIN') return 'RESTAURANT_ADMIN';
-      if (r === 'CHEF') return 'KITCHEN';
-      return r;
-    });
+    
+    const mappedAllowed = allowedRoles.map(r => String(r).toUpperCase());
+    if (mappedAllowed.includes('ADMIN')) {
+      mappedAllowed.push('RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER', 'HOTEL_ADMIN');
+    }
+    if (mappedAllowed.includes('KITCHEN')) {
+      mappedAllowed.push('CHEF');
+    }
+    if (mappedAllowed.includes('CHEF')) {
+      mappedAllowed.push('KITCHEN');
+    }
 
     if (mappedAllowed.includes(userRole) || allowedRoles.includes(userRole)) {
       return next();
     }
 
-    return sendError(res, `Permission denied. Insufficient role access.`, 403);
+    return sendError(res, 'Permission denied. Insufficient role access.', 403);
+  };
+}
   };
 }
 

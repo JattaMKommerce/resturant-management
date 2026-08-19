@@ -13,13 +13,13 @@ export default function KOTPrintModal({ isOpen, onClose, kot }) {
     <Modal isOpen={isOpen} onClose={onClose} title={`Print Kitchen Ticket #${kot.kot_number}`} maxWidth="max-w-md">
       <div className="flex flex-col items-center">
         {/* Printable Thermal Receipt Container */}
-        <div className="printable-area receipt-container bg-white text-black font-mono p-6 rounded border border-slate-300 w-full max-w-xs text-xs shadow-lg mb-6">
+        <div className="printable-area receipt-container bg-white text-black font-mono p-6 rounded-xl border border-slate-300 w-full max-w-xs text-xs shadow-sm mb-6">
           <div className="text-center font-bold text-sm border-b-2 border-black pb-2 mb-3 uppercase">
             GRAND PALACE HOTEL & RESTAURANT
           </div>
 
           <div className="space-y-1 mb-3">
-            <div className="font-black text-sm">KOT #: {kot.kot_number}</div>
+            <div className="font-bold text-sm">KOT #: {kot.kot_number}</div>
             <div>TABLE: {kot.table_number || 'N/A'} {kot.room_number ? `(ROOM ${kot.room_number})` : ''}</div>
             <div>ORDER #: {kot.order_id}</div>
             <div>KITCHEN: {(kot.kitchen_department_name || 'MAIN KITCHEN').toUpperCase()}</div>
@@ -56,10 +56,10 @@ export default function KOTPrintModal({ isOpen, onClose, kot }) {
 
         <button
           onClick={handlePrint}
-          className="w-full py-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-colors no-print"
+          className="w-full py-3 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs uppercase tracking-wider shadow-2xs flex items-center justify-center gap-2 transition-colors no-print"
         >
-          <Printer className="w-5 h-5" />
-          <span>Print KOT Ticket</span>
+          <Printer className="w-4 h-4" />
+          <span>Print Kitchen Ticket</span>
         </button>
       </div>
     </Modal>

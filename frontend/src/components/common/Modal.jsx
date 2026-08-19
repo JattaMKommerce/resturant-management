@@ -5,18 +5,18 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className={`w-full ${maxWidth} glass-panel bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-auto`}>
-        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-800 flex items-center justify-between gap-2">
-          <h3 className="text-base sm:text-lg font-bold text-white tracking-wide truncate">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
+      <div className={`w-full ${maxWidth} bg-white border border-[#D7E5E8] rounded-2xl shadow-xl overflow-hidden`}>
+        <div className="px-6 py-4 border-b border-[#D7E5E8] flex items-center justify-between bg-[#EAF4F7]/40">
+          <h3 className="text-lg font-bold text-[#1F2937] tracking-tight">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors shrink-0"
+            className="p-1.5 rounded-xl text-[#64748B] hover:text-[#1F2937] hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+        <div className="p-6 max-h-[80vh] overflow-y-auto">
           {children}
         </div>
       </div>

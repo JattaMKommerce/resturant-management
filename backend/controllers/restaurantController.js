@@ -240,8 +240,18 @@ async function updateRestaurantSettings(req, res) {
       upi_name !== undefined ? (upi_name ? upi_name.trim() : null) : null
     ];
 
-    if (logoUrl) { sql += `, logo_url = ?`; params.push(logoUrl); }
-    if (coverUrl) { sql += `, cover_url = ?`; params.push(coverUrl); }
+    if (req.body.remove_logo === '1' || req.body.remove_logo === 'true' || req.body.remove_logo === true) {
+      sql += `, logo_url = NULL`;
+    } else if (logoUrl) {
+      sql += `, logo_url = ?`; params.push(logoUrl);
+    }
+
+    if (req.body.remove_cover === '1' || req.body.remove_cover === 'true' || req.body.remove_cover === true) {
+      sql += `, cover_url = NULL`;
+    } else if (coverUrl) {
+      sql += `, cover_url = ?`; params.push(coverUrl);
+    }
+
     if (slug) { sql += `, slug = ?`; params.push(slug); }
 
     sql += ` WHERE id = ?`;

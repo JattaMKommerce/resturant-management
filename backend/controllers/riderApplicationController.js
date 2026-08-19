@@ -33,11 +33,18 @@ async function submitApplication(req, res) {
       vehicleType, vehicleNumber, password
     } = req.body;
 
-    if (!restaurantId || !fullName || !mobile || !email || !vehicleType) {
+    if (!restaurantId || !fullName || !mobile || !email) {
       return res.status(400).json({
         success: false,
-        message: 'Restaurant ID, Full Name, Mobile, Email, and Vehicle Type are required.'
+        message: 'Missing required fields: restaurantId, fullName, mobile, and email are mandatory.'
       });
+    }
+
+    let passwordHash = null;
+    let plainPassword = null;
+    if (password && password.trim().length >= 6) {
+      passwordHash = await bcrypt.hash(password.trim(), 10);
+      plainPassword = password.trim();
     }
 
     // Server-side restaurant validation
@@ -82,15 +89,16 @@ async function submitApplication(req, res) {
     try {
       await conn.beginTransaction();
 
-      // Create application record
+      // Create application record with chosen password
       const [appRes] = await conn.query(
         `INSERT INTO rider_applications (
-          restaurant_id, full_name, mobile, email, date_of_birth,
-          home_city, current_city, current_address, emergency_contact,
+          restaurant_id, full_name, mobile, email, password_hash, plain_password,
+          date_of_birth, home_city, current_city, current_address, emergency_contact,
           vehicle_type, vehicle_number, application_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
         [
           restaurantId, fullName.trim(), mobile.trim(), email.trim().toLowerCase(),
+          passwordHash, plainPassword,
           dateOfBirth || null, homeCity || null, currentCity || null,
           currentAddress || null, emergencyContact || null,
           vehicleType, vehicleNumber || null
@@ -317,7 +325,14 @@ async function approveApplication(req, res) {
       return res.status(400).json({ success: false, message: 'Application is already approved.' });
     }
 
-    const pwd = initialPassword || 'driver123';
+    // Priority: applicant's chosen password during registration, or admin provided initialPassword, or default
+    let userPasswordHash = app.password_hash;
+    let userPlainPassword = app.plain_password || initialPassword || 'driver123';
+
+    if (!userPasswordHash) {
+      userPasswordHash = await bcrypt.hash(userPlainPassword, 10);
+    }
+
     const conn = await getConnection();
 
     try {
@@ -330,15 +345,19 @@ async function approveApplication(req, res) {
       if (existingUsers.length > 0) {
         userId = existingUsers[0].id;
         await conn.query(
-          `UPDATE users SET role = 'DRIVER', status = 'ACTIVE' WHERE id = ?`,
-          [userId]
+          `UPDATE users SET
+            role = 'DRIVER',
+            status = 'ACTIVE',
+            password_hash = COALESCE(?, password_hash),
+            plain_password = COALESCE(?, plain_password)
+           WHERE id = ?`,
+          [userPasswordHash, userPlainPassword, userId]
         );
       } else {
-        const pwdHash = await bcrypt.hash(pwd, 10);
         const [userRes] = await conn.query(
           `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
            VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
-          [app.full_name, app.email, pwdHash, pwd, app.mobile]
+          [app.full_name, app.email, userPasswordHash, userPlainPassword, app.mobile]
         );
         userId = userRes.insertId;
       }
@@ -419,7 +438,7 @@ async function approveApplication(req, res) {
         message: `Rider application for "${app.full_name}" has been approved! Driver account created/activated.`,
         credentials: {
           email: app.email,
-          temporaryPassword: pwd
+          temporaryPassword: userPlainPassword
         },
         driverId,
         userId
@@ -520,7 +539,8 @@ async function streamDocument(req, res) {
     }
 
     // Resolve file path safely
-    const absolutePath = path.resolve(__dirname, '..', doc.file_path);
+    const cleanPath = doc.file_path.replace(/^[/\\]+/, '');
+    const absolutePath = path.isAbsolute(doc.file_path) ? doc.file_path : path.resolve(__dirname, '..', cleanPath);
 
     if (!fs.existsSync(absolutePath)) {
       return res.status(404).json({ success: false, message: 'File missing from server storage.' });

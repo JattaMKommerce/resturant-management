@@ -10,12 +10,15 @@ const api = axios.create({
   withCredentials: true, // Required for HttpOnly guest identity cookies
 });
 
-// Request Interceptor: Attach JWT Bearer token if available
+// Request Interceptor: Attach JWT Bearer token if available & properly handle FormData
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('hotel_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
     }
     return config;
   },

@@ -28,9 +28,9 @@ export default function LiveTimerBadge({
   // 1. Ready / Served State
   if (status === 'READY' || status === 'SERVED') {
     return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-        <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-        <span>✓ Ready</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+        <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+        <span>Ready</span>
       </div>
     );
   }
@@ -38,8 +38,8 @@ export default function LiveTimerBadge({
   // 2. Cancelled State
   if (status === 'CANCELLED') {
     return (
-      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
-        <span>CANCELLED</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-[#64748B] border border-[#D7E5E8]">
+        <span>Cancelled</span>
       </div>
     );
   }
@@ -50,9 +50,9 @@ export default function LiveTimerBadge({
   // 3. Not Started / Pending / Accepted State
   if (!effectiveStartedAt || (status !== 'PREPARING' && !startedAt)) {
     return (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-slate-800/90 text-slate-400 border border-slate-700">
-        <Clock className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-        <span className="font-mono">⏱ Not Started</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 text-[#64748B] border border-[#D7E5E8]">
+        <Clock className="w-3.5 h-3.5 shrink-0 text-[#64748B]" />
+        <span className="font-mono">Not Started</span>
       </div>
     );
   }
@@ -63,43 +63,43 @@ export default function LiveTimerBadge({
   const remainingSeconds = Math.floor((expectedTime - now) / 1000);
 
   if (remainingSeconds <= 0) {
-    // 🔴 LATE / OVERDUE State
+    // 🔴 LATE (Soft Red Indicator - Calm & Eye-Comfortable)
     const overdueSecs = Math.abs(remainingSeconds);
     const overdueMins = Math.floor(overdueSecs / 60);
     const overdueSecsRemainder = overdueSecs % 60;
     const formattedOverdue = `+${overdueMins.toString().padStart(2, '0')}:${overdueSecsRemainder.toString().padStart(2, '0')}`;
 
     return (
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-black bg-rose-500/20 text-rose-400 border border-rose-500/60 animate-pulse shadow-md shadow-rose-500/20">
-        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-        <span className="font-mono text-sm">⏱ {formattedOverdue}</span>
-        <span className="font-bold">🔴 Late</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+        <span className="font-mono">{formattedOverdue}</span>
+        <span className="text-[11px] font-semibold text-rose-700">Late</span>
       </div>
     );
   } else if (remainingSeconds <= 300) {
-    // 🟡 GETTING LATE State (<= 5 minutes)
+    // 🟡 GETTING LATE (Soft Amber/Yellow Indicator <= 5 minutes)
     const mins = Math.floor(remainingSeconds / 60);
     const secs = remainingSeconds % 60;
     const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
     return (
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/50">
-        <Clock className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-        <span className="font-mono text-sm">⏱ {formatted}</span>
-        <span className="font-bold">🟡 Getting Late</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+        <Clock className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+        <span className="font-mono">{formatted}</span>
+        <span className="text-[11px] font-semibold text-amber-700">Getting Late</span>
       </div>
     );
   } else {
-    // 🟢 ON TIME State (> 5 minutes)
+    // 🟢 ON TIME (Calm Green Indicator > 5 minutes)
     const mins = Math.floor(remainingSeconds / 60);
     const secs = remainingSeconds % 60;
     const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
     return (
-      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40">
-        <Clock className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-        <span className="font-mono text-sm">⏱ {formatted}</span>
-        <span className="font-bold">🟢 On Time</span>
+      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+        <Clock className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+        <span className="font-mono">{formatted}</span>
+        <span className="text-[11px] font-semibold text-emerald-700">On Time</span>
       </div>
     );
   }

@@ -158,13 +158,13 @@ export default function TableManagementPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white border border-blue-100 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-wide flex items-center gap-2">
-            <Grid2X2 className="w-7 h-7 text-amber-500" />
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Grid2X2 className="w-6 h-6 text-amber-600" />
             <span>Table Management</span>
           </h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-600 text-xs sm:text-sm mt-0.5">
             Manage restaurant tables, floor layouts, statuses, and unique QR tokens with smart auto-sequenced numbering
           </p>
         </div>
@@ -172,17 +172,17 @@ export default function TableManagementPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={fetchTables}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 hover:text-black transition-colors"
             title="Refresh Table List"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4" />
           </button>
           {isAdminOrManager && (
             <button
               onClick={handleOpenAddModal}
-              className="py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all text-sm"
+              className="py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 font-black hover:bg-amber-400 flex items-center gap-2 shadow-sm transition-all text-xs uppercase tracking-wider"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4 stroke-[3]" />
               <span>Add Table</span>
             </button>
           )}
@@ -190,25 +190,25 @@ export default function TableManagementPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-panel bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white border border-blue-100 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
         <div className="relative w-full md:w-80">
-          <Search className="w-5 h-5 absolute left-3.5 top-3 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search table number or name..."
-            className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500"
+            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 text-xs font-semibold focus:outline-none focus:border-amber-500"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
           {selectedStatus && (
-            <div className="flex items-center gap-2 text-xs bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-xl font-bold">
+            <div className="flex items-center gap-2 text-xs bg-amber-100 border border-amber-300 text-amber-900 px-3 py-1.5 rounded-xl font-bold">
               <span>Filtered: <strong>{selectedStatus.replace('_', ' ')}</strong></span>
               <button
                 onClick={() => handleStatusFilterChange('')}
-                className="p-0.5 hover:bg-amber-500/20 text-amber-300 rounded-full transition"
+                className="p-0.5 hover:bg-amber-200 text-amber-950 rounded-full transition"
                 title="Clear Status Filter"
               >
                 <X className="w-3.5 h-3.5" />
@@ -216,13 +216,13 @@ export default function TableManagementPage() {
             </div>
           )}
 
-          <div className="flex items-center gap-3">
-            <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+          <div className="flex items-center gap-2.5">
+            <Filter className="w-4 h-4 text-slate-400 shrink-0" />
             
             <select
               value={selectedFloor}
               onChange={(e) => setSelectedFloor(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium focus:outline-none focus:border-amber-500"
+              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold focus:outline-none focus:border-amber-500"
             >
               <option value="">All Floors</option>
               {floors.map(f => <option key={f} value={f}>{f}</option>)}
@@ -231,7 +231,7 @@ export default function TableManagementPage() {
             <select
               value={selectedStatus}
               onChange={(e) => handleStatusFilterChange(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium focus:outline-none focus:border-amber-500 font-semibold"
+              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold focus:outline-none focus:border-amber-500"
             >
               <option value="">All Statuses</option>
               <option value="AVAILABLE">AVAILABLE</option>
@@ -252,18 +252,18 @@ export default function TableManagementPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-56 rounded-2xl bg-slate-900/50 border border-slate-800 animate-pulse"></div>
+            <div key={i} className="h-56 rounded-2xl bg-white border border-blue-100 animate-pulse shadow-sm"></div>
           ))}
         </div>
       ) : tables.length === 0 ? (
-        <div className="glass-panel bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-          <Grid2X2 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-slate-300">No {selectedStatus ? selectedStatus.replace('_', ' ') : ''} Tables Found</h3>
-          <p className="text-sm text-slate-500 mt-1">
+        <div className="bg-white border border-blue-100 rounded-2xl p-12 text-center text-slate-500 shadow-sm">
+          <Grid2X2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-slate-800">No {selectedStatus ? selectedStatus.replace('_', ' ') : ''} Tables Found</h3>
+          <p className="text-xs text-slate-500 mt-1">
             {selectedStatus ? (
               <button
                 onClick={() => handleStatusFilterChange('')}
-                className="text-amber-400 underline font-semibold mt-1"
+                className="text-amber-700 underline font-bold mt-1"
               >
                 Clear status filter to view all tables
               </button>
