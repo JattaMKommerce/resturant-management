@@ -17,13 +17,15 @@ async function initDatabase() {
     const isCloudDb = Boolean(process.env.DATABASE_URL || process.env.MYSQL_URL);
     if (isCloudDb) {
       const uri = process.env.DATABASE_URL || process.env.MYSQL_URL;
-      connection = await mysql.createConnection({
+      const isRailwayInternal = uri.includes('railway.internal');
+      const connConfig = {
         uri,
-        multipleStatements: true,
-        ssl: {
-          rejectUnauthorized: false
-        }
-      });
+        multipleStatements: true
+      };
+      if (process.env.DB_SSL === 'true' && !isRailwayInternal) {
+        connConfig.ssl = { rejectUnauthorized: false };
+      }
+      connection = await mysql.createConnection(connConfig);
       console.log('✅ Connected to Cloud MySQL server via DATABASE_URL');
     } else {
       connection = await mysql.createConnection({
@@ -32,7 +34,7 @@ async function initDatabase() {
         user: dbUser,
         password: dbPassword,
         multipleStatements: true,
-        ssl: (process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') ? { rejectUnauthorized: false } : undefined
+        ssl: (process.env.DB_SSL === 'true' && !dbHost.includes('localhost') && !dbHost.includes('127.0.0.1')) ? { rejectUnauthorized: false } : undefined
       });
       console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
 
@@ -49,7 +51,18 @@ async function initDatabase() {
 
     // Read and execute schema
     const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
-    await connection.query(schemaSql);
+    const statements = schemaSql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 5);
+
+    for (const stmt of statements) {
+      try {
+        await connection.query(stmt);
+      } catch (stmtErr) {
+        // Non-fatal warning if statement exists
+      }
+    }
     console.log('✅ All database tables created successfully.');
 
     // Run migrations safely

@@ -35,8 +35,11 @@ if (connectionUri) {
   };
 }
 
-// SSL Configuration for cloud databases
-const useSsl = process.env.DB_SSL === 'true' || (isProduction && Boolean(connectionUri));
+// SSL Configuration for cloud databases (Avoid SSL on Railway internal private domain)
+const isRailwayInternal = Boolean(connectionUri && connectionUri.includes('railway.internal'));
+const isLocalhost = Boolean((connectionUri && connectionUri.includes('localhost')) || (!connectionUri && poolConfig.host === 'localhost'));
+const useSsl = process.env.DB_SSL === 'true' && !isRailwayInternal && !isLocalhost;
+
 if (useSsl) {
   poolConfig.ssl = {
     rejectUnauthorized: false
