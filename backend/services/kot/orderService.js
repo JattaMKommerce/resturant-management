@@ -220,9 +220,9 @@ async function createOrder(orderData, idempotencyKey = null) {
 
       const [kotResult] = await connection.query(
         `INSERT INTO kots 
-          (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
-        [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt]
+          (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
+         VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`,
+        [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt, 1]
       );
 
       const kotId = kotResult.insertId;

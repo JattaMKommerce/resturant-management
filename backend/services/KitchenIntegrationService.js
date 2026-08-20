@@ -25,11 +25,9 @@ async function notifyKitchen(orderData) {
       return { success: true, kotId: existingKots[0].id, kotNumber: existingKots[0].kot_number };
     }
 
-    let items = orderData.items || [];
-    if (items.length === 0) {
-      const [dbItems] = await pool.query(`SELECT * FROM order_items WHERE order_id = ?`, [orderId]);
-      items = dbItems;
-    }
+    // Query actual inserted order items for this order to ensure valid order_item_id references
+    const [dbItems] = await pool.query(`SELECT * FROM order_items WHERE order_id = ?`, [orderId]);
+    const itemsToProcess = dbItems.length > 0 ? dbItems : (orderData.items || []);
 
     // Resolve default kitchen department
     const [departments] = await pool.query(`SELECT id FROM kitchen_departments ORDER BY id ASC LIMIT 1`);
@@ -48,14 +46,14 @@ async function notifyKitchen(orderData) {
 
     const [kotResult] = await pool.query(
       `INSERT INTO kots 
-        (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
-       VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?)`,
-      [kotNumber, orderId, defaultDeptId, receivedAt, targetAt]
+        (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
+       VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?, ?)`,
+      [kotNumber, orderId, defaultDeptId, receivedAt, targetAt, orderData.restaurant_id || 1]
     );
 
     const kotId = kotResult.insertId;
 
-    for (const item of items) {
+    for (const item of itemsToProcess) {
       await pool.query(
         `INSERT INTO kot_items 
           (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes)
@@ -66,7 +64,7 @@ async function notifyKitchen(orderData) {
           item.item_name || item.name || 'Food Item',
           item.quantity || 1,
           item.special_instructions || item.specialInstructions || null,
-          15
+          item.prep_time_minutes || 15
         ]
       );
     }

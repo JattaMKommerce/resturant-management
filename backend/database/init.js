@@ -229,9 +229,7 @@ async function runMigrations(conn) {
   try {
     await conn.query(`ALTER TABLE kots DROP FOREIGN KEY kots_ibfk_1`);
   } catch (e) {}
-  try {
-    await conn.query(`ALTER TABLE kot_items DROP FOREIGN KEY kot_items_ibfk_2`);
-  } catch (e) {}
+  await addColumnIfNotExists(conn, 'kots', 'restaurant_id', "INT NOT NULL DEFAULT 1");
   await addColumnIfNotExists(conn, 'kots', 'online_order_id', "INT DEFAULT NULL");
   await addColumnIfNotExists(conn, 'kot_items', 'online_order_item_id', "INT DEFAULT NULL");
 
