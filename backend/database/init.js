@@ -10,25 +10,24 @@ const dbUser = process.env.DB_USER || 'root';
 const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 const dbName = process.env.DB_NAME || 'hotel_db';
 
+function isValidUri(uri) {
+  if (!uri || typeof uri !== 'string') return false;
+  const trimmed = uri.trim();
+  if (trimmed.startsWith('mysql://:@') || trimmed === 'mysql://:@:/' || trimmed.length < 12) return false;
+  try {
+    const parsed = new URL(trimmed);
+    return Boolean(parsed.hostname && parsed.hostname.length > 0 && parsed.hostname !== ':');
+  } catch (e) {
+    return false;
+  }
+}
+
 async function initDatabase(options = {}) {
   console.log('🔄 Initializing MySQL Database setup...');
   const forceReset = (options === true || options.forceReset || process.argv.includes('--reset')) && process.env.NODE_ENV !== 'production';
   let connection;
   try {
-    let rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
-
-    function isValidUri(uri) {
-      if (!uri || typeof uri !== 'string') return false;
-      const trimmed = uri.trim();
-      if (trimmed.startsWith('mysql://:@') || trimmed === 'mysql://:@:/' || trimmed.length < 12) return false;
-      try {
-        const parsed = new URL(trimmed);
-        return Boolean(parsed.hostname && parsed.hostname.length > 0 && parsed.hostname !== ':');
-      } catch (e) {
-        return false;
-      }
-    }
-
+    const rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
     const uri = isValidUri(rawUri) ? rawUri.trim() : null;
 
     if (uri) {

@@ -194,9 +194,11 @@ router.put('/admin/staff/:id', ...adminAuth, staffController.updateStaffMember);
 router.patch('/admin/staff/:id/status', ...adminAuth, staffController.toggleStaffStatus);
 router.delete('/admin/staff/:id', ...adminAuth, staffController.deleteStaffMember);
 
-// Drivers
+// Drivers & Riders
 router.get('/admin/drivers', ...adminAuth, driverController.getAdminDrivers);
+router.get('/admin/riders', ...adminAuth, driverController.getAdminDrivers);
 router.patch('/admin/riders/:id/status', ...adminAuth, driverController.updateDriverStatus);
+router.patch('/admin/drivers/:id/status', ...adminAuth, driverController.updateDriverStatus);
 
 // ═══════════════════════════════════════════════
 // 10. NOTIFICATIONS
