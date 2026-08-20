@@ -17,6 +17,7 @@ import {
   Receipt,
   Boxes,
   BarChart3,
+  ChevronDown,
   Building,
   History,
   Users,
