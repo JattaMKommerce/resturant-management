@@ -23,13 +23,7 @@ import {
   Boxes,
   BarChart3,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Building,
-  History,
-  X,
-  PanelLeftClose,
-  PanelLeftOpen
+
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 

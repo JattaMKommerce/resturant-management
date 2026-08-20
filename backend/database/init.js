@@ -10,9 +10,7 @@ const dbUser = process.env.DB_USER || 'root';
 const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 const dbName = process.env.DB_NAME || 'hotel_db';
 
-async function initDatabase(forceResetOption = false) {
-  console.log('🔄 Initializing MySQL Database setup...');
-  const forceReset = forceResetOption || (process.argv.includes('--reset') && process.env.NODE_ENV !== 'production');
+
   let connection;
   try {
     let rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
@@ -54,7 +52,6 @@ async function initDatabase(forceResetOption = false) {
       });
       console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
 
-      const forceReset = process.argv.includes('--reset') && process.env.NODE_ENV !== 'production';
       if (forceReset) {
         console.log('⚠️  Force reset requested (Development only). Dropping and recreating database...');
         await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
