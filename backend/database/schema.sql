@@ -495,12 +495,13 @@ CREATE TABLE IF NOT EXISTS order_item_modifiers (
 -- 27. KOTs (Kitchen Order Tickets)
 CREATE TABLE IF NOT EXISTS kots (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id INT NOT NULL DEFAULT 1,
   kot_number VARCHAR(30) NOT NULL UNIQUE,
   order_id INT NOT NULL,
   table_id INT NULL,
   room_id INT NULL,
   kitchen_department_id INT NOT NULL,
-  order_type ENUM('DINE_IN', 'ROOM_SERVICE', 'TAKEAWAY') DEFAULT 'DINE_IN',
+  order_type ENUM('DINE_IN', 'ROOM_SERVICE', 'TAKEAWAY', 'ONLINE', 'DELIVERY') DEFAULT 'DINE_IN',
   status ENUM('PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'SERVED', 'CANCELLED') DEFAULT 'PENDING',
   kitchen_received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   target_completion_at TIMESTAMP NULL,
