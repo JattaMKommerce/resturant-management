@@ -159,17 +159,19 @@ const KitchenRedirect = () => {
 
 // Admin Restaurant Slug Redirector
 const AdminRedirect = () => {
-  const { restaurant } = useAuth();
-  const slug = restaurant?.slug;
-  if (!slug) {
+  const { restaurant, user, loading } = useAuth();
+  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-8">
-        <h2 className="text-2xl font-bold mb-4">No Restaurant Assigned</h2>
-        <p className="text-slate-400">Please contact Super Admin to assign you to a restaurant.</p>
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
-  return <Navigate to={`/admin/${slug}`} replace />;
+  const slug = restaurant?.slug || user?.restaurant_slug;
+  if (slug) {
+    return <Navigate to={`/admin/${slug}`} replace />;
+  }
+  return <Navigate to="/admin/offline/dashboard" replace />;
 };
 
 // Home redirect to published restaurants
