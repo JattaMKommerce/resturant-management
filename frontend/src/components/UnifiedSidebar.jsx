@@ -181,7 +181,7 @@ export default function UnifiedSidebar({
 
       {/* Navigation Links Scrollable Area */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
-        
+
         {/* ================= SECTION 1: ONLINE HOTEL & STORE ================= */}
         <div>
           {isCollapsed ? (
@@ -189,7 +189,7 @@ export default function UnifiedSidebar({
               <div className="w-6 h-1 rounded-full bg-sky-500/30" />
             </div>
           ) : (
-            <button 
+            <button
               type="button"
               onClick={() => setOnlineOpen(!onlineOpen)}
               className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-sky-400 hover:text-sky-300 rounded-lg hover:bg-slate-800/40 transition-colors"
@@ -214,16 +214,14 @@ export default function UnifiedSidebar({
                     onClick={handleLinkClick}
                     className={({ isActive }) =>
                       isCollapsed
-                        ? `group relative hidden lg:flex w-10 h-10 rounded-xl items-center justify-center transition-all ${
-                            isActive
-                              ? 'bg-sky-500 text-white font-bold shadow-lg shadow-sky-500/25 ring-1 ring-sky-400/50'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
-                          }`
-                        : `flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all gap-2.5 ${
-                            isActive
-                              ? 'bg-sky-600 text-white font-bold shadow-md shadow-sky-600/30'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                          }`
+                        ? `group relative hidden lg:flex w-10 h-10 rounded-xl items-center justify-center transition-all ${isActive
+                          ? 'bg-sky-500 text-white font-bold shadow-lg shadow-sky-500/25 ring-1 ring-sky-400/50'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+                        }`
+                        : `flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all gap-2.5 ${isActive
+                          ? 'bg-sky-600 text-white font-bold shadow-md shadow-sky-600/30'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                        }`
                     }
                   >
                     <Icon className={isCollapsed ? 'w-4 h-4' : 'w-4 h-4 shrink-0'} />
@@ -252,7 +250,7 @@ export default function UnifiedSidebar({
               <div className="w-6 h-1 rounded-full bg-amber-500/30" />
             </div>
           ) : (
-            <button 
+            <button
               type="button"
               onClick={() => setOfflineOpen(!offlineOpen)}
               className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wider text-amber-400 hover:text-amber-300 rounded-lg hover:bg-slate-800/40 transition-colors"
@@ -276,16 +274,14 @@ export default function UnifiedSidebar({
                     onClick={handleLinkClick}
                     className={({ isActive }) =>
                       isCollapsed
-                        ? `group relative hidden lg:flex w-10 h-10 rounded-xl items-center justify-center transition-all ${
-                            isActive
-                              ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/25 ring-1 ring-amber-400/50'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
-                          }`
-                        : `flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all gap-2.5 ${
-                            isActive
-                              ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/30'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                          }`
+                        ? `group relative hidden lg:flex w-10 h-10 rounded-xl items-center justify-center transition-all ${isActive
+                          ? 'bg-amber-500 text-slate-950 font-black shadow-lg shadow-amber-500/25 ring-1 ring-amber-400/50'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
+                        }`
+                        : `flex items-center px-3 py-2 rounded-xl text-xs font-semibold transition-all gap-2.5 ${isActive
+                          ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/30'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                        }`
                     }
                   >
                     <Icon className={isCollapsed ? 'w-4 h-4' : 'w-4 h-4 shrink-0'} />
@@ -339,3 +335,5 @@ export default function UnifiedSidebar({
     </aside>
   );
 }
+
+
