@@ -689,6 +689,99 @@ async function getAdminDrivers(req, res) {
 }
 
 /**
+ * 14b. ADMIN: Get Driver Details by ID (Restaurant-Isolated)
+ */
+async function getAdminDriverById(req, res) {
+  try {
+    const { id } = req.params;
+    const restId = req.adminRestaurantId;
+
+    if (!restId && !req.isSuperAdmin && (!req.adminRestaurantIds || req.adminRestaurantIds.length === 0)) {
+      return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
+    }
+
+    let sql = `
+      SELECT d.*, u.name as user_name, u.email as user_email, u.phone as user_phone, u.status as user_status,
+             dra.status as assignment_status, dra.approved_at, dra.approved_by, dra.application_id, dra.restaurant_id,
+             r.name as restaurant_name,
+             app.submitted_at as application_submitted_at,
+             app.reviewed_at as application_reviewed_at,
+             app.rejection_reason as application_rejection_reason,
+             app.application_status as original_application_status,
+             reviewer.name as reviewer_name
+      FROM delivery_drivers d
+      JOIN users u ON d.user_id = u.id
+      LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
+      LEFT JOIN restaurants r ON dra.restaurant_id = r.id
+      LEFT JOIN rider_applications app ON (dra.application_id = app.id OR app.rider_id = d.id)
+      LEFT JOIN users reviewer ON dra.approved_by = reviewer.id
+      WHERE d.id = ?
+    `;
+
+    const drivers = await query(sql, [id]);
+    if (!drivers || drivers.length === 0) {
+      return res.status(404).json({ success: false, message: 'Driver not found.' });
+    }
+
+    const driver = drivers[0];
+
+    // Enforce restaurant access check if not super admin
+    if (!req.isSuperAdmin && driver.restaurant_id) {
+      if (!validateRestaurantAccess(driver.restaurant_id, req)) {
+        return res.status(403).json({ success: false, message: 'Access denied to this driver profile.' });
+      }
+    }
+
+    // Fetch driver documents
+    const documents = await query(
+      `SELECT id, application_id, rider_id, document_type, original_file_name, mime_type, file_size, verification_status, verified_by, verified_at, created_at
+       FROM rider_documents
+       WHERE rider_id = ? OR (application_id IS NOT NULL AND application_id = ?)
+       ORDER BY id ASC`,
+      [driver.id, driver.application_id || 0]
+    );
+
+    // Fetch delivery statistics for this driver
+    let stats = { total_assigned: 0, total_delivered: 0, total_failed: 0, active_deliveries: 0 };
+    try {
+      const statsRows = await query(
+        `SELECT 
+           COUNT(*) as total_assigned,
+           COALESCE(SUM(CASE WHEN order_status = 'DELIVERED' THEN 1 ELSE 0 END), 0) as total_delivered,
+           COALESCE(SUM(CASE WHEN order_status = 'DELIVERY_FAILED' THEN 1 ELSE 0 END), 0) as total_failed,
+           COALESCE(SUM(CASE WHEN order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY') THEN 1 ELSE 0 END), 0) as active_deliveries
+         FROM orders
+         WHERE assigned_driver_id = ?`,
+        [driver.id]
+      );
+      if (statsRows && statsRows.length > 0) {
+        stats = {
+          total_assigned: Number(statsRows[0].total_assigned || 0),
+          total_delivered: Number(statsRows[0].total_delivered || 0),
+          total_failed: Number(statsRows[0].total_failed || 0),
+          active_deliveries: Number(statsRows[0].active_deliveries || 0)
+        };
+      }
+    } catch (e) {
+      console.error('Stats fetch error:', e.message);
+    }
+
+    res.json({
+      success: true,
+      driver: {
+        ...driver,
+        documents,
+        stats
+      }
+    });
+
+  } catch (err) {
+    console.error('getAdminDriverById Error:', err);
+    res.status(500).json({ success: false, message: 'Server error retrieving driver details.' });
+  }
+}
+
+/**
  * 15. ADMIN: Update Driver Account Status (ACTIVE, SUSPENDED, DEACTIVATED)
  */
 async function updateDriverStatus(req, res) {
@@ -1115,6 +1208,7 @@ async function applyToRestaurant(req, res) {
       deliverOrder,
       markDeliveryFailed,
       getAdminDrivers,
+      getAdminDriverById,
       updateDriverStatus,
       getAvailableRestaurants,
       applyToRestaurant,

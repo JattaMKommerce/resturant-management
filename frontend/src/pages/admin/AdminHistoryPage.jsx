@@ -202,7 +202,7 @@ export default function AdminHistoryPage() {
       case 'SERVED':
       case 'PAID':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
             <CheckCircle2 className="w-3 h-3" /> {status}
           </span>
         );
@@ -210,7 +210,7 @@ export default function AdminHistoryPage() {
       case 'REJECTED':
       case 'DELIVERY_FAILED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
             <XCircle className="w-3 h-3" /> {status}
           </span>
         );
@@ -219,13 +219,13 @@ export default function AdminHistoryPage() {
       case 'OUT_FOR_DELIVERY':
       case 'SENT_TO_KITCHEN':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
             <Clock className="w-3 h-3" /> {status}
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-[#1F2937] border border-[#D7E5E8]">
             {status}
           </span>
         );
@@ -234,22 +234,22 @@ export default function AdminHistoryPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 pb-12">
+      <div className="space-y-6 pb-12 antialiased font-sans">
         {/* Page Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800 backdrop-blur-md">
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shadow-inner">
+              <div className="p-2.5 bg-[#EAF4F7] border border-[#D7E5E8] rounded-xl text-[#3A7D7C]">
                 <History className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#1F2937] tracking-tight flex items-center gap-2">
                   Past History & Orders Archive
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 uppercase">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#EAF4F7] text-[#3A7D7C] font-bold border border-[#D7E5E8] uppercase">
                     Unified Data
                   </span>
                 </h1>
-                <p className="text-sm text-slate-400">
+                <p className="text-xs sm:text-sm text-[#64748B] font-medium">
                   Instant past record inspection with dedicated Online and Offline Dine-In filtering
                 </p>
               </div>
@@ -260,16 +260,16 @@ export default function AdminHistoryPage() {
             <button
               onClick={fetchHistory}
               disabled={loading}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all hover:border-slate-600 disabled:opacity-50 shadow-sm"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] text-xs font-bold transition-all shadow-2xs disabled:opacity-50"
               title="Refresh History"
             >
-              <RefreshCw className={`w-4 h-4 text-amber-400 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 text-[#3A7D7C] ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
 
             <button
               onClick={exportToCSV}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-900/20"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-bold transition-all shadow-2xs"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
@@ -278,50 +278,50 @@ export default function AdminHistoryPage() {
         </div>
 
         {/* Channel Switcher Tabs (ALL | ONLINE | OFFLINE) */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#D7E5E8] pb-3">
           <div className="overflow-x-auto custom-scrollbar w-full md:w-auto pb-1">
-            <div className="inline-flex p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl whitespace-nowrap">
+            <div className="inline-flex p-1 bg-white rounded-2xl border border-[#D7E5E8] shadow-xs whitespace-nowrap">
               <button
                 onClick={() => setActiveTab('ALL')}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all ${
                   activeTab === 'ALL'
-                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                    : 'text-[#1F2937] hover:text-[#3A7D7C] hover:bg-[#EAF4F7]'
                 }`}
               >
                 <Layers className="w-4 h-4" />
                 <span>ALL PAST DATA</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'ALL' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${activeTab === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#64748B]'}`}>
                   {stats.totalOrders}
                 </span>
               </button>
 
               <button
                 onClick={() => setActiveTab('ONLINE')}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all ${
                   activeTab === 'ONLINE'
-                    ? 'bg-sky-500 text-slate-950 shadow-md shadow-sky-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                    : 'text-[#1F2937] hover:text-[#3A7D7C] hover:bg-[#EAF4F7]'
                 }`}
               >
                 <Globe className="w-4 h-4" />
                 <span>ONLINE ORDERS</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'ONLINE' ? 'bg-slate-950 text-sky-400' : 'bg-slate-800 text-slate-400'}`}>
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${activeTab === 'ONLINE' ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#64748B]'}`}>
                   {stats.onlineOrdersCount}
                 </span>
               </button>
 
               <button
                 onClick={() => setActiveTab('OFFLINE')}
-                className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all ${
                   activeTab === 'OFFLINE'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                    : 'text-[#1F2937] hover:text-[#3A7D7C] hover:bg-[#EAF4F7]'
                 }`}
               >
                 <UtensilsCrossed className="w-4 h-4" />
                 <span>OFFLINE / DINE-IN</span>
-                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${activeTab === 'OFFLINE' ? 'bg-slate-950 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${activeTab === 'OFFLINE' ? 'bg-white/20 text-white' : 'bg-slate-100 text-[#64748B]'}`}>
                   {stats.offlineOrdersCount}
                 </span>
               </button>
@@ -330,7 +330,7 @@ export default function AdminHistoryPage() {
 
           {/* Quick Date Presets */}
           <div className="overflow-x-auto custom-scrollbar w-full md:w-auto pb-1">
-            <div className="inline-flex flex-nowrap sm:flex-wrap items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800">
+            <div className="inline-flex flex-nowrap sm:flex-wrap items-center gap-1.5 bg-white p-1 rounded-2xl border border-[#D7E5E8] shadow-xs">
               {[
                 { id: 'today', label: 'Today' },
                 { id: 'yesterday', label: 'Yesterday' },
@@ -344,8 +344,8 @@ export default function AdminHistoryPage() {
                   onClick={() => handleDatePresetChange(p.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                     dateRangePreset === p.id
-                      ? 'bg-slate-700 text-white border border-slate-600 shadow-sm'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                      ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                      : 'text-[#64748B] hover:text-[#1F2937] hover:bg-slate-100'
                   }`}
                 >
                   {p.label}
@@ -357,29 +357,29 @@ export default function AdminHistoryPage() {
 
         {/* Custom Date Picker Bar (when custom preset chosen) */}
         {dateRangePreset === 'custom' && (
-          <div className="p-4 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-wrap items-center gap-4 animate-in fade-in duration-200">
+          <div className="p-4 bg-white border border-[#D7E5E8] rounded-2xl flex flex-wrap items-center gap-4 shadow-xs animate-in fade-in duration-200">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-bold text-slate-300">Start Date:</span>
+              <Calendar className="w-4 h-4 text-[#3A7D7C]" />
+              <span className="text-xs font-bold text-[#1F2937]">Start Date:</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="bg-slate-50 border border-[#D7E5E8] rounded-xl px-3 py-1.5 text-xs text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-300">End Date:</span>
+              <span className="text-xs font-bold text-[#1F2937]">End Date:</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="bg-slate-50 border border-[#D7E5E8] rounded-xl px-3 py-1.5 text-xs text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
               />
             </div>
             <button
               onClick={fetchHistory}
-              className="px-4 py-1.5 bg-amber-500 text-slate-950 rounded-xl text-xs font-extrabold hover:bg-amber-400 transition-all"
+              className="px-4 py-1.5 bg-[#3A7D7C] text-white rounded-xl text-xs font-bold hover:bg-[#2F6665] transition-all shadow-2xs"
             >
               Apply Filter
             </button>
@@ -388,85 +388,85 @@ export default function AdminHistoryPage() {
 
         {/* Metric KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 relative overflow-hidden shadow-lg">
+          <div className="p-5 rounded-2xl bg-white border border-[#D7E5E8] shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Past Records</p>
-                <h3 className="text-2xl font-black text-white mt-1">{stats.totalOrders}</h3>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Total Past Records</p>
+                <h3 className="text-2xl font-bold text-[#1F2937] mt-1">{stats.totalOrders}</h3>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] border border-[#D7E5E8] flex items-center justify-center text-[#3A7D7C]">
                 <ShoppingBag className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-slate-400 font-medium">
-              <span className="text-emerald-400 font-bold">{stats.completedCount} Completed</span>
-              <span>•</span>
-              <span className="text-rose-400 font-bold">{stats.cancelledCount} Cancelled</span>
+            <div className="mt-3 flex items-center gap-2 text-xs font-medium">
+              <span className="text-emerald-700 font-bold">{stats.completedCount} Completed</span>
+              <span className="text-[#64748B]">•</span>
+              <span className="text-rose-700 font-bold">{stats.cancelledCount} Cancelled</span>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 relative overflow-hidden shadow-lg">
+          <div className="p-5 rounded-2xl bg-white border border-[#D7E5E8] shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Past Revenue</p>
-                <h3 className="text-2xl font-black text-emerald-400 mt-1">₹{stats.totalRevenue.toLocaleString()}</h3>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Total Past Revenue</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">₹{stats.totalRevenue.toLocaleString()}</h3>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
                 <DollarSign className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-2 text-xs text-slate-400 font-medium">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-[#64748B] font-medium">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-700" />
               <span>Fulfilled order total</span>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 relative overflow-hidden shadow-lg">
+          <div className="p-5 rounded-2xl bg-white border border-[#D7E5E8] shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-wider text-sky-400">Online Volume</p>
-                <h3 className="text-2xl font-black text-white mt-1">{stats.onlineOrdersCount}</h3>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#3A7D7C]">Online Volume</p>
+                <h3 className="text-2xl font-bold text-[#1F2937] mt-1">{stats.onlineOrdersCount}</h3>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+              <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] border border-[#D7E5E8] flex items-center justify-center text-[#3A7D7C]">
                 <Globe className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-3 text-xs font-semibold text-sky-300">
+            <div className="mt-3 text-xs font-bold text-[#3A7D7C]">
               ₹{stats.onlineRevenue.toLocaleString()} Delivery Total
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/60 border border-slate-800 relative overflow-hidden shadow-lg">
+          <div className="p-5 rounded-2xl bg-white border border-[#D7E5E8] shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-wider text-orange-400">Offline / Dine-In</p>
-                <h3 className="text-2xl font-black text-white mt-1">{stats.offlineOrdersCount}</h3>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Offline / Dine-In</p>
+                <h3 className="text-2xl font-bold text-[#1F2937] mt-1">{stats.offlineOrdersCount}</h3>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700">
                 <UtensilsCrossed className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-3 text-xs font-semibold text-orange-300">
+            <div className="mt-3 text-xs font-bold text-amber-700">
               ₹{stats.offlineRevenue.toLocaleString()} Dine-In Total
             </div>
           </div>
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="p-4 bg-slate-900/80 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="p-4 bg-white rounded-2xl border border-[#D7E5E8] shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by Order #, Customer, Phone, Table #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full bg-slate-50 border border-[#D7E5E8] rounded-xl pl-10 pr-4 py-2.5 text-xs font-semibold text-[#1F2937] placeholder-[#64748B] focus:outline-none focus:border-[#3A7D7C] transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1F2937]"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -475,12 +475,12 @@ export default function AdminHistoryPage() {
 
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <div className="flex items-center gap-2">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-xs text-slate-400 font-bold">Status:</span>
+              <Filter className="w-3.5 h-3.5 text-[#64748B]" />
+              <span className="text-xs text-[#64748B] font-bold">Status:</span>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="bg-slate-50 border border-[#D7E5E8] rounded-xl px-3 py-2 text-xs font-semibold text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="DELIVERED">DELIVERED</option>
@@ -496,10 +496,10 @@ export default function AdminHistoryPage() {
         </div>
 
         {/* History Table */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full min-w-[850px] text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/90 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <table className="w-full min-w-[850px] text-left text-xs text-[#1F2937]">
+              <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-[#64748B] border-b border-[#D7E5E8]">
                 <tr>
                   <th className="px-5 py-4">Order / Channel</th>
                   <th className="px-5 py-4">Date & Time</th>
@@ -511,91 +511,81 @@ export default function AdminHistoryPage() {
                   <th className="px-5 py-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[#D7E5E8]">
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-slate-400">
+                    <td colSpan="8" className="px-6 py-12 text-center text-[#64748B]">
                       <div className="flex flex-col items-center justify-center gap-3">
-                        <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-xs font-semibold">Loading past data archive...</span>
+                        <div className="w-8 h-8 border-3 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs font-bold text-[#1F2937]">Loading past data archive...</span>
                       </div>
                     </td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-slate-400">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <History className="w-8 h-8 text-slate-600" />
-                        <p className="text-sm font-bold text-slate-300">No past orders found</p>
-                        <p className="text-xs text-slate-500">Try changing the channel filter, date range, or search keyword.</p>
-                      </div>
+                    <td colSpan="8" className="px-6 py-12 text-center text-[#64748B]">
+                      <History className="w-10 h-10 mx-auto mb-2 text-[#64748B]/40" />
+                      <p className="font-bold text-[#1F2937] text-sm">No History Records Found</p>
+                      <p className="text-xs text-[#64748B] mt-1">Try adjusting the date range, status, or search query.</p>
                     </td>
                   </tr>
                 ) : (
                   filteredOrders.map((order) => (
-                    <tr 
+                    <tr
                       key={`${order.source_type}-${order.id}`}
-                      className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
                       onClick={() => setSelectedOrder(order)}
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                     >
-                      {/* Order / Channel */}
-                      <td className="px-5 py-4 font-mono font-bold text-white whitespace-nowrap">
+                      {/* Order Number & Channel */}
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           {order.source_type === 'ONLINE' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                              <Globe className="w-3 h-3" /> ONLINE
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] flex items-center gap-1">
+                              <Globe className="w-2.5 h-2.5" /> ONLINE
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                              <UtensilsCrossed className="w-3 h-3" /> OFFLINE
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                              <UtensilsCrossed className="w-2.5 h-2.5" /> DINE-IN
                             </span>
                           )}
-                          <span className="group-hover:text-amber-400 transition-colors">{order.order_number}</span>
+                          <span className="font-bold text-[#3A7D7C] font-mono text-xs">{order.order_number}</span>
                         </div>
                       </td>
 
                       {/* Date & Time */}
-                      <td className="px-5 py-4 text-slate-400 whitespace-nowrap">
-                        <div className="font-semibold text-slate-200">
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="text-xs font-semibold text-[#1F2937]">
                           {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
                         </div>
-                        <div className="text-[10px] text-slate-500">
+                        <div className="text-[11px] text-[#64748B]">
                           {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </div>
                       </td>
 
                       {/* Customer / Destination */}
-                      <td className="px-5 py-4">
-                        <div className="font-bold text-white truncate max-w-[160px]">{order.customer_name || 'Guest'}</div>
-                        <div className="text-[11px] text-slate-400 truncate max-w-[180px]">
+                      <td className="px-5 py-4 max-w-xs">
+                        <div className="font-bold text-[#1F2937] truncate">{order.customer_name || 'Guest'}</div>
+                        <div className="text-[11px] text-[#64748B] truncate">
                           {order.source_type === 'ONLINE' ? (
-                            order.delivery_area || order.delivery_address || 'Online Order'
+                            order.delivery_address || order.delivery_area || 'Online delivery'
                           ) : (
-                            order.table_number ? `Table ${order.table_number}` : (order.room_number ? `Room ${order.room_number}` : 'Takeaway / Counter')
+                            order.table_number ? `Table #${order.table_number}` : (order.room_number ? `Room #${order.room_number}` : 'Takeaway Counter')
                           )}
                         </div>
                       </td>
 
                       {/* Items Summary */}
-                      <td className="px-5 py-4 text-slate-300">
-                        {order.items && order.items.length > 0 ? (
-                          <div className="truncate max-w-[200px]" title={order.items.map(i => `${i.quantity}x ${i.item_name}`).join(', ')}>
-                            {order.items.map(i => `${i.quantity}x ${i.item_name}`).join(', ')}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 italic">Items archived</span>
-                        )}
+                      <td className="px-5 py-4 max-w-xs">
+                        <span className="text-xs text-[#1F2937] line-clamp-1">
+                          {order.items_summary || (order.items && order.items.map(i => `${i.quantity}x ${i.item_name}`).join(', ')) || 'Standard Meal'}
+                        </span>
                       </td>
 
-                      {/* Payment */}
+                      {/* Payment Method */}
                       <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="font-semibold text-slate-200">{order.payment_method || 'CASH'}</div>
-                        <div className="text-[10px]">
-                          {order.payment_status === 'PAID' ? (
-                            <span className="text-emerald-400 font-bold">● Paid</span>
-                          ) : (
-                            <span className="text-amber-400 font-bold">● {order.payment_status || 'Unpaid'}</span>
-                          )}
+                        <div className="font-bold text-xs text-[#1F2937]">{order.payment_method || 'CASH'}</div>
+                        <div className={`text-[10px] font-bold ${order.payment_status === 'COMPLETED' || order.payment_status === 'PAID' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          • {order.payment_status || 'PENDING'}
                         </div>
                       </td>
 
@@ -605,17 +595,19 @@ export default function AdminHistoryPage() {
                       </td>
 
                       {/* Amount */}
-                      <td className="px-5 py-4 text-right font-black text-amber-400 font-mono text-sm whitespace-nowrap">
-                        ₹{(order.total_amount || 0).toLocaleString()}
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <span className="font-mono font-bold text-sm text-[#1F2937]">
+                          ₹{parseFloat(order.total_amount || 0).toLocaleString()}
+                        </span>
                       </td>
 
                       {/* Action */}
                       <td className="px-5 py-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setSelectedOrder(order)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 mx-auto"
                         >
-                          <Eye className="w-3.5 h-3.5 text-amber-400" />
+                          <Eye className="w-3.5 h-3.5 text-[#3A7D7C]" />
                           <span>Receipt</span>
                         </button>
                       </td>
@@ -629,25 +621,25 @@ export default function AdminHistoryPage() {
 
         {/* Order Details Receipt Modal / Drawer */}
         {selectedOrder && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
             <div 
-              className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+              className="bg-white border border-[#D7E5E8] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70 gap-2">
+              <div className="p-4 sm:p-5 border-b border-[#D7E5E8] flex items-center justify-between bg-slate-50 gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 shrink-0">
+                  <div className="p-2 rounded-xl bg-[#EAF4F7] border border-[#D7E5E8] text-[#3A7D7C] shrink-0">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-extrabold text-white text-sm sm:text-base flex items-center gap-2 truncate">
+                    <h3 className="font-bold text-[#1F2937] text-sm sm:text-base flex items-center gap-2 truncate">
                       Receipt #{selectedOrder.order_number}
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase bg-slate-800 text-slate-300">
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-bold uppercase bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]">
                         {selectedOrder.source_type}
                       </span>
                     </h3>
-                    <p className="text-[11px] sm:text-xs text-slate-400 truncate">
+                    <p className="text-[11px] sm:text-xs text-[#64748B] truncate">
                       Placed on {new Date(selectedOrder.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -656,14 +648,14 @@ export default function AdminHistoryPage() {
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={printReceipt}
-                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors"
+                    className="p-2 bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl border border-[#D7E5E8] transition-colors shadow-2xs"
                     title="Print Receipt"
                   >
-                    <Printer className="w-4 h-4" />
+                    <Printer className="w-4 h-4 text-[#3A7D7C]" />
                   </button>
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 transition-colors"
+                    className="p-2 bg-white hover:bg-slate-50 text-[#64748B] hover:text-[#1F2937] rounded-xl border border-[#D7E5E8] transition-colors shadow-2xs"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -673,20 +665,20 @@ export default function AdminHistoryPage() {
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar text-xs">
                 {/* Meta details grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-[#D7E5E8]">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Customer Information</span>
-                    <p className="font-bold text-white text-sm mt-0.5">{selectedOrder.customer_name || 'Guest'}</p>
-                    <p className="text-slate-400 flex items-center gap-1 mt-0.5">
-                      <Phone className="w-3 h-3 text-amber-400" /> {selectedOrder.customer_phone || 'N/A'}
+                    <span className="text-[10px] uppercase font-bold text-[#64748B] block">Customer Information</span>
+                    <p className="font-bold text-[#1F2937] text-sm mt-0.5">{selectedOrder.customer_name || 'Guest'}</p>
+                    <p className="text-[#64748B] flex items-center gap-1 mt-0.5 font-medium">
+                      <Phone className="w-3 h-3 text-[#3A7D7C]" /> {selectedOrder.customer_phone || 'N/A'}
                     </p>
                   </div>
 
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                    <span className="text-[10px] uppercase font-bold text-[#64748B] block">
                       {selectedOrder.source_type === 'ONLINE' ? 'Delivery Address' : 'Dining Location'}
                     </span>
-                    <p className="font-bold text-white mt-0.5">
+                    <p className="font-bold text-[#1F2937] mt-0.5">
                       {selectedOrder.source_type === 'ONLINE' ? (
                         selectedOrder.delivery_address || 'Online Order'
                       ) : (
@@ -694,28 +686,28 @@ export default function AdminHistoryPage() {
                       )}
                     </p>
                     {selectedOrder.delivery_area && (
-                      <p className="text-slate-400 mt-0.5 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-sky-400" /> {selectedOrder.delivery_area}
+                      <p className="text-[#64748B] mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-[#3A7D7C]" /> {selectedOrder.delivery_area}
                       </p>
                     )}
                   </div>
 
                   {selectedOrder.driver_name && (
-                    <div className="col-span-2 pt-2 border-t border-slate-800/60 flex items-center gap-2">
-                      <Bike className="w-4 h-4 text-emerald-400" />
-                      <span className="text-slate-400">Assigned Driver:</span>
-                      <span className="font-bold text-white">{selectedOrder.driver_name}</span>
-                      {selectedOrder.driver_phone && <span className="text-slate-500">({selectedOrder.driver_phone})</span>}
+                    <div className="col-span-2 pt-2 border-t border-[#D7E5E8] flex items-center gap-2">
+                      <Bike className="w-4 h-4 text-emerald-700" />
+                      <span className="text-[#64748B]">Assigned Driver:</span>
+                      <span className="font-bold text-[#1F2937]">{selectedOrder.driver_name}</span>
+                      {selectedOrder.driver_phone && <span className="text-[#64748B]">({selectedOrder.driver_phone})</span>}
                     </div>
                   )}
                 </div>
 
                 {/* Itemized breakdown table */}
                 <div>
-                  <h4 className="font-bold text-white text-xs uppercase tracking-wider text-slate-400 mb-2">Itemized Items</h4>
-                  <div className="border border-slate-800 rounded-xl overflow-hidden">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-[#64748B] mb-2">Itemized Items</h4>
+                  <div className="border border-[#D7E5E8] rounded-xl overflow-hidden bg-white">
                     <table className="w-full text-left">
-                      <thead className="bg-slate-950 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
+                      <thead className="bg-slate-50 text-[10px] uppercase font-bold text-[#64748B] border-b border-[#D7E5E8]">
                         <tr>
                           <th className="px-4 py-2.5">Item Name</th>
                           <th className="px-4 py-2.5 text-center">Qty</th>
@@ -723,19 +715,19 @@ export default function AdminHistoryPage() {
                           <th className="px-4 py-2.5 text-right">Total</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                      <tbody className="divide-y divide-[#D7E5E8] text-[#1F2937]">
                         {selectedOrder.items && selectedOrder.items.length > 0 ? (
                           selectedOrder.items.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-slate-800/30">
-                              <td className="px-4 py-2.5 font-medium text-white">{item.item_name}</td>
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="px-4 py-2.5 font-semibold text-[#1F2937]">{item.item_name}</td>
                               <td className="px-4 py-2.5 text-center font-bold">{item.quantity}</td>
-                              <td className="px-4 py-2.5 text-right font-mono">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
-                              <td className="px-4 py-2.5 text-right font-mono font-bold text-slate-200">₹{parseFloat(item.item_total || 0).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-right font-mono text-[#64748B]">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                              <td className="px-4 py-2.5 text-right font-mono font-bold text-[#1F2937]">₹{parseFloat(item.item_total || 0).toFixed(2)}</td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="4" className="px-4 py-4 text-center text-slate-500 italic">
+                            <td colSpan="4" className="px-4 py-4 text-center text-[#64748B] italic">
                               Item details recorded in billing ledger
                             </td>
                           </tr>
@@ -746,51 +738,51 @@ export default function AdminHistoryPage() {
                 </div>
 
                 {/* Financial Summary */}
-                <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex justify-between text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-xl border border-[#D7E5E8] space-y-2">
+                  <div className="flex justify-between text-[#64748B]">
                     <span>Subtotal:</span>
-                    <span className="font-mono text-white">₹{parseFloat(selectedOrder.subtotal || 0).toFixed(2)}</span>
+                    <span className="font-mono font-bold text-[#1F2937]">₹{parseFloat(selectedOrder.subtotal || 0).toFixed(2)}</span>
                   </div>
                   {selectedOrder.tax_amount > 0 && (
-                    <div className="flex justify-between text-slate-400">
+                    <div className="flex justify-between text-[#64748B]">
                       <span>GST / Tax:</span>
-                      <span className="font-mono text-white">₹{parseFloat(selectedOrder.tax_amount).toFixed(2)}</span>
+                      <span className="font-mono text-[#1F2937]">₹{parseFloat(selectedOrder.tax_amount).toFixed(2)}</span>
                     </div>
                   )}
                   {selectedOrder.delivery_fee > 0 && (
-                    <div className="flex justify-between text-slate-400">
+                    <div className="flex justify-between text-[#64748B]">
                       <span>Delivery Fee:</span>
-                      <span className="font-mono text-white">₹{parseFloat(selectedOrder.delivery_fee).toFixed(2)}</span>
+                      <span className="font-mono text-[#1F2937]">₹{parseFloat(selectedOrder.delivery_fee).toFixed(2)}</span>
                     </div>
                   )}
                   {selectedOrder.service_charge > 0 && (
-                    <div className="flex justify-between text-slate-400">
+                    <div className="flex justify-between text-[#64748B]">
                       <span>Service Charge:</span>
-                      <span className="font-mono text-white">₹{parseFloat(selectedOrder.service_charge).toFixed(2)}</span>
+                      <span className="font-mono text-[#1F2937]">₹{parseFloat(selectedOrder.service_charge).toFixed(2)}</span>
                     </div>
                   )}
                   {selectedOrder.discount_amount > 0 && (
-                    <div className="flex justify-between text-emerald-400">
+                    <div className="flex justify-between text-emerald-700 font-medium">
                       <span>Discount:</span>
                       <span className="font-mono">-₹{parseFloat(selectedOrder.discount_amount).toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="pt-2 border-t border-slate-800 flex justify-between text-base font-black text-amber-400">
+                  <div className="pt-2 border-t border-[#D7E5E8] flex justify-between text-base font-bold text-[#1F2937]">
                     <span>Grand Total:</span>
-                    <span className="font-mono">₹{parseFloat(selectedOrder.total_amount || 0).toFixed(2)}</span>
+                    <span className="font-mono text-[#3A7D7C]">₹{parseFloat(selectedOrder.total_amount || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="p-4 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between">
+              <div className="p-4 border-t border-[#D7E5E8] bg-slate-50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">Status:</span>
+                  <span className="text-[#64748B] font-medium">Status:</span>
                   {getStatusBadge(selectedOrder.order_status)}
                 </div>
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-colors"
+                  className="px-5 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs transition-colors shadow-2xs"
                 >
                   Close
                 </button>

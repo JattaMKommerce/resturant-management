@@ -510,11 +510,12 @@ async function streamDocument(req, res) {
     const { riderId, documentId } = req.params;
 
     const [doc] = await query(
-      `SELECT d.*, a.restaurant_id
+      `SELECT d.*, COALESCE(a.restaurant_id, dra.restaurant_id) as restaurant_id
        FROM rider_documents d
-       JOIN rider_applications a ON d.application_id = a.id
-       WHERE d.id = ? AND (d.rider_id = ? OR d.application_id IS NOT NULL)`,
-      [documentId, riderId]
+       LEFT JOIN rider_applications a ON d.application_id = a.id
+       LEFT JOIN driver_restaurant_assignments dra ON d.rider_id = dra.driver_id
+       WHERE d.id = ?`,
+      [documentId]
     );
 
     if (!doc) {

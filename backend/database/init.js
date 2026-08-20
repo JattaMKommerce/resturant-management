@@ -10,9 +10,7 @@ const dbUser = process.env.DB_USER || 'root';
 const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 const dbName = process.env.DB_NAME || 'hotel_db';
 
-async function initDatabase(options = {}) {
-  console.log('🔄 Initializing MySQL Database setup...');
-  const forceReset = (options === true || options.forceReset || process.argv.includes('--reset')) && process.env.NODE_ENV !== 'production';
+
   let connection;
   try {
     let rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
