@@ -205,46 +205,6 @@ async function initDatabase(options = {}) {
       'DELIVERED','REJECTED','CANCELLED','DELIVERY_FAILED'
     ) NOT NULL DEFAULT 'PENDING'`);
 
-        await conn.query(`ALTER TABLE orders MODIFY COLUMN payment_status ENUM('PENDING','COMPLETED','FAILED','REFUNDED') NOT NULL DEFAULT 'PENDING'`);
-        await conn.query(`ALTER TABLE payments MODIFY COLUMN payment_method VARCHAR(50) NOT NULL DEFAULT 'CASH'`);
-        await conn.query(`ALTER TABLE restaurant_orders MODIFY COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'UNPAID'`);
-        await conn.query(`ALTER TABLE bills MODIFY COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'UNPAID'`);
-        await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
-        await addColumnIfNotExists(conn, 'restaurant_orders', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
-        await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
-      } catch (e) { }
-
-      // Menu items columns
-      await addColumnIfNotExists(conn, 'menu_items', 'kitchen_department_id', "INT DEFAULT NULL");
-      await addColumnIfNotExists(conn, 'menu_items', 'tax_percentage', "DECIMAL(5, 2) DEFAULT 5.00");
-      await addColumnIfNotExists(conn, 'menu_items', 'is_available_online', "TINYINT(1) DEFAULT 1");
-      await addColumnIfNotExists(conn, 'menu_items', 'is_active', "TINYINT(1) DEFAULT 1");
-
-      // KOTs ENUM migration & Online Order FK relaxation
-      try {
-        await conn.query(`ALTER TABLE kots MODIFY COLUMN order_type ENUM('DINE_IN','ROOM_SERVICE','TAKEAWAY','ONLINE','DELIVERY') DEFAULT 'DINE_IN'`);
-      } catch (e) { }
-      try {
-        await conn.query(`ALTER TABLE kots DROP FOREIGN KEY kots_ibfk_1`);
-      } catch (e) { }
-      try {
-        await conn.query(`ALTER TABLE kot_items DROP FOREIGN KEY kot_items_ibfk_2`);
-      } catch (e) { }
-      await addColumnIfNotExists(conn, 'kots', 'online_order_id', "INT DEFAULT NULL");
-      await addColumnIfNotExists(conn, 'kot_items', 'online_order_item_id', "INT DEFAULT NULL");
-
-      // Order items columns
-      await addColumnIfNotExists(conn, 'order_items', 'status', "VARCHAR(30) DEFAULT 'PENDING'");
-      await addColumnIfNotExists(conn, 'order_items', 'tax_amount', "DECIMAL(10, 2) DEFAULT 0.00");
-      await addColumnIfNotExists(conn, 'order_items', 'kitchen_department_id', "INT DEFAULT NULL");
-      await addColumnIfNotExists(conn, 'order_items', 'prep_time_minutes', "INT DEFAULT 15");
-
-      // Phone column length fix for +91 formatting and plain_password
-      await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
-      try {
-        await conn.query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(30) NOT NULL`);
-        await conn.query(`ALTER TABLE restaurants MODIFY COLUMN phone VARCHAR(30) DEFAULT NULL`);
-      } catch (e) { }
 
       // Payments columns
       await addColumnIfNotExists(conn, 'payments', 'bill_id', "INT DEFAULT NULL");

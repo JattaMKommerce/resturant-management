@@ -33,19 +33,19 @@ export default function DriverLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
-      <div className="max-w-md w-full bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-2xl space-y-6">
+    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center p-4 font-sans antialiased">
+      <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-[#D7E5E8] shadow-xl space-y-6">
         
         <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-black mx-auto shadow-xl shadow-orange-500/20">
+          <div className="w-14 h-14 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold mx-auto shadow-md shadow-[#3A7D7C]/20">
             <Bike className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-black text-white mt-4">Delivery Partner Portal</h2>
-          <p className="text-xs text-slate-400 mt-1">Sign in with your Email (Gmail) and Password to start deliveries</p>
+          <h2 className="text-2xl font-extrabold text-[#1F2937] mt-3 tracking-tight">Delivery Partner Portal</h2>
+          <p className="text-xs text-[#64748B] mt-1">Sign in with your Email (Gmail) and Password to start deliveries</p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold text-center flex items-center gap-2">
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -53,36 +53,36 @@ export default function DriverLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold text-slate-300 mb-1">Email / Gmail or Mobile Number *</label>
+            <label className="block font-bold text-[#1F2937] mb-1">Email / Gmail or Mobile Number *</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 required
                 value={loginInput}
                 onChange={(e) => setLoginInput(e.target.value)}
                 placeholder="your.email@gmail.com or mobile"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:outline-none"
+                className="w-full pl-10 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-medium placeholder:text-[#94A3B8] focus:ring-2 focus:ring-[#3A7D7C]/20 focus:border-[#3A7D7C] focus:outline-none transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-bold text-slate-300 mb-1">Password *</label>
+            <label className="block font-bold text-[#1F2937] mb-1">Password *</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your account password"
-                className="w-full pl-10 pr-11 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white font-medium focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:outline-none"
+                className="w-full pl-10 pr-11 py-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-medium placeholder:text-[#94A3B8] focus:ring-2 focus:ring-[#3A7D7C]/20 focus:border-[#3A7D7C] focus:outline-none transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1F2937]"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -92,21 +92,21 @@ export default function DriverLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 font-extrabold text-xs text-white rounded-xl transition-all shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 mt-4"
+            className="w-full py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-extrabold text-xs text-white rounded-xl transition-all shadow-md shadow-[#3A7D7C]/20 flex items-center justify-center gap-2 mt-4"
           >
             {loading ? 'Signing In...' : 'Sign In to Rider Duty'} <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        <div className="pt-4 border-t border-slate-800 text-center space-y-3">
-          <p className="text-xs text-slate-400">Want to deliver for a restaurant?</p>
+        <div className="pt-4 border-t border-[#D7E5E8] text-center space-y-3">
+          <p className="text-xs text-[#64748B]">Want to deliver for a restaurant?</p>
           <Link
             to="/driver/apply"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-orange-400 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-[#D7E5E8] text-xs font-bold text-[#3A7D7C] transition-all shadow-2xs"
           >
             <UserPlus className="w-4 h-4" /> Apply as Delivery Partner
           </Link>
-          <p className="text-[10px] text-slate-500 block pt-1">Demo Rider: driver1@hotel.com / driver123</p>
+          <p className="text-[10px] text-[#64748B] block pt-1">Demo Rider: driver1@hotel.com / driver123</p>
         </div>
 
       </div>

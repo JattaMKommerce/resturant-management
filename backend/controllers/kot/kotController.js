@@ -56,7 +56,7 @@ async function getKOTs(req, res, next) {
 
     // Fetch items for each KOT
     for (let kot of kots) {
-      const [items] = await pool.query(
+      let [items] = await pool.query(
         `SELECT ki.*, oi.unit_price, COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0.00) as total_price,
                 COALESCE(NULLIF(ki.item_name, ''), oi.item_name, m.name, ord_i.item_name, 'Food Item') as item_name
          FROM kot_items ki
@@ -67,6 +67,19 @@ async function getKOTs(req, res, next) {
         [kot.id]
       );
       
+      // Fallback for online orders or legacy KOTs if kot_items is empty
+      if (items.length === 0 && kot.order_id) {
+        const [fallbackItems] = await pool.query(
+          `SELECT oi.id as order_item_id, oi.item_name, oi.quantity, oi.unit_price, oi.item_total as total_price,
+                  oi.special_instructions, COALESCE(oi.prep_time_minutes, 15) as prep_time_minutes,
+                  'PENDING' as status, '[]' as modifiers_json
+           FROM order_items oi
+           WHERE oi.order_id = ?`,
+          [kot.order_id]
+        );
+        items = fallbackItems;
+      }
+
       for (let item of items) {
         if (typeof item.modifiers_json === 'string') {
           try {
@@ -116,7 +129,7 @@ async function getKOTById(req, res, next) {
     }
 
     const kot = kots[0];
-    const [items] = await pool.query(
+    let [items] = await pool.query(
       `SELECT ki.*, oi.unit_price, COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0.00) as total_price,
               COALESCE(NULLIF(ki.item_name, ''), oi.item_name, m.name, ord_i.item_name, 'Food Item') as item_name
        FROM kot_items ki
@@ -126,6 +139,19 @@ async function getKOTById(req, res, next) {
        WHERE ki.kot_id = ?`,
       [kot.id]
     );
+
+    // Fallback for online orders or legacy KOTs if kot_items is empty
+    if (items.length === 0 && kot.order_id) {
+      const [fallbackItems] = await pool.query(
+        `SELECT oi.id as order_item_id, oi.item_name, oi.quantity, oi.unit_price, oi.item_total as total_price,
+                oi.special_instructions, COALESCE(oi.prep_time_minutes, 15) as prep_time_minutes,
+                'PENDING' as status, '[]' as modifiers_json
+         FROM order_items oi
+         WHERE oi.order_id = ?`,
+        [kot.order_id]
+      );
+      items = fallbackItems;
+    }
 
     for (let item of items) {
       item.modifiers = typeof item.modifiers_json === 'string' ? JSON.parse(item.modifiers_json) : (item.modifiers_json || []);
