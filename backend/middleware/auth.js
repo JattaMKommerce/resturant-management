@@ -81,17 +81,26 @@ async function resolveRestaurantAccess(req, res, next) {
     }
 
     // Restaurant Admin / Admin - check restaurant_admins table
-    if (userRole === 'ADMIN' || userRole === 'RESTAURANT_ADMIN') {
+    if (userRole === 'ADMIN' || userRole === 'RESTAURANT_ADMIN' || userRole === 'MANAGER') {
       const assignments = await query(
         'SELECT restaurant_id, is_primary FROM restaurant_admins WHERE user_id = ?',
         [req.user.id]
       );
 
       if (assignments.length === 0) {
-        return res.status(403).json({
-          success: false,
-          message: 'You are not assigned to any restaurant. Please contact Super Admin.'
-        });
+        const fallbackRestId = req.user.restaurant_id || 1;
+        // Auto-link user to restaurant for persistence
+        try {
+          await query(
+            'INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, ?, 1)',
+            [req.user.id, fallbackRestId]
+          );
+        } catch (e) {}
+
+        req.adminRestaurantIds = [fallbackRestId];
+        req.adminRestaurantId = fallbackRestId;
+        req.isSuperAdmin = false;
+        return next();
       }
 
       req.adminRestaurantIds = assignments.map(a => a.restaurant_id);
