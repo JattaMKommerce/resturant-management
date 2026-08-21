@@ -89,16 +89,24 @@ async function initDatabase(options = {}) {
         // Always ensure super admin exists
         await getOrCreateUser(connection, 'Master Super Admin', 'superadmin@gmail.com', 'admin@123', '+91 9999999999', 'SUPER_ADMIN');
 
+        // Seed / Ensure menu for all restaurants in database
+        const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
+        if (allRestaurants.length === 0) {
+          await ensureRestaurantMenu(connection, 1);
+        } else {
+          for (const r of allRestaurants) {
+            await ensureRestaurantMenu(connection, r.id);
+          }
+        }
+
         if (userRows[0].count <= 1 || menuRows[0].count === 0 || (forceReset && process.env.NODE_ENV !== 'production')) {
           console.log('🌱 Seeding initial data...');
           await seedData(connection);
-          await ensureRestaurantMenu(connection, 1);
           console.log('✅ Seed data inserted successfully!');
         } else {
           console.log('ℹ️ Database already contains data.');
           await ensureRestaurantAdmins(connection);
           await ensureEssentialStaffUsers(connection);
-          await ensureRestaurantMenu(connection, 1);
           await seedKOTData(connection);
         }
 
@@ -905,4 +913,4 @@ async function initDatabase(options = {}) {
       });
     }
 
-    module.exports = { initDatabase };
+    module.exports = { initDatabase, ensureRestaurantMenu, seedKOTData };
