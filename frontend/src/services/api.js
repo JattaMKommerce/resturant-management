@@ -40,6 +40,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('hotel_token');
+      localStorage.removeItem('hms_token');
+      localStorage.removeItem('hotel_user');
+      localStorage.removeItem('hotel_admin_restaurant');
+    }
     const message = error.response?.data?.message || error.message || 'An unexpected network error occurred';
     return Promise.reject(new Error(message));
   }
