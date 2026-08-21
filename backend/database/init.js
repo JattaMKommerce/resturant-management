@@ -204,6 +204,7 @@ async function initDatabase(options = {}) {
       'ASSIGNED_TO_DRIVER','DRIVER_ACCEPTED','PICKED_UP','OUT_FOR_DELIVERY',
       'DELIVERED','REJECTED','CANCELLED','DELIVERY_FAILED'
     ) NOT NULL DEFAULT 'PENDING'`);
+      } catch (e) {}
 
 
       // Payments columns
