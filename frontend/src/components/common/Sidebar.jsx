@@ -12,12 +12,12 @@ import {
   Receipt, 
   Boxes, 
   BarChart3, 
-  ShieldAlert,
-  Clock,
-  Bell,
-  History,
-  CheckCheck,
-  Activity
+  ShieldAlert, 
+  Clock, 
+  Bell, 
+  History, 
+  CheckCheck, 
+  Activity 
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -67,22 +67,22 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 min-h-[calc(100vh-4rem)]">
+    <aside className="w-64 bg-white border-r border-[#D7E5E8] flex flex-col shrink-0 min-h-[calc(100vh-4rem)] shadow-xs font-sans antialiased">
       {/* User Profile Card */}
       {user && (
-        <div className="p-4 border-b border-slate-800 bg-slate-950/40 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-extrabold text-base">
+        <div className="p-4 border-b border-[#D7E5E8] bg-[#EAF4F7]/40 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold text-sm shadow-2xs">
             {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="overflow-hidden">
-            <div className="text-sm font-bold text-white truncate">{user.name}</div>
-            <div className="text-[11px] font-black text-amber-400 uppercase tracking-wider">{user.role}</div>
+            <div className="text-xs font-bold text-[#1F2937] truncate">{user.name}</div>
+            <div className="text-[10px] font-semibold text-[#3A7D7C] uppercase tracking-wider">{user.role}</div>
           </div>
         </div>
       )}
 
       {/* Navigation Items */}
-      <div className="p-4 flex-1 space-y-1 overflow-y-auto">
+      <div className="p-3 flex-1 space-y-1 overflow-y-auto custom-scrollbar">
         {items.map((item, index) => {
           const Icon = item.icon;
           return (
@@ -91,22 +91,22 @@ export default function Sidebar() {
               to={item.path}
               end={item.path === '/dashboard'}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-lg shadow-amber-500/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                    ? 'bg-[#3A7D7C] text-white font-bold shadow-2xs'
+                    : 'text-[#1F2937] hover:text-[#3A7D7C] hover:bg-[#EAF4F7]'
                 }`
               }
             >
-              <Icon className="w-5 h-5 shrink-0" />
+              <Icon className="w-4 h-4 shrink-0" />
               <span className="truncate">{item.name}</span>
             </NavLink>
           );
         })}
       </div>
 
-      <div className="p-4 border-t border-slate-800 text-[11px] text-slate-500 text-center font-medium">
-        GRAND PALACE HMS v1.0
+      <div className="p-3 border-t border-[#D7E5E8] text-[10px] text-[#64748B] text-center font-semibold bg-[#EAF4F7]/20">
+        GRAND PALACE HMS
       </div>
     </aside>
   );

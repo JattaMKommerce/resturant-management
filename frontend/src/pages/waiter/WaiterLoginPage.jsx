@@ -31,59 +31,57 @@ export default function WaiterLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6 relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col justify-center items-center p-4 font-sans antialiased">
+      <div className="max-w-md w-full bg-white border border-[#D7E5E8] rounded-3xl p-8 shadow-xl space-y-6">
+        
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-slate-950 flex items-center justify-center font-bold mx-auto shadow-lg shadow-orange-500/20">
-            <ConciergeBell className="w-7 h-7" />
+          <div className="w-14 h-14 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold mx-auto shadow-md shadow-[#3A7D7C]/20">
+            <ConciergeBell className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Service Staff Login</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="text-2xl font-extrabold text-[#1F2937] tracking-tight mt-3">Service Staff Login</h2>
+          <p className="text-xs text-[#64748B]">
             Sign in to start your shift, receive food ready alerts, and manage tables
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold text-center animate-in fade-in">
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-in fade-in">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold text-slate-300 mb-1">Staff Email</label>
+            <label className="block font-bold text-[#1F2937] mb-1">Staff Email</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
                 required
                 placeholder="e.g. waiter@hotel.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white font-medium focus:outline-none focus:border-amber-500 transition-colors"
+                className="w-full pl-10 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-medium placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3A7D7C]/20 focus:border-[#3A7D7C] transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-bold text-slate-300 mb-1">Password</label>
+            <label className="block font-bold text-[#1F2937] mb-1">Password</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-11 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white font-medium focus:outline-none focus:border-amber-500 transition-colors"
+                className="w-full pl-10 pr-11 py-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-medium placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3A7D7C]/20 focus:border-[#3A7D7C] transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 focus:outline-none p-1 rounded-md"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#1F2937] focus:outline-none p-1 rounded-md"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -93,10 +91,10 @@ export default function WaiterLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+            className="w-full py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-extrabold rounded-xl transition-all shadow-md shadow-[#3A7D7C]/20 flex items-center justify-center gap-2 text-sm disabled:opacity-50 mt-2"
           >
             {loading ? (
-              <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
                 <span>Start Shift / Sign In</span>
@@ -107,9 +105,9 @@ export default function WaiterLoginPage() {
         </form>
 
         {/* Link to Registration */}
-        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+        <div className="text-center text-xs text-[#64748B] pt-3 border-t border-[#D7E5E8]">
           <span>New staff member? </span>
-          <Link to="/waiter/register" className="text-amber-400 hover:text-amber-300 font-bold underline underline-offset-2">
+          <Link to="/waiter/register" className="text-[#3A7D7C] hover:underline font-bold">
             Register as Waiter
           </Link>
         </div>
