@@ -162,6 +162,9 @@ const AdminRedirect = () => {
   const { restaurant, user, loading } = useAuth();
   if (loading) {
     return (
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center font-sans antialiased">
+        <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
   const slug = restaurant?.slug || user?.restaurant_slug;

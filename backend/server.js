@@ -35,7 +35,16 @@ const server = http.createServer(app);
 // ──────────────────────────────────────────────────────────
 // 1. CORS CONFIGURATION
 // ──────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173,https://resturant-management-pied.vercel.app')
+const rawOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'https://resturant-management-pied.vercel.app'
+].filter(Boolean).join(',');
+
+const allowedOrigins = rawOrigins
   .split(',')
   .map(url => url.trim().replace(/\/+$/, ''))
   .filter(Boolean);
@@ -46,16 +55,20 @@ const corsOptions = {
     if (!origin) return callback(null, true);
 
     // Development local network / localhost access
-    if (!isProduction || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin) || allowedOrigins.some(ao => origin.endsWith(ao.replace(/^https?:\/\//, '')))) {
+    if (
+      !isProduction ||
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('http://127.0.0.1') ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('vercel.app') ||
+      allowedOrigins.includes(origin) ||
+      allowedOrigins.some(ao => origin.endsWith(ao.replace(/^https?:\/\//, '')))
+    ) {
       return callback(null, true);
     }
 
     console.warn(`[CORS Blocked] Origin "${origin}" not in allowed list:`, allowedOrigins);
-    callback(new Error(`CORS origin "${origin}" not allowed by security policy.`));
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
@@ -79,6 +92,7 @@ const corsOptions = {
 // ──────────────────────────────────────────────────────────
 app.use(securityHeaders);
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(requestCorrelationId);
 app.use(requestLogger);
 app.use(generalRateLimiter);
