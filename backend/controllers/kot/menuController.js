@@ -1,9 +1,40 @@
 const pool = require('../../config/database');
 const { sendSuccess, sendError } = require('../../utils/response');
+const { ensureRestaurantMenu, seedKOTData } = require('../../database/init');
+
+let isSeeding = false;
+async function autoSeedIfEmpty() {
+  if (isSeeding) return;
+  try {
+    const [catCheck] = await pool.query('SELECT COUNT(*) as count FROM categories');
+    const [deptCheck] = await pool.query('SELECT COUNT(*) as count FROM kitchen_departments');
+    const [itemCheck] = await pool.query('SELECT COUNT(*) as count FROM menu_items');
+    
+    if (catCheck[0].count === 0 || deptCheck[0].count === 0 || itemCheck[0].count === 0) {
+      isSeeding = true;
+      console.log('🔄 Live Database Self-Healing: Seeding missing categories, departments, and menu items...');
+      await seedKOTData(pool);
+      const [allRestaurants] = await pool.query('SELECT id FROM restaurants');
+      if (allRestaurants.length === 0) {
+        await ensureRestaurantMenu(pool, 1);
+      } else {
+        for (const r of allRestaurants) {
+          await ensureRestaurantMenu(pool, r.id);
+        }
+      }
+      console.log('✅ Live Database Self-Healing: Seed completed successfully!');
+    }
+  } catch (err) {
+    console.warn('Auto-seed check warning:', err.message);
+  } finally {
+    isSeeding = false;
+  }
+}
 
 // CATEGORIES
 async function getCategories(req, res, next) {
   try {
+    await autoSeedIfEmpty();
     const [rows] = await pool.query(
       `SELECT cat.id, cat.name, cat.display_order, cat.is_active, COUNT(m.id) as total_items
        FROM (
@@ -84,6 +115,7 @@ async function deleteCategory(req, res, next) {
 // KITCHEN DEPARTMENTS
 async function getKitchenDepartments(req, res, next) {
   try {
+    await autoSeedIfEmpty();
     const [rows] = await pool.query(`SELECT * FROM kitchen_departments ORDER BY name ASC`);
     return sendSuccess(res, rows, 'Kitchen departments fetched');
   } catch (err) {
@@ -130,6 +162,7 @@ async function updateKitchenDepartment(req, res, next) {
 // MENU ITEMS
 async function getMenuItems(req, res, next) {
   try {
+    await autoSeedIfEmpty();
     const { category_id, kitchen_department_id, is_veg, is_available, search } = req.query;
     let query = `
       SELECT m.*, COALESCE(c.name, mc.name) as category_name, k.name as kitchen_department_name, k.code as kitchen_department_code

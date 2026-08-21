@@ -931,4 +931,4 @@ async function initDatabase(options = {}) {
       });
     }
 
-    module.exports = { initDatabase };
+    module.exports = { initDatabase, ensureRestaurantMenu, seedKOTData };
