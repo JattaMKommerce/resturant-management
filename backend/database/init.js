@@ -366,11 +366,32 @@ async function initDatabase(options = {}) {
           console.log('✅ Updated Waiter credentials: waiter@hotel.com (Password: 123456789)');
         }
 
-        // 3. Ensure Driver Accounts are approved and active
+        // 3. Admin User
+        const adminHash = await bcrypt.hash('admin123', 10);
+        const [adminRows] = await conn.query('SELECT id FROM users WHERE email = ?', ['admin@hotel.com']);
+        let adminUserId;
+        if (adminRows.length === 0) {
+          const [res] = await conn.query(
+            `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status) VALUES (?, ?, ?, ?, ?, 'RESTAURANT_ADMIN', 'ACTIVE')`,
+            ['Grand Palace Admin', 'admin@hotel.com', adminHash, 'admin123', '+91 9876543210']
+          );
+          adminUserId = res.insertId;
+          console.log('✅ Created Restaurant Admin: admin@hotel.com (Password: admin123)');
+        } else {
+          adminUserId = adminRows[0].id;
+          await conn.query(
+            `UPDATE users SET password_hash = ?, plain_password = 'admin123', role = 'RESTAURANT_ADMIN', status = 'ACTIVE' WHERE id = ?`,
+            [adminHash, adminUserId]
+          );
+          console.log('✅ Updated Restaurant Admin credentials: admin@hotel.com (Password: admin123)');
+        }
+
+        // 4. Ensure Driver Accounts are approved and active
         await conn.query(`UPDATE delivery_drivers SET approval_status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`);
         console.log('✅ Approved and activated all delivery drivers');
 
-        // Ensure restaurant 1 link
+        // Ensure restaurant 1 links
+        await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 1)', [adminUserId]);
         await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [chefId]);
         await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [waiterId]);
       } catch (e) {
