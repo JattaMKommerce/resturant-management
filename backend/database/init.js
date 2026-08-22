@@ -214,6 +214,42 @@ async function initDatabase(options = {}) {
     ) NOT NULL DEFAULT 'PENDING'`);
       } catch (e) {}
 
+      // Menu Items columns
+      await addColumnIfNotExists(conn, 'menu_items', 'prep_time_minutes', "INT NOT NULL DEFAULT 15");
+      await addColumnIfNotExists(conn, 'menu_items', 'batch_capacity', "INT NOT NULL DEFAULT 10");
+
+      // Order Items columns & FK decoupling (supports both online & restaurant_orders)
+      await addColumnIfNotExists(conn, 'order_items', 'tax_amount', "DECIMAL(10, 2) DEFAULT 0.00");
+      await addColumnIfNotExists(conn, 'order_items', 'kitchen_department_id', "INT DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'order_items', 'prep_time_minutes', "INT DEFAULT 15");
+      await addColumnIfNotExists(conn, 'order_items', 'batch_capacity', "INT DEFAULT 10");
+      await addColumnIfNotExists(conn, 'order_items', 'number_of_batches', "INT DEFAULT 1");
+      await addColumnIfNotExists(conn, 'order_items', 'estimated_prep_time_minutes', "INT DEFAULT 15");
+      await addColumnIfNotExists(conn, 'order_items', 'status', "ENUM('PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED') DEFAULT 'PENDING'");
+
+      // KOT Items columns
+      await addColumnIfNotExists(conn, 'kot_items', 'batch_capacity', "INT DEFAULT 10");
+      await addColumnIfNotExists(conn, 'kot_items', 'number_of_batches', "INT DEFAULT 1");
+      await addColumnIfNotExists(conn, 'kot_items', 'estimated_prep_time_minutes', "INT DEFAULT 15");
+
+      try {
+        const [fks] = await conn.query(`
+          SELECT CONSTRAINT_NAME 
+          FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+          WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'order_items' 
+            AND COLUMN_NAME = 'order_id' 
+            AND REFERENCED_TABLE_NAME = 'orders'
+        `);
+        for (const fk of fks) {
+          await conn.query(`ALTER TABLE order_items DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+          console.log(`  ↳ Dropped FK ${fk.CONSTRAINT_NAME} on order_items (decoupled for offline/online orders)`);
+        }
+      } catch (e) {
+        // Non-fatal if not present
+      }
+      await addIndexIfNotExists(conn, 'order_items', 'idx_order_items_order_id', '`order_id`');
+
 
       // Payments columns
       await addColumnIfNotExists(conn, 'payments', 'bill_id', "INT DEFAULT NULL");
@@ -536,6 +572,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Paneer, Mustard Oil, Yogurt, Kashmiri Chili, Spices',
           tags: 'Bestseller, Tandoor, Spicy',
           is_bestseller: 1,
@@ -550,6 +587,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
           prep_time_minutes: 20,
+          batch_capacity: 8,
           ingredients: 'Chicken Boneless, Cream, Cheese, Green Cardamom, Spices',
           tags: 'Chef Special, Mild, Non-Veg',
           is_bestseller: 1,
@@ -564,6 +602,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1628294895950-9805252327bc?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Button Mushrooms, Cottage Cheese, Herbs, Spices',
           tags: 'Vegetarian, Starter',
           is_bestseller: 0,
@@ -577,7 +616,8 @@ async function initDatabase(options = {}) {
           discounted_price: 350,
           image_url: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
-          prep_time_minutes: 25,
+          prep_time_minutes: 20,
+          batch_capacity: 8,
           ingredients: 'Chicken, Tomatoes, Fresh Cream, Butter, Cashews, Kasturi Methi',
           tags: 'Bestseller, Royal, Classic',
           is_bestseller: 1,
@@ -592,6 +632,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 20,
+          batch_capacity: 10,
           ingredients: 'Paneer, Butter, Tomatoes, Cream, Garam Masala',
           tags: 'Popular, Vegetarian, Rich',
           is_bestseller: 1,
@@ -606,6 +647,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Black Urad Dal, Kidney Beans, Butter, Cream, Spices',
           tags: 'Classic, Creamy, Vegetarian',
           is_bestseller: 1,
@@ -620,6 +662,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
           prep_time_minutes: 25,
+          batch_capacity: 5,
           ingredients: 'Basmati Rice, Marinated Chicken, Saffron, Fried Onions, Ghee',
           tags: 'Must Try, Hyderabadi, Authentic',
           is_bestseller: 1,
@@ -634,6 +677,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 20,
+          batch_capacity: 6,
           ingredients: 'Basmati Rice, Vegetables, Paneer, Mint, Saffron',
           tags: 'Vegetarian, Saffron, Dum',
           is_bestseller: 0,
@@ -647,7 +691,8 @@ async function initDatabase(options = {}) {
           discounted_price: null,
           image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
-          prep_time_minutes: 8,
+          prep_time_minutes: 10,
+          batch_capacity: 20,
           ingredients: 'Wheat Flour, Garlic, Butter, Coriander',
           tags: 'Tandoor, Bread',
           is_bestseller: 1,
@@ -662,6 +707,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
           prep_time_minutes: 18,
+          batch_capacity: 8,
           ingredients: 'Chicken, Capsicum, Onion, Soy Sauce, Green Chili',
           tags: 'Indo-Chinese, Spicy',
           is_bestseller: 1,
@@ -676,6 +722,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Noodles, Cabbage, Bell Peppers, Carrots, Soy Sauce',
           tags: 'Kids Friendly, Indo-Chinese',
           is_bestseller: 0,
@@ -690,6 +737,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 5,
+          batch_capacity: 15,
           ingredients: 'Fresh Mint, Lime, Soda, Sugar, Ice',
           tags: 'Refreshing, Cold, Mocktail',
           is_bestseller: 1,
@@ -704,6 +752,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 5,
+          batch_capacity: 15,
           ingredients: 'Fresh Lime, Soda, Rock Salt, Sugar',
           tags: 'Classic, Beverage',
           is_bestseller: 0,
@@ -718,6 +767,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 5,
+          batch_capacity: 25,
           ingredients: 'Khoya, Rose Water, Cardamom, Sugar Syrup, Pistachio',
           tags: 'Dessert, Sweet, Hot',
           is_bestseller: 1,
@@ -736,14 +786,19 @@ async function initDatabase(options = {}) {
           await conn.query(
             `INSERT INTO menu_items (
           restaurant_id, category_id, name, description, price, discounted_price,
-          image_url, is_veg, prep_time_minutes, ingredients, tags,
+          image_url, is_veg, prep_time_minutes, batch_capacity, ingredients, tags,
           is_bestseller, is_recommended, is_available, display_order, is_active, is_available_online
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1, 1)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1, 1)`,
             [
               restaurantId, catId, item.name, item.description, item.price, item.discounted_price,
-              item.image_url, item.is_veg, item.prep_time_minutes, item.ingredients, item.tags,
+              item.image_url, item.is_veg, item.prep_time_minutes, item.batch_capacity, item.ingredients, item.tags,
               item.is_bestseller, item.is_recommended
             ]
+          );
+        } else {
+          await conn.query(
+            `UPDATE menu_items SET prep_time_minutes = ?, batch_capacity = ? WHERE id = ?`,
+            [item.prep_time_minutes, item.batch_capacity, existing[0].id]
           );
         }
       }

@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS menu_items (
   discounted_price DECIMAL(10, 2) DEFAULT NULL,
   image_url VARCHAR(500) DEFAULT NULL,
   is_veg TINYINT(1) DEFAULT 1,
-  prep_time_minutes INT DEFAULT 20,
+  prep_time_minutes INT DEFAULT 15,
+  batch_capacity INT DEFAULT 10,
   ingredients TEXT DEFAULT NULL,
   tags VARCHAR(255) DEFAULT NULL,
   is_bestseller TINYINT(1) DEFAULT 0,
@@ -291,7 +292,7 @@ CREATE TABLE IF NOT EXISTS orders (
   FOREIGN KEY (assigned_driver_id) REFERENCES delivery_drivers(id) ON DELETE SET NULL
 );
 
--- 15. Order Items Table (Price Snapshots)
+-- 15. Order Items Table (Price Snapshots & KOT Items)
 CREATE TABLE IF NOT EXISTS order_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,
@@ -301,8 +302,15 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INT NOT NULL,
   item_total DECIMAL(10, 2) NOT NULL,
   special_instructions TEXT DEFAULT NULL,
+  tax_amount DECIMAL(10, 2) DEFAULT 0.00,
+  kitchen_department_id INT DEFAULT NULL,
+  prep_time_minutes INT DEFAULT 15,
+  batch_capacity INT DEFAULT 10,
+  number_of_batches INT DEFAULT 1,
+  estimated_prep_time_minutes INT DEFAULT 15,
+  status ENUM('PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED') DEFAULT 'PENDING',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  INDEX idx_order_items_order_id (order_id),
   FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE SET NULL
 );
 
@@ -528,6 +536,9 @@ CREATE TABLE IF NOT EXISTS kot_items (
   modifiers_json JSON NULL,
   status ENUM('PENDING', 'ACCEPTED', 'PREPARING', 'READY', 'SERVED', 'CANCELLED') DEFAULT 'PENDING',
   prep_time_minutes INT DEFAULT 15,
+  batch_capacity INT DEFAULT 10,
+  number_of_batches INT DEFAULT 1,
+  estimated_prep_time_minutes INT DEFAULT 15,
   inventory_deducted BOOLEAN DEFAULT FALSE,
   started_at TIMESTAMP NULL DEFAULT NULL,
   expected_finish_at TIMESTAMP NULL DEFAULT NULL,

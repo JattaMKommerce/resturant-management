@@ -316,9 +316,12 @@ export default function MenuManagementPage() {
                     </p>
 
                     <div className="flex items-center justify-between text-xs text-[#64748B] pt-2 border-t border-[#D7E5E8]">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-[#64748B]" />
-                        <span>{item.prep_time_minutes} mins</span>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-[#3A7D7C]" />
+                        <span>{item.prep_time_minutes || 15} mins</span>
+                        <span className="text-[10px] text-[#64748B] bg-slate-100 px-1.5 py-0.5 rounded border border-[#D7E5E8]">
+                          Cap: {item.batch_capacity || 10}
+                        </span>
                       </div>
 
                       <span className="text-[11px] text-[#64748B]">Tax: {item.tax_percentage}%</span>

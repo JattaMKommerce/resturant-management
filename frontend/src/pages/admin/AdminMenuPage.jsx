@@ -22,7 +22,8 @@ export default function AdminMenuPage() {
   const [price, setPrice] = useState('');
   const [discountedPrice, setDiscountedPrice] = useState('');
   const [isVeg, setIsVeg] = useState(true);
-  const [prepTime, setPrepTime] = useState('20');
+  const [prepTime, setPrepTime] = useState('15');
+  const [batchCapacity, setBatchCapacity] = useState('10');
   const [ingredients, setIngredients] = useState('');
   const [tags, setTags] = useState('');
   const [isBestseller, setIsBestseller] = useState(false);
@@ -81,7 +82,8 @@ export default function AdminMenuPage() {
     setPrice('');
     setDiscountedPrice('');
     setIsVeg(true);
-    setPrepTime('20');
+    setPrepTime('15');
+    setBatchCapacity('10');
     setIngredients('');
     setTags('');
     setIsBestseller(false);
@@ -99,7 +101,8 @@ export default function AdminMenuPage() {
     setPrice(item.price);
     setDiscountedPrice(item.discounted_price || '');
     setIsVeg(item.is_veg === 1);
-    setPrepTime(item.prep_time_minutes ? item.prep_time_minutes.toString() : '20');
+    setPrepTime(item.prep_time_minutes ? item.prep_time_minutes.toString() : '15');
+    setBatchCapacity(item.batch_capacity ? item.batch_capacity.toString() : '10');
     setIngredients(item.ingredients || '');
     setTags(item.tags || '');
     setIsBestseller(item.is_bestseller === 1);
@@ -133,6 +136,20 @@ export default function AdminMenuPage() {
     e.preventDefault();
     setFormLoading(true);
 
+    const parsedPrep = parseInt(prepTime);
+    if (isNaN(parsedPrep) || parsedPrep <= 0) {
+      alert('Preparation Time must be a valid number greater than 0.');
+      setFormLoading(false);
+      return;
+    }
+
+    const parsedCap = parseInt(batchCapacity);
+    if (isNaN(parsedCap) || parsedCap <= 0) {
+      alert('Batch Capacity must be a valid number greater than 0.');
+      setFormLoading(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append('category_id', categoryId);
@@ -142,6 +159,7 @@ export default function AdminMenuPage() {
       if (discountedPrice) formData.append('discounted_price', discountedPrice);
       formData.append('is_veg', isVeg ? '1' : '0');
       formData.append('prep_time_minutes', prepTime);
+      formData.append('batch_capacity', batchCapacity);
       formData.append('ingredients', ingredients);
       formData.append('tags', tags);
       formData.append('is_bestseller', isBestseller ? '1' : '0');
@@ -255,6 +273,7 @@ export default function AdminMenuPage() {
                   <th className="p-4">Category</th>
                   <th className="p-4">Price</th>
                   <th className="p-4">Type</th>
+                  <th className="p-4">Prep & Batch</th>
                   <th className="p-4">Status / Availability</th>
                   <th className="p-4 text-right">Actions</th>
                 </tr>
@@ -262,11 +281,11 @@ export default function AdminMenuPage() {
               <tbody className="divide-y divide-[#D7E5E8] font-medium">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-[#64748B] text-xs">Loading food items...</td>
+                    <td colSpan="7" className="p-8 text-center text-[#64748B] text-xs">Loading food items...</td>
                   </tr>
                 ) : filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-[#64748B] text-xs font-medium">No menu items found.</td>
+                    <td colSpan="7" className="p-8 text-center text-[#64748B] text-xs font-medium">No menu items found.</td>
                   </tr>
                 ) : (
                   filteredItems.map((item) => (
@@ -307,6 +326,18 @@ export default function AdminMenuPage() {
                       </td>
 
                       <td className="p-4">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 font-bold text-[#1F2937] text-xs">
+                            <Clock className="w-3.5 h-3.5 text-[#3A7D7C]" />
+                            <span>{item.prep_time_minutes || 15} mins</span>
+                          </div>
+                          <div className="text-[10px] text-[#64748B] font-medium">
+                            Batch: {item.batch_capacity || 10} portions
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-4">
                         <button
                           onClick={() => handleToggleAvailability(item)}
                           className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all border ${
@@ -323,17 +354,17 @@ export default function AdminMenuPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenEdit(item)}
-                            className="p-2 text-[#64748B] hover:text-[#3A7D7C] hover:bg-slate-100 rounded-lg transition-colors"
+                            className="p-1.5 text-[#3A7D7C] hover:bg-[#EAF4F7] border border-[#D7E5E8] rounded-lg transition-colors"
                             title="Edit Item"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDelete(item.id)}
-                            className="p-2 text-[#64748B] hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors"
                             title="Delete Item"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -352,9 +383,7 @@ export default function AdminMenuPage() {
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-[#D7E5E8] shadow-2xl space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-3">
-              <h3 className="font-bold text-base text-[#1F2937]">
-                {editingItem ? 'Edit Food Item' : 'Add New Food Item'}
-              </h3>
+              <h3 className="font-bold text-base text-[#1F2937]">{editingItem ? 'Edit Food Item' : 'Add New Food Item'}</h3>
               <button onClick={() => setShowModal(false)} className="p-1 text-[#64748B] hover:text-[#1F2937] rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -425,25 +454,41 @@ export default function AdminMenuPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block font-bold text-[#1F2937] mb-1">Food Type</label>
+                <select
+                  value={isVeg ? '1' : '0'}
+                  onChange={(e) => setIsVeg(e.target.value === '1')}
+                  className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
+                >
+                  <option value="1">Vegetarian 🟢</option>
+                  <option value="0">Non-Vegetarian 🔴</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-[#1F2937] mb-1">Food Type</label>
-                  <select
-                    value={isVeg ? '1' : '0'}
-                    onChange={(e) => setIsVeg(e.target.value === '1')}
+                  <label className="block font-bold text-[#1F2937] mb-1">Preparation Time (minutes) *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    placeholder="15"
+                    value={prepTime}
+                    onChange={(e) => setPrepTime(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
-                  >
-                    <option value="1">Vegetarian 🟢</option>
-                    <option value="0">Non-Vegetarian 🔴</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-[#1F2937] mb-1">Prep Time (Mins)</label>
+                  <label className="block font-bold text-[#1F2937] mb-1">Batch Capacity (portions) *</label>
                   <input
                     type="number"
-                    value={prepTime}
-                    onChange={(e) => setPrepTime(e.target.value)}
+                    min="1"
+                    required
+                    placeholder="10"
+                    value={batchCapacity}
+                    onChange={(e) => setBatchCapacity(e.target.value)}
                     className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
                   />
                 </div>
