@@ -215,10 +215,19 @@ async function initDatabase(options = {}) {
       } catch (e) {}
 
       // Menu Items columns
+      await addColumnIfNotExists(conn, 'menu_items', 'restaurant_id', "INT NOT NULL DEFAULT 1");
       await addColumnIfNotExists(conn, 'menu_items', 'prep_time_minutes', "INT NOT NULL DEFAULT 15");
       await addColumnIfNotExists(conn, 'menu_items', 'batch_capacity', "INT NOT NULL DEFAULT 10");
 
+      // Tables & Orders columns
+      await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', "INT NOT NULL DEFAULT 1");
+      await addColumnIfNotExists(conn, 'restaurant_orders', 'restaurant_id', "INT NOT NULL DEFAULT 1");
+
+      // KOTs columns
+      await addColumnIfNotExists(conn, 'kots', 'restaurant_id', "INT NOT NULL DEFAULT 1");
+
       // Order Items columns & FK decoupling (supports both online & restaurant_orders)
+      await addColumnIfNotExists(conn, 'order_items', 'restaurant_id', "INT DEFAULT 1");
       await addColumnIfNotExists(conn, 'order_items', 'tax_amount', "DECIMAL(10, 2) DEFAULT 0.00");
       await addColumnIfNotExists(conn, 'order_items', 'kitchen_department_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'order_items', 'prep_time_minutes', "INT DEFAULT 15");

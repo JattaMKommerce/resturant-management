@@ -230,12 +230,26 @@ async function createOrder(orderData, idempotencyKey = null) {
       const letter = String.fromCharCode(deptLetterCode++);
       const kotNumber = `KOT-${dateStr}-${randomSuffix}-${letter}`;
 
-      const [kotResult] = await connection.query(
-        `INSERT INTO kots 
-          (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
-         VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`,
-        [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt, 1]
-      );
+      let kotResult;
+      try {
+        [kotResult] = await connection.query(
+          `INSERT INTO kots 
+            (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
+           VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`,
+          [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt, 1]
+        );
+      } catch (insertKotErr) {
+        if (insertKotErr.message && insertKotErr.message.includes('restaurant_id')) {
+          [kotResult] = await connection.query(
+            `INSERT INTO kots 
+              (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
+            [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt]
+          );
+        } else {
+          throw insertKotErr;
+        }
+      }
 
       const kotId = kotResult.insertId;
 
