@@ -42,14 +42,26 @@ async function notifyKitchen(orderData) {
 
     const receivedAt = new Date();
     const maxPrepMinutes = 20;
-    const targetAt = new Date(receivedAt.getTime() + maxPrepMinutes * 60000);
-
-    const [kotResult] = await pool.query(
-      `INSERT INTO kots 
-        (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
-       VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?, ?)`,
-      [kotNumber, orderId, defaultDeptId, receivedAt, targetAt, orderData.restaurant_id || 1]
-    );
+    let kotResult;
+    try {
+      [kotResult] = await pool.query(
+        `INSERT INTO kots 
+          (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
+         VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?, ?)`,
+        [kotNumber, orderId, defaultDeptId, receivedAt, targetAt, orderData.restaurant_id || 1]
+      );
+    } catch (kotErr) {
+      if (kotErr.message && kotErr.message.includes('restaurant_id')) {
+        [kotResult] = await pool.query(
+          `INSERT INTO kots 
+            (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
+           VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?)`,
+          [kotNumber, orderId, defaultDeptId, receivedAt, targetAt]
+        );
+      } else {
+        throw kotErr;
+      }
+    }
 
     const kotId = kotResult.insertId;
 
