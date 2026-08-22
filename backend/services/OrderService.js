@@ -98,10 +98,10 @@ async function createOrder(orderPayload) {
   }
 
   // 3. Validate menu items and recalculate prices server-side
-  const itemIds = items.map(i => i.menuItemId);
+  const itemIds = items.map(i => i.menuItemId || i.menu_item_id);
   const placeholders = itemIds.map(() => '?').join(',');
   const menuItems = await query(
-    `SELECT * FROM menu_items WHERE id IN (${placeholders}) AND restaurant_id = ?`,
+    `SELECT * FROM menu_items WHERE id IN (${placeholders}) AND (restaurant_id = ? OR restaurant_id IS NULL)`,
     [...itemIds, restaurant.id]
   );
 
@@ -112,8 +112,9 @@ async function createOrder(orderPayload) {
   const processedItems = [];
 
   for (const item of items) {
-    const dbItem = menuItemMap[item.menuItemId];
-    if (!dbItem) throw new Error(`Menu item ID ${item.menuItemId} is not available at this restaurant.`);
+    const rawId = item.menuItemId || item.menu_item_id;
+    const dbItem = menuItemMap[rawId];
+    if (!dbItem) throw new Error(`Menu item ID ${rawId} is not available at this restaurant.`);
     if (dbItem.is_available !== 1) throw new Error(`"${dbItem.name}" is currently out of stock.`);
 
     const unitPrice = dbItem.discounted_price ? parseFloat(dbItem.discounted_price) : parseFloat(dbItem.price);

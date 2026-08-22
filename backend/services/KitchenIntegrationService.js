@@ -42,6 +42,7 @@ async function notifyKitchen(orderData) {
 
     const receivedAt = new Date();
     const maxPrepMinutes = 20;
+    const targetAt = new Date(receivedAt.getTime() + maxPrepMinutes * 60000);
     let kotResult;
     try {
       [kotResult] = await pool.query(
