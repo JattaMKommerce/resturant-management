@@ -13,6 +13,7 @@ export default function MenuItemModal({ isOpen, onClose, onSave, editingItem, ca
     tax_percentage: 5.0,
     is_veg: true,
     prep_time_minutes: 15,
+    batch_capacity: 10,
     is_available: true,
     is_available_online: true,
     modifier_group_ids: []
@@ -30,6 +31,7 @@ export default function MenuItemModal({ isOpen, onClose, onSave, editingItem, ca
         tax_percentage: editingItem.tax_percentage || 5.0,
         is_veg: editingItem.is_veg !== undefined ? Boolean(editingItem.is_veg) : true,
         prep_time_minutes: editingItem.prep_time_minutes || 15,
+        batch_capacity: editingItem.batch_capacity || 10,
         is_available: editingItem.is_available !== undefined ? Boolean(editingItem.is_available) : true,
         is_available_online: editingItem.is_available_online !== undefined ? Boolean(editingItem.is_available_online) : true,
         modifier_group_ids: editingItem.modifiers ? editingItem.modifiers.map(m => m.id) : []
@@ -45,6 +47,7 @@ export default function MenuItemModal({ isOpen, onClose, onSave, editingItem, ca
         tax_percentage: 5.0,
         is_veg: true,
         prep_time_minutes: 15,
+        batch_capacity: 10,
         is_available: true,
         is_available_online: true,
         modifier_group_ids: []
@@ -63,11 +66,23 @@ export default function MenuItemModal({ isOpen, onClose, onSave, editingItem, ca
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const prep = parseInt(formData.prep_time_minutes);
+    if (isNaN(prep) || prep <= 0) {
+      alert('Preparation Time must be a valid number greater than 0.');
+      return;
+    }
+    const cap = parseInt(formData.batch_capacity);
+    if (isNaN(cap) || cap <= 0) {
+      alert('Batch Capacity must be a valid number greater than 0.');
+      return;
+    }
+
     onSave({
       ...formData,
       price: parseFloat(formData.price),
       tax_percentage: parseFloat(formData.tax_percentage),
-      prep_time_minutes: parseInt(formData.prep_time_minutes)
+      prep_time_minutes: prep,
+      batch_capacity: cap
     });
   };
 
@@ -154,7 +169,31 @@ export default function MenuItemModal({ isOpen, onClose, onSave, editingItem, ca
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Prep Time (mins) *</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.prep_time_minutes}
+              onChange={(e) => setFormData({ ...formData, prep_time_minutes: e.target.value })}
+              required
+              placeholder="15"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-semibold"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-[#1F2937] mb-1">Batch Capacity *</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.batch_capacity}
+              onChange={(e) => setFormData({ ...formData, batch_capacity: e.target.value })}
+              required
+              placeholder="10"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-semibold"
+            />
+          </div>
           <div>
             <label className="block text-xs font-bold text-[#1F2937] mb-1">Tax (%)</label>
             <input
@@ -162,16 +201,6 @@ export default function MenuItemModal({ isOpen, onClose, onSave, editingItem, ca
               step="0.1"
               value={formData.tax_percentage}
               onChange={(e) => setFormData({ ...formData, tax_percentage: e.target.value })}
-              required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-semibold"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-[#1F2937] mb-1">Prep Time (mins)</label>
-            <input
-              type="number"
-              value={formData.prep_time_minutes}
-              onChange={(e) => setFormData({ ...formData, prep_time_minutes: e.target.value })}
               required
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] text-sm font-semibold"
             />

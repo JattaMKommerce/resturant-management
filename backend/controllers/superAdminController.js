@@ -332,10 +332,12 @@ async function getAllDrivers(req, res) {
       `SELECT d.id as driver_id, d.user_id, d.vehicle_type, d.vehicle_number, d.license_number,
               d.approval_status, d.availability_status, d.is_active, d.created_at,
               u.name, u.email, u.phone, u.plain_password, u.status as user_status,
-              r.name as restaurant_name
+              GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') as restaurant_name
        FROM delivery_drivers d
        JOIN users u ON d.user_id = u.id
-       LEFT JOIN restaurants r ON d.restaurant_id = r.id
+       LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id AND dra.status = 'ACTIVE'
+       LEFT JOIN restaurants r ON dra.restaurant_id = r.id
+       GROUP BY d.id
        ORDER BY d.id DESC`
     );
     res.json({ success: true, count: drivers.length, drivers });

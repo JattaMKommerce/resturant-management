@@ -197,12 +197,22 @@ async function createMenuItem(req, res, next) {
     await connection.beginTransaction();
     const {
       category_id, kitchen_department_id, name, description, image_url, price,
-      tax_percentage, is_veg, prep_time_minutes, modifier_group_ids, restaurant_id,
-      is_available, is_available_online
+      tax_percentage, is_veg, prep_time_minutes, preparation_time_minutes, batch_capacity,
+      modifier_group_ids, restaurant_id, is_available, is_available_online
     } = req.body;
 
     if (!category_id || !name || price === undefined) {
       return sendError(res, 'Category, name, and price are required', 400);
+    }
+
+    const prepTime = parseInt(prep_time_minutes ?? preparation_time_minutes ?? 15);
+    if (isNaN(prepTime) || prepTime <= 0) {
+      return sendError(res, 'Preparation time must be a valid positive number (> 0)', 400);
+    }
+
+    const batchCap = parseInt(batch_capacity ?? 10);
+    if (isNaN(batchCap) || batchCap <= 0) {
+      return sendError(res, 'Batch capacity must be a valid positive number (> 0)', 400);
     }
 
     let restId = restaurant_id || req.user?.restaurant_id;
@@ -216,8 +226,8 @@ async function createMenuItem(req, res, next) {
 
     const [result] = await connection.query(
       `INSERT INTO menu_items 
-        (restaurant_id, category_id, kitchen_department_id, name, description, image_url, price, tax_percentage, is_veg, prep_time_minutes, is_available, is_available_online)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (restaurant_id, category_id, kitchen_department_id, name, description, image_url, price, tax_percentage, is_veg, prep_time_minutes, batch_capacity, is_available, is_available_online)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         restId,
         category_id,
@@ -228,7 +238,8 @@ async function createMenuItem(req, res, next) {
         price,
         tax_percentage || 5.0,
         is_veg !== undefined ? (is_veg ? 1 : 0) : 1,
-        prep_time_minutes || 15,
+        prepTime,
+        batchCap,
         isAvail,
         isOnline
       ]
@@ -305,12 +316,32 @@ async function updateMenuItem(req, res, next) {
     const { id } = req.params;
     const {
       category_id, kitchen_department_id, name, description, image_url, price,
-      tax_percentage, is_veg, prep_time_minutes, is_available, is_available_online, is_active, modifier_group_ids
+      tax_percentage, is_veg, prep_time_minutes, preparation_time_minutes, batch_capacity,
+      is_available, is_available_online, is_active, modifier_group_ids
     } = req.body;
 
     const [existing] = await connection.query(`SELECT id FROM menu_items WHERE id = ?`, [id]);
     if (existing.length === 0) {
       return sendError(res, 'Menu item not found', 404);
+    }
+
+    let validatedPrepTime = null;
+    const rawPrep = prep_time_minutes !== undefined ? prep_time_minutes : preparation_time_minutes;
+    if (rawPrep !== undefined && rawPrep !== null && rawPrep !== '') {
+      const pt = parseInt(rawPrep);
+      if (isNaN(pt) || pt <= 0) {
+        return sendError(res, 'Preparation time must be a valid positive number (> 0)', 400);
+      }
+      validatedPrepTime = pt;
+    }
+
+    let validatedBatchCap = null;
+    if (batch_capacity !== undefined && batch_capacity !== null && batch_capacity !== '') {
+      const bc = parseInt(batch_capacity);
+      if (isNaN(bc) || bc <= 0) {
+        return sendError(res, 'Batch capacity must be a valid positive number (> 0)', 400);
+      }
+      validatedBatchCap = bc;
     }
 
     await connection.query(
@@ -324,6 +355,7 @@ async function updateMenuItem(req, res, next) {
            tax_percentage = COALESCE(?, tax_percentage),
            is_veg = COALESCE(?, is_veg),
            prep_time_minutes = COALESCE(?, prep_time_minutes),
+           batch_capacity = COALESCE(?, batch_capacity),
            is_available = COALESCE(?, is_available),
            is_available_online = COALESCE(?, is_available_online),
            is_active = COALESCE(?, is_active)
@@ -337,7 +369,8 @@ async function updateMenuItem(req, res, next) {
         price,
         tax_percentage,
         is_veg !== undefined ? (is_veg ? 1 : 0) : null,
-        prep_time_minutes,
+        validatedPrepTime,
+        validatedBatchCap,
         is_available !== undefined ? (is_available ? 1 : 0) : null,
         is_available_online !== undefined ? (is_available_online ? 1 : 0) : null,
         is_active !== undefined ? (is_active ? 1 : 0) : null,
@@ -459,7 +492,7 @@ async function getPublicMenu(req, res, next) {
 
     const [items] = await pool.query(
       `SELECT m.id, m.category_id, m.name, m.description, m.image_url, m.price, m.tax_percentage, 
-              m.is_veg, m.prep_time_minutes, m.is_available, m.is_available_online, k.name as kitchen_department_name
+              m.is_veg, m.prep_time_minutes, m.batch_capacity, m.is_available, m.is_available_online, k.name as kitchen_department_name
        FROM menu_items m
        LEFT JOIN kitchen_departments k ON m.kitchen_department_id = k.id
        WHERE (m.is_active IS NULL OR m.is_active = TRUE) AND m.is_available = TRUE

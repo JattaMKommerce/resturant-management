@@ -78,7 +78,7 @@ async function createMenuItem(req, res) {
   try {
     const {
       restaurant_id, category_id, name, description, price, discounted_price,
-      is_veg, prep_time_minutes, ingredients, tags,
+      is_veg, prep_time_minutes, preparation_time_minutes, batch_capacity, ingredients, tags,
       is_bestseller, is_recommended, is_available, display_order, kitchen_department_id, tax_percentage
     } = req.body;
 
@@ -96,6 +96,16 @@ async function createMenuItem(req, res) {
       return res.status(400).json({ success: false, message: 'Category, name, and price are required.' });
     }
 
+    const prepTime = parseInt(prep_time_minutes ?? preparation_time_minutes ?? 15);
+    if (isNaN(prepTime) || prepTime <= 0) {
+      return res.status(400).json({ success: false, message: 'Preparation time must be a valid positive number (> 0).' });
+    }
+
+    const batchCap = parseInt(batch_capacity ?? 10);
+    if (isNaN(batchCap) || batchCap <= 0) {
+      return res.status(400).json({ success: false, message: 'Batch capacity must be a valid positive number (> 0).' });
+    }
+
     // Verify category belongs to same restaurant
     const [cat] = await query('SELECT restaurant_id FROM categories WHERE id = ?', [category_id]);
     if (!cat || cat.restaurant_id !== parseInt(restId)) {
@@ -108,14 +118,15 @@ async function createMenuItem(req, res) {
     const result = await query(
       `INSERT INTO menu_items (
         restaurant_id, category_id, name, description, price, discounted_price,
-        image_url, is_veg, prep_time_minutes, ingredients, tags, is_bestseller,
+        image_url, is_veg, prep_time_minutes, batch_capacity, ingredients, tags, is_bestseller,
         is_recommended, is_available, display_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         restId, category_id, name, description || null,
         parseFloat(price), discounted_price ? parseFloat(discounted_price) : null,
         imageUrl, is_veg !== undefined ? (is_veg ? 1 : 0) : 1,
-        prep_time_minutes ? parseInt(prep_time_minutes) : 20,
+        prepTime,
+        batchCap,
         ingredients || null, tags || null,
         is_bestseller ? 1 : 0, is_recommended ? 1 : 0,
         is_available !== undefined ? (is_available ? 1 : 0) : 1,
@@ -144,9 +155,28 @@ async function updateMenuItem(req, res) {
 
     const {
       category_id, name, description, price, discounted_price,
-      is_veg, prep_time_minutes, ingredients, tags,
+      is_veg, prep_time_minutes, preparation_time_minutes, batch_capacity, ingredients, tags,
       is_bestseller, is_recommended, is_available, display_order
     } = req.body;
+
+    let validatedPrepTime = null;
+    const rawPrep = prep_time_minutes !== undefined ? prep_time_minutes : preparation_time_minutes;
+    if (rawPrep !== undefined && rawPrep !== null && rawPrep !== '') {
+      const pt = parseInt(rawPrep);
+      if (isNaN(pt) || pt <= 0) {
+        return res.status(400).json({ success: false, message: 'Preparation time must be a valid positive number (> 0).' });
+      }
+      validatedPrepTime = pt;
+    }
+
+    let validatedBatchCap = null;
+    if (batch_capacity !== undefined && batch_capacity !== null && batch_capacity !== '') {
+      const bc = parseInt(batch_capacity);
+      if (isNaN(bc) || bc <= 0) {
+        return res.status(400).json({ success: false, message: 'Batch capacity must be a valid positive number (> 0).' });
+      }
+      validatedBatchCap = bc;
+    }
 
     let imageUrl = null;
     if (req.file) imageUrl = `/uploads/${req.file.filename}`;
@@ -160,6 +190,7 @@ async function updateMenuItem(req, res) {
         discounted_price = COALESCE(?, discounted_price),
         is_veg = COALESCE(?, is_veg),
         prep_time_minutes = COALESCE(?, prep_time_minutes),
+        batch_capacity = COALESCE(?, batch_capacity),
         ingredients = COALESCE(?, ingredients),
         tags = COALESCE(?, tags),
         is_bestseller = COALESCE(?, is_bestseller),
@@ -173,7 +204,8 @@ async function updateMenuItem(req, res) {
       price ? parseFloat(price) : null,
       discounted_price !== undefined ? (discounted_price ? parseFloat(discounted_price) : null) : null,
       is_veg !== undefined ? (is_veg ? 1 : 0) : null,
-      prep_time_minutes ? parseInt(prep_time_minutes) : null,
+      validatedPrepTime,
+      validatedBatchCap,
       ingredients || null, tags || null,
       is_bestseller !== undefined ? (is_bestseller ? 1 : 0) : null,
       is_recommended !== undefined ? (is_recommended ? 1 : 0) : null,

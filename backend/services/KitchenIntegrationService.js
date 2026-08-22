@@ -54,17 +54,38 @@ async function notifyKitchen(orderData) {
     const kotId = kotResult.insertId;
 
     for (const item of itemsToProcess) {
+      let prepTimeMins = item.prep_time_minutes !== null && item.prep_time_minutes !== undefined ? parseInt(item.prep_time_minutes) : null;
+      let batchCap = item.batch_capacity !== null && item.batch_capacity !== undefined ? parseInt(item.batch_capacity) : null;
+
+      // If missing from order_items, look up from menu_items
+      if ((!prepTimeMins || !batchCap) && item.menu_item_id) {
+        try {
+          const [mRows] = await pool.query('SELECT prep_time_minutes, batch_capacity FROM menu_items WHERE id = ?', [item.menu_item_id]);
+          if (mRows.length > 0) {
+            if (!prepTimeMins && mRows[0].prep_time_minutes) prepTimeMins = parseInt(mRows[0].prep_time_minutes);
+            if (!batchCap && mRows[0].batch_capacity) batchCap = parseInt(mRows[0].batch_capacity);
+          }
+        } catch (e) {}
+      }
+
+      const qty = Math.max(1, parseInt(item.quantity) || 1);
+      const batches = (batchCap && batchCap > 0) ? Math.ceil(qty / batchCap) : null;
+      const estimatedPrep = (batches && prepTimeMins && prepTimeMins > 0) ? (batches * prepTimeMins) : null;
+
       await pool.query(
         `INSERT INTO kot_items 
-          (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes)
-         VALUES (?, ?, ?, ?, ?, '[]', 'PENDING', ?)`,
+          (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes, batch_capacity, number_of_batches, estimated_prep_time_minutes)
+         VALUES (?, ?, ?, ?, ?, '[]', 'PENDING', ?, ?, ?, ?)`,
         [
           kotId,
           item.id || null,
           item.item_name || item.name || 'Food Item',
-          item.quantity || 1,
+          qty,
           item.special_instructions || item.specialInstructions || null,
-          item.prep_time_minutes || 15
+          prepTimeMins,
+          batchCap,
+          batches,
+          estimatedPrep
         ]
       );
     }

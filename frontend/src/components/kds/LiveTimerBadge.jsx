@@ -44,11 +44,8 @@ export default function LiveTimerBadge({
     );
   }
 
-  const effectiveStartedAt = startedAt || (status === 'PREPARING' ? receivedAt : null);
-  const effectiveExpectedAt = expectedFinishAt || (effectiveStartedAt ? new Date(new Date(effectiveStartedAt).getTime() + prepTimeMinutes * 60000) : targetAt);
-
   // 3. Not Started / Pending / Accepted State
-  if (!effectiveStartedAt || (status !== 'PREPARING' && !startedAt)) {
+  if (!startedAt || !expectedFinishAt || (status !== 'PREPARING' && status !== 'READY' && status !== 'SERVED')) {
     return (
       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 text-[#64748B] border border-[#D7E5E8]">
         <Clock className="w-3.5 h-3.5 shrink-0 text-[#64748B]" />
@@ -57,9 +54,8 @@ export default function LiveTimerBadge({
     );
   }
 
-  // 4. Timer Active (Preparing)
-  const startTime = new Date(effectiveStartedAt).getTime();
-  const expectedTime = effectiveExpectedAt ? new Date(effectiveExpectedAt).getTime() : startTime + prepTimeMinutes * 60000;
+  // 4. Timer Active (Preparing) - authoritative server expected_finish_at
+  const expectedTime = new Date(expectedFinishAt).getTime();
   const remainingSeconds = Math.floor((expectedTime - now) / 1000);
 
   if (remainingSeconds <= 0) {
