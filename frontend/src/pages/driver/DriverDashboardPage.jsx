@@ -424,10 +424,10 @@ export default function DriverDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center p-6 font-sans">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs font-semibold text-slate-400">Loading Delivery Dashboard...</p>
+          <div className="w-10 h-10 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs font-semibold text-[#64748B]">Loading Delivery Dashboard...</p>
         </div>
       </div>
     );
@@ -436,22 +436,22 @@ export default function DriverDashboardPage() {
   const completedOrders = allOrders.filter(o => o.order_status === 'DELIVERED');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-12">
+    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased pb-12">
       
       {/* Mobile Top App Bar */}
-      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 p-4 px-6 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#D7E5E8] shadow-xs p-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-black shadow-lg shadow-orange-500/20">
+          <div className="w-10 h-10 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold shadow-xs">
             <Bike className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-extrabold text-white text-sm leading-tight">
+            <h1 className="font-bold text-[#1F2937] text-sm leading-tight">
               {driver?.full_name || user?.name || 'Rider Duty'}
             </h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+            <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
               {assignedRestaurants.length > 0 
-                ? `Handling ${assignedRestaurants.length} Restaurant${assignedRestaurants.length > 1 ? 's' : ''}`
+                ? `Partnered with ${assignedRestaurants.length} Restaurant${assignedRestaurants.length > 1 ? 's' : ''}`
                 : 'No Restaurant Assigned'}
             </p>
           </div>
@@ -461,10 +461,10 @@ export default function DriverDashboardPage() {
         <button
           onClick={handleToggleOnline}
           disabled={updatingLocation}
-          className={`px-4 py-2 rounded-2xl font-black text-xs transition-all flex items-center gap-2 shadow-lg ${
+          className={`px-4 py-2 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 shadow-2xs ${
             availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY'
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8]'
           }`}
         >
           <Power className="w-4 h-4" />
@@ -473,43 +473,43 @@ export default function DriverDashboardPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-5">
 
         {/* Success Alert */}
         {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-2xs">
             <span>{successMsg}</span>
-            <button onClick={() => setSuccessMsg('')} className="text-emerald-400 hover:text-white font-bold text-sm">✕</button>
+            <button onClick={() => setSuccessMsg('')} className="text-emerald-700 hover:text-emerald-950 font-bold text-sm">✕</button>
           </div>
         )}
 
         {/* Error Alert */}
         {error && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-2xs">
             <span>{error}</span>
-            <button onClick={() => setError('')} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+            <button onClick={() => setError('')} className="text-rose-700 hover:text-rose-950 font-bold text-sm">✕</button>
           </div>
         )}
 
         {/* LIVE DUTY STATUS CARD */}
-        <div className={`p-4 rounded-3xl border transition-all flex items-center justify-between shadow-xl ${
+        <div className={`p-4 sm:p-5 rounded-3xl border transition-all flex items-center justify-between shadow-xs bg-white ${
           availabilityStatus === 'AVAILABLE'
-            ? 'bg-gradient-to-r from-emerald-950/80 to-emerald-900/60 border-emerald-500/40 text-emerald-100'
+            ? 'border-emerald-300'
             : availabilityStatus === 'BUSY'
-            ? 'bg-gradient-to-r from-amber-950/80 to-amber-900/60 border-amber-500/40 text-amber-100'
-            : 'bg-gradient-to-r from-slate-900/90 to-slate-950 border-slate-800 text-slate-300'
+            ? 'border-amber-300'
+            : 'border-[#D7E5E8]'
         }`}>
           <div className="flex items-center gap-3">
             <div className={`w-3.5 h-3.5 rounded-full ${
               availabilityStatus === 'AVAILABLE'
-                ? 'bg-emerald-400 animate-ping'
+                ? 'bg-emerald-500 animate-ping'
                 : availabilityStatus === 'BUSY'
-                ? 'bg-amber-400 animate-pulse'
-                : 'bg-red-500'
+                ? 'bg-amber-500 animate-pulse'
+                : 'bg-rose-500'
             }`} />
             <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider block text-slate-400">Current Rider Status</span>
-              <span className="font-black text-sm tracking-wide">
+              <span className="text-[10px] font-bold uppercase tracking-wider block text-[#64748B]">Current Rider Status</span>
+              <span className="font-bold text-sm text-[#1F2937] tracking-tight">
                 {availabilityStatus === 'AVAILABLE' ? '🟢 ONLINE — READY FOR ORDERS' : availabilityStatus === 'BUSY' ? '🛵 ON ACTIVE DELIVERY TRIP' : '🔴 OFFLINE (NOT RECEIVING ORDERS)'}
               </span>
             </div>
@@ -518,10 +518,10 @@ export default function DriverDashboardPage() {
           <button
             onClick={handleToggleOnline}
             disabled={updatingLocation}
-            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs ${
               availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY'
-                ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30'
-                : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/25'
+                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                : 'bg-[#3A7D7C] hover:bg-[#2F6665] text-white'
             }`}
           >
             {updatingLocation ? 'Updating...' : (availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY') ? 'Go Offline 🔴' : 'Go Online 🟢'}
@@ -529,44 +529,44 @@ export default function DriverDashboardPage() {
         </div>
 
         {/* MULTI-RESTAURANT MANAGEMENT WIDGET */}
-        <div className="bg-slate-900 rounded-3xl p-5 border border-slate-800 shadow-xl space-y-4">
+        <div className="bg-white rounded-3xl p-5 border border-[#D7E5E8] shadow-xs space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center font-bold">
+              <div className="w-8 h-8 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center font-bold">
                 <Store className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="font-extrabold text-white text-xs">My Assigned Restaurants</h3>
-                <p className="text-[10px] text-slate-400">
-                  You can deliver orders for {assignedRestaurants.length} restaurant{assignedRestaurants.length !== 1 ? 's' : ''} simultaneously
+                <h3 className="font-bold text-[#1F2937] text-xs">My Assigned Restaurants</h3>
+                <p className="text-[10px] text-[#64748B]">
+                  Deliver for {assignedRestaurants.length} restaurant{assignedRestaurants.length !== 1 ? 's' : ''} simultaneously
                 </p>
               </div>
             </div>
 
             <button
               onClick={handleOpenApplyModal}
-              className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-extrabold text-[11px] flex items-center gap-1 shadow-md shadow-orange-500/20 transition-all"
+              className="px-3 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-all"
             >
-              <Plus className="w-3.5 h-3.5" /> Apply More
+              <Plus className="w-3.5 h-3.5" /> Partner More
             </button>
           </div>
 
           {/* Assigned Restaurants Chips */}
           <div className="flex flex-wrap gap-2 pt-1">
             {assignedRestaurants.length === 0 ? (
-              <div className="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl w-full flex items-center gap-2">
+              <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-3 rounded-2xl w-full flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>You are not currently assigned to any restaurant. Click "Apply More" to partner with a restaurant.</span>
+                <span>You are not currently assigned to any restaurant. Click "Partner More" to partner with a restaurant.</span>
               </div>
             ) : (
               assignedRestaurants.map((rest) => (
                 <div
                   key={rest.id}
-                  className="px-3 py-1.5 bg-slate-950 border border-emerald-500/30 rounded-xl flex items-center gap-2 text-xs"
+                  className="px-3 py-1.5 bg-slate-50 border border-[#D7E5E8] rounded-xl flex items-center gap-2 text-xs"
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="font-bold text-slate-200">{rest.name}</span>
-                  <span className="text-[10px] text-slate-500">({rest.city || 'Central'})</span>
+                  <span className="font-bold text-[#1F2937]">{rest.name}</span>
+                  <span className="text-[10px] text-[#64748B]">({rest.city || 'Central'})</span>
                 </div>
               ))
             )}
@@ -574,17 +574,17 @@ export default function DriverDashboardPage() {
         </div>
 
         {/* Location Status Bar */}
-        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between text-xs">
+        <div className="bg-white p-3.5 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center justify-between text-xs">
           <div className="flex items-center gap-2.5">
-            <MapPin className={`w-4 h-4 ${availabilityStatus === 'OFFLINE' ? 'text-slate-500' : 'text-emerald-400'}`} />
+            <MapPin className={`w-4 h-4 ${availabilityStatus === 'OFFLINE' ? 'text-[#64748B]' : 'text-[#3A7D7C]'}`} />
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Current GPS</span>
-              <span className="font-semibold text-white">
+              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Current GPS</span>
+              <span className="font-semibold text-[#1F2937]">
                 {currentCoords.lat.toFixed(4)}, {currentCoords.lng.toFixed(4)}
               </span>
             </div>
           </div>
-          <div className="text-right text-[10px] text-slate-400">
+          <div className="text-right text-[10px] text-[#64748B]">
             {lastLocationTime ? `GPS: ${new Date(lastLocationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'GPS Ready'}
           </div>
         </div>
@@ -594,14 +594,14 @@ export default function DriverDashboardPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" />
-                <h2 className="font-extrabold text-white text-xs uppercase tracking-wider">
+                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                <h2 className="font-bold text-[#1F2937] text-xs uppercase tracking-wider">
                   Available Orders Pool ({availableOrders.length})
                 </h2>
               </div>
               <button
                 onClick={() => fetchAvailableOrdersPool(selectedRestaurantFilter)}
-                className="text-[11px] text-orange-400 hover:text-orange-300 font-bold flex items-center gap-1"
+                className="text-[11px] text-[#3A7D7C] hover:text-[#2F6665] font-bold flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3" /> Refresh
               </button>
@@ -617,8 +617,8 @@ export default function DriverDashboardPage() {
                   }}
                   className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
                     selectedRestaurantFilter === 'ALL'
-                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
-                      : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                      ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                      : 'bg-white text-[#64748B] hover:text-[#1F2937] border border-[#D7E5E8]'
                   }`}
                 >
                   All Stores ({assignedRestaurants.length})
@@ -632,8 +632,8 @@ export default function DriverDashboardPage() {
                     }}
                     className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
                       selectedRestaurantFilter === r.id
-                        ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
-                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                        ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                        : 'bg-white text-[#64748B] hover:text-[#1F2937] border border-[#D7E5E8]'
                     }`}
                   >
                     {r.name}
@@ -643,10 +643,10 @@ export default function DriverDashboardPage() {
             )}
 
             {availableOrders.length === 0 ? (
-              <div className="bg-slate-900 rounded-3xl p-6 border border-slate-800 text-center space-y-3">
-                <Clock className="w-8 h-8 text-slate-600 mx-auto" />
-                <p className="text-xs font-bold text-slate-300">No Orders Waiting in Pool</p>
-                <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+              <div className="bg-white rounded-3xl p-6 border border-[#D7E5E8] shadow-xs text-center space-y-3">
+                <Clock className="w-8 h-8 text-[#64748B] mx-auto" />
+                <p className="text-xs font-bold text-[#1F2937]">No Orders Waiting in Pool</p>
+                <p className="text-[11px] text-[#64748B] max-w-xs mx-auto">
                   {availabilityStatus === 'AVAILABLE'
                     ? 'Orders from your partner restaurants will appear here live. First rider to claim gets it!'
                     : 'Turn your status ONLINE to see and claim live delivery orders.'}
@@ -654,7 +654,7 @@ export default function DriverDashboardPage() {
                 {assignedRestaurants.length === 0 && (
                   <button
                     onClick={handleOpenApplyModal}
-                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-xl shadow-md shadow-orange-500/20 inline-flex items-center gap-1.5 mt-2"
+                    className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-bold rounded-xl shadow-2xs inline-flex items-center gap-1.5 mt-2"
                   >
                     <Store className="w-4 h-4" /> Connect to Partner Restaurants
                   </button>
@@ -665,54 +665,54 @@ export default function DriverDashboardPage() {
                 {availableOrders.map((order) => (
                   <div
                     key={order.id}
-                    className="bg-gradient-to-br from-slate-900 to-slate-900/90 rounded-3xl p-5 border-2 border-amber-500/40 shadow-xl shadow-amber-500/5 space-y-3.5 transition-all hover:border-amber-400"
+                    className="bg-white rounded-3xl p-5 border border-[#D7E5E8] shadow-xs space-y-3.5 transition-all hover:border-[#3A7D7C]"
                   >
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-3">
                       <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-black text-[10px] uppercase tracking-wider border border-amber-500/30">
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold text-[10px] uppercase tracking-wider border border-amber-200">
                           {order.order_status.replace(/_/g, ' ')}
                         </span>
-                        <span className="px-2.5 py-1 rounded-xl bg-orange-500/20 text-orange-400 font-mono font-black text-xs border border-orange-500/30">
+                        <span className="px-2.5 py-1 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] font-mono font-bold text-xs border border-[#D7E5E8]">
                           #{getOrderLast5(order.order_number)}
                         </span>
-                        <span className="font-mono text-slate-400 text-[10px] hidden sm:inline">
+                        <span className="font-mono text-[#64748B] text-[10px] hidden sm:inline">
                           ({order.order_number})
                         </span>
                       </div>
-                      <span className="text-xs font-black text-emerald-400">₹{order.total_amount}</span>
+                      <span className="text-xs font-bold text-[#1F2937] font-mono">₹{order.total_amount}</span>
                     </div>
 
                     {/* Store & Customer Details */}
                     <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
-                        <span className="text-[9px] font-extrabold uppercase text-orange-400 block mb-0.5">🏪 Pickup Store</span>
-                        <p className="font-bold text-white text-xs truncate">{order.restaurant_name}</p>
-                        <p className="text-[10px] text-slate-400 truncate">{order.restaurant_address}</p>
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-[#D7E5E8]">
+                        <span className="text-[9px] font-bold uppercase text-[#3A7D7C] block mb-0.5">🏪 Pickup Store</span>
+                        <p className="font-bold text-[#1F2937] text-xs truncate">{order.restaurant_name}</p>
+                        <p className="text-[10px] text-[#64748B] truncate">{order.restaurant_address}</p>
                       </div>
 
-                      <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800/80">
-                        <span className="text-[9px] font-extrabold uppercase text-emerald-400 block mb-0.5">📍 Customer Drop</span>
-                        <p className="font-bold text-white text-xs truncate">{order.customer_name}</p>
-                        <p className="text-[10px] text-slate-400 truncate">{order.delivery_address}</p>
+                      <div className="bg-slate-50 p-3 rounded-2xl border border-[#D7E5E8]">
+                        <span className="text-[9px] font-bold uppercase text-emerald-700 block mb-0.5">📍 Customer Drop</span>
+                        <p className="font-bold text-[#1F2937] text-xs truncate">{order.customer_name}</p>
+                        <p className="text-[10px] text-[#64748B] truncate">{order.delivery_address}</p>
                       </div>
                     </div>
 
                     {/* Order summary info */}
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                      <span>Payment: <strong className="text-slate-200">{order.payment_method}</strong></span>
-                      <span>Items: <strong className="text-slate-200">{order.items?.length || 1}</strong></span>
-                      <span>Placed: <strong className="text-slate-200">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                    <div className="flex items-center justify-between text-[11px] text-[#64748B] pt-1">
+                      <span>Payment: <strong className="text-[#1F2937]">{order.payment_method}</strong></span>
+                      <span>Items: <strong className="text-[#1F2937]">{order.items?.length || 1}</strong></span>
+                      <span>Placed: <strong className="text-[#1F2937]">{new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
                     </div>
 
                     {/* Instant 1-Click Atomic Claim Button */}
                     <button
                       onClick={() => handleClaimOrder(order.id)}
                       disabled={claimingOrderId === order.id || availabilityStatus === 'OFFLINE'}
-                      className={`w-full py-3.5 rounded-2xl font-black text-xs text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full py-3.5 rounded-2xl font-bold text-xs text-white shadow-2xs transition-all flex items-center justify-center gap-2 ${
                         availabilityStatus === 'OFFLINE'
-                          ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/25 active:scale-[0.98]'
+                          ? 'bg-slate-200 text-[#94A3B8] cursor-not-allowed'
+                          : 'bg-[#3A7D7C] hover:bg-[#2F6665] active:scale-[0.98]'
                       }`}
                     >
                       {claimingOrderId === order.id ? (
@@ -736,69 +736,69 @@ export default function DriverDashboardPage() {
 
         {/* ACTIVE DELIVERY CARD (Priority) */}
         {activeDelivery && (
-          <div className="bg-slate-900 rounded-3xl p-6 border-2 border-orange-500/60 shadow-2xl shadow-orange-500/10 space-y-5">
+          <div className="bg-white rounded-3xl p-6 border-2 border-[#3A7D7C] shadow-md space-y-5">
             
             {/* Header Badge */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-4">
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 font-extrabold text-xs uppercase tracking-wider border border-orange-500/30">
+                <span className="px-3 py-1 rounded-full bg-[#EAF4F7] text-[#3A7D7C] font-bold text-xs uppercase tracking-wider border border-[#D7E5E8]">
                   {activeDelivery.order_status.replace(/_/g, ' ')}
                 </span>
-                <span className="px-3 py-1 rounded-xl bg-orange-500/20 text-orange-300 font-mono font-black text-sm border border-orange-500/40 shadow-inner">
+                <span className="px-3 py-1 rounded-xl bg-slate-100 text-[#1F2937] font-mono font-bold text-sm border border-[#D7E5E8]">
                   #{getOrderLast5(activeDelivery.order_number)}
                 </span>
-                <span className="font-mono text-slate-400 text-xs hidden sm:inline">
+                <span className="font-mono text-[#64748B] text-xs hidden sm:inline">
                   ({activeDelivery.order_number})
                 </span>
               </div>
-              <span className="text-xs font-black text-emerald-400">₹{activeDelivery.total_amount}</span>
+              <span className="text-xs font-bold text-[#1F2937] font-mono">₹{activeDelivery.total_amount}</span>
             </div>
 
             {/* Pickup Restaurant Info */}
-            <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400">Pickup Location</span>
+                <span className="text-[10px] font-bold uppercase text-[#64748B]">Pickup Location</span>
                 <button
                   onClick={() => openGoogleNav(activeDelivery.restaurant_latitude, activeDelivery.restaurant_longitude, activeDelivery.restaurant_address)}
-                  className="px-2.5 py-1 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 text-[11px] font-bold flex items-center gap-1 border border-orange-500/20"
+                  className="px-2.5 py-1 rounded-lg bg-white text-[#3A7D7C] hover:bg-[#EAF4F7] text-[11px] font-bold flex items-center gap-1 border border-[#D7E5E8] shadow-2xs"
                 >
                   <Navigation className="w-3 h-3" /> Nav to Store ↗
                 </button>
               </div>
-              <p className="font-bold text-white text-sm">{activeDelivery.restaurant_name}</p>
-              <p className="text-xs text-slate-400 leading-relaxed">{activeDelivery.restaurant_address}</p>
+              <p className="font-bold text-[#1F2937] text-sm">{activeDelivery.restaurant_name}</p>
+              <p className="text-xs text-[#64748B] leading-relaxed">{activeDelivery.restaurant_address}</p>
             </div>
 
             {/* Customer Drop Location Info */}
-            <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-2">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase text-slate-400">Customer Delivery Drop</span>
+                <span className="text-[10px] font-bold uppercase text-[#64748B]">Customer Delivery Drop</span>
                 <button
                   onClick={() => openGoogleNav(activeDelivery.customer_latitude, activeDelivery.customer_longitude, activeDelivery.delivery_address)}
-                  className="px-2.5 py-1 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 text-[11px] font-bold flex items-center gap-1 border border-orange-500/20"
+                  className="px-2.5 py-1 rounded-lg bg-white text-[#3A7D7C] hover:bg-[#EAF4F7] text-[11px] font-bold flex items-center gap-1 border border-[#D7E5E8] shadow-2xs"
                 >
                   <Navigation className="w-3 h-3" /> Nav to Customer ↗
                 </button>
               </div>
-              <p className="font-bold text-white text-sm">{activeDelivery.customer_name}</p>
-              <p className="text-xs text-slate-300 leading-relaxed">{activeDelivery.delivery_address}</p>
+              <p className="font-bold text-[#1F2937] text-sm">{activeDelivery.customer_name}</p>
+              <p className="text-xs text-[#64748B] leading-relaxed">{activeDelivery.delivery_address}</p>
               {activeDelivery.delivery_landmark && (
-                <p className="text-xs text-slate-400">Landmark: {activeDelivery.delivery_landmark}</p>
+                <p className="text-xs text-[#64748B]">Landmark: {activeDelivery.delivery_landmark}</p>
               )}
             </div>
 
             {/* COD Notice */}
             {activeDelivery.payment_method === 'COD' && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 text-xs flex items-center justify-between">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-bold">
-                  <DollarSign className="w-4 h-4 text-amber-400" /> CASH TO COLLECT (COD)
+                  <DollarSign className="w-4 h-4 text-amber-600" /> CASH TO COLLECT (COD)
                 </span>
-                <span className="font-black text-sm">₹{activeDelivery.total_amount}</span>
+                <span className="font-bold text-sm">₹{activeDelivery.total_amount}</span>
               </div>
             )}
 
             {/* Map Preview */}
-            <div className="h-44 rounded-2xl overflow-hidden border border-slate-800">
+            <div className="h-44 rounded-2xl overflow-hidden border border-[#D7E5E8]">
               <OrderMap
                 restaurantCoords={{ lat: parseFloat(activeDelivery.restaurant_latitude), lng: parseFloat(activeDelivery.restaurant_longitude) }}
                 customerCoords={{ lat: parseFloat(activeDelivery.customer_latitude), lng: parseFloat(activeDelivery.customer_longitude) }}
@@ -808,20 +808,20 @@ export default function DriverDashboardPage() {
             </div>
 
             {/* STATE MACHINE ACTION BUTTONS */}
-            <div className="space-y-4 pt-2 border-t border-slate-800/80">
+            <div className="space-y-4 pt-2 border-t border-[#D7E5E8]">
               
               {/* 1. ASSIGNED_TO_DRIVER -> ACCEPT / DECLINE */}
               {activeDelivery.order_status === 'ASSIGNED_TO_DRIVER' && (
                 <div className="flex gap-3">
                   <button
                     onClick={handleDeclineOrder}
-                    className="flex-1 py-3.5 bg-slate-800 hover:bg-slate-700 rounded-2xl font-bold text-xs text-red-400 border border-slate-700 transition-all"
+                    className="flex-1 py-3.5 bg-rose-50 hover:bg-rose-100 rounded-2xl font-bold text-xs text-rose-700 border border-rose-200 transition-all shadow-2xs"
                   >
                     Decline
                   </button>
                   <button
                     onClick={handleAcceptOrder}
-                    className="flex-2 py-3.5 bg-orange-500 hover:bg-orange-600 rounded-2xl font-black text-xs text-white shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition-all"
+                    className="flex-2 py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] rounded-2xl font-bold text-xs text-white shadow-2xs flex items-center justify-center gap-2 transition-all"
                   >
                     <CheckCircle2 className="w-4 h-4" /> Accept Delivery Assignment
                   </button>
@@ -832,7 +832,7 @@ export default function DriverDashboardPage() {
               {['ACCEPTED', 'PENDING', 'SENT_TO_KITCHEN', 'PREPARING', 'READY_FOR_PICKUP', 'DRIVER_ACCEPTED'].includes(activeDelivery.order_status) && (
                 <button
                   onClick={handlePickupOrder}
-                  className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 rounded-2xl font-black text-xs text-white shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition-all"
+                  className="w-full py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] rounded-2xl font-bold text-xs text-white shadow-2xs flex items-center justify-center gap-2 transition-all"
                 >
                   <Package className="w-4 h-4" /> 🛍️ Confirm Food Picked Up from Restaurant
                 </button>
@@ -842,7 +842,7 @@ export default function DriverDashboardPage() {
               {activeDelivery.order_status === 'PICKED_UP' && (
                 <button
                   onClick={handleStartDelivery}
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-xs text-white shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all"
+                  className="w-full py-3.5 bg-sky-600 hover:bg-sky-700 rounded-2xl font-bold text-xs text-white shadow-2xs flex items-center justify-center gap-2 transition-all"
                 >
                   <Navigation className="w-4 h-4" /> 🚀 Start Delivery Route (Out for Delivery)
                 </button>
@@ -850,14 +850,14 @@ export default function DriverDashboardPage() {
 
               {/* COD Payment Collection Toggle */}
               {activeDelivery.payment_method === 'COD' && (
-                <label className="flex items-center gap-3 p-3.5 bg-slate-950 rounded-2xl border border-amber-500/30 cursor-pointer shadow-inner">
+                <label className="flex items-center gap-3 p-3.5 bg-amber-50 rounded-2xl border border-amber-200 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={isCodCollected}
                     onChange={(e) => setIsCodCollected(e.target.checked)}
-                    className="w-4 h-4 rounded text-orange-500 bg-slate-800 border-slate-700 focus:ring-0"
+                    className="w-4 h-4 rounded text-[#3A7D7C] border-[#D7E5E8] focus:ring-0"
                   />
-                  <span className="text-xs font-bold text-amber-300">
+                  <span className="text-xs font-bold text-amber-900">
                     💰 Cash Payment Collected (₹{activeDelivery.total_amount})
                   </span>
                 </label>
@@ -868,7 +868,7 @@ export default function DriverDashboardPage() {
                 <button
                   onClick={handleDeliverOrder}
                   disabled={deliveringOrder}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-2xl font-black text-sm text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2.5 transition-all active:scale-[0.98] border border-emerald-400/40"
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 rounded-2xl font-bold text-sm text-white shadow-md flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
                 >
                   {deliveringOrder ? (
                     <>
@@ -877,7 +877,7 @@ export default function DriverDashboardPage() {
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-5 h-5 text-emerald-100" />
+                      <CheckCircle2 className="w-5 h-5 text-white" />
                       ✅ Mark as DELIVERED & Ready for Next Order 🎉
                     </>
                   )}
@@ -886,11 +886,11 @@ export default function DriverDashboardPage() {
                 <div className="flex items-center justify-between pt-1">
                   <button
                     onClick={() => setShowFailureModal(true)}
-                    className="py-2 px-3 text-red-400 hover:text-red-300 rounded-xl font-bold text-[11px] flex items-center gap-1 transition-colors"
+                    className="py-2 px-3 text-rose-700 hover:bg-rose-50 rounded-xl font-bold text-[11px] flex items-center gap-1 transition-colors"
                   >
                     <AlertTriangle className="w-3.5 h-3.5" /> Report Delivery Issue
                   </button>
-                  <span className="text-[10px] text-slate-400 font-medium">
+                  <span className="text-[10px] text-[#64748B] font-medium">
                     ⚡ Auto-syncs to Restaurant Admin
                   </span>
                 </div>
@@ -903,23 +903,23 @@ export default function DriverDashboardPage() {
 
         {/* RIDER STATS & LINKS */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Completed</span>
-              <span className="font-black text-white text-base">{completedOrders.length} Deliveries</span>
+              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Completed</span>
+              <span className="font-bold text-[#1F2937] text-base">{completedOrders.length} Deliveries</span>
             </div>
           </div>
 
-          <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <ListOrdered className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Assigned</span>
-              <span className="font-black text-white text-base">{allOrders.length} Orders</span>
+              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Total Assigned</span>
+              <span className="font-bold text-[#1F2937] text-base">{allOrders.length} Orders</span>
             </div>
           </div>
         </div>
@@ -928,7 +928,7 @@ export default function DriverDashboardPage() {
         <div className="flex gap-3 pt-2">
           <button
             onClick={() => { logout(); navigate('/driver/login'); }}
-            className="w-full py-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-2xl font-bold text-xs text-red-400 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-2xl font-bold text-xs text-rose-700 flex items-center justify-center gap-2 transition-colors shadow-2xs"
           >
             <LogOut className="w-4 h-4" /> Sign Out Rider Duty
           </button>
@@ -938,37 +938,37 @@ export default function DriverDashboardPage() {
 
       {/* MULTI-RESTAURANT APPLICATION MODAL */}
       {showApplyModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="max-w-lg w-full bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-2xl max-h-[85vh] overflow-y-auto space-y-5">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-8 border border-[#D7E5E8] shadow-xl max-h-[85vh] overflow-y-auto space-y-5">
             
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">Partner with Restaurants</h3>
-                  <p className="text-[11px] text-slate-400">Expand your delivery coverage across multiple stores</p>
+                  <h3 className="text-base font-bold text-[#1F2937]">Partner with Restaurants</h3>
+                  <p className="text-[11px] text-[#64748B]">Expand your delivery coverage across multiple stores</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowApplyModal(false)}
-                className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm"
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#64748B] hover:text-[#1F2937] flex items-center justify-center font-bold text-sm"
               >
                 ✕
               </button>
             </div>
 
             {/* Seamless Document Reuse Banner & Connect All */}
-            <div className="p-4 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 rounded-2xl text-xs space-y-3">
+            <div className="p-4 bg-slate-50 border border-[#D7E5E8] rounded-2xl text-xs space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-orange-400 font-bold">
+                <div className="flex items-center gap-1.5 text-[#3A7D7C] font-bold">
                   <Sparkles className="w-4 h-4" /> Instant Partner Connection
                 </div>
                 <button
                   onClick={handleConnectAllRestaurants}
                   disabled={connectingAll}
-                  className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-1 transition-all"
+                  className="px-3 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-[11px] rounded-xl shadow-2xs flex items-center gap-1 transition-all"
                 >
                   {connectingAll ? (
                     <>
@@ -981,19 +981,19 @@ export default function DriverDashboardPage() {
                   )}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+              <p className="text-[11px] text-[#64748B] leading-relaxed">
                 As an active approved rider, you can connect with any restaurant instantly with 1-click and immediately start receiving live orders!
               </p>
             </div>
 
             {/* Restaurant List */}
             {loadingRestaurants ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-orange-500" />
+              <div className="py-12 text-center text-[#64748B] text-xs">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#3A7D7C]" />
                 Loading available restaurants...
               </div>
             ) : availableRestaurants.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-xs">
+              <div className="py-8 text-center text-[#64748B] text-xs">
                 No active restaurants accepting applications at this time.
               </div>
             ) : (
@@ -1001,35 +1001,35 @@ export default function DriverDashboardPage() {
                 {availableRestaurants.map((rest) => (
                   <div
                     key={rest.id}
-                    className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-3"
+                    className="p-4 bg-slate-50 rounded-2xl border border-[#D7E5E8] flex items-center justify-between gap-3"
                   >
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-extrabold text-white text-xs truncate">{rest.name}</h4>
+                        <h4 className="font-bold text-[#1F2937] text-xs truncate">{rest.name}</h4>
                         {rest.city && (
-                          <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[9px] font-bold">
+                          <span className="px-2 py-0.5 rounded-full bg-white border border-[#D7E5E8] text-[#64748B] text-[9px] font-bold">
                             {rest.city}
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400 truncate">{rest.address}</p>
+                      <p className="text-[10px] text-[#64748B] truncate">{rest.address}</p>
                     </div>
 
                     {/* Status / Action */}
                     <div className="shrink-0">
                       {rest.isAssigned ? (
-                        <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black text-[10px] flex items-center gap-1">
+                        <span className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-[10px] flex items-center gap-1">
                           <Check className="w-3 h-3" /> Connected
                         </span>
                       ) : rest.applicationStatus === 'PENDING' || rest.applicationStatus === 'UNDER_REVIEW' ? (
-                        <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[10px] flex items-center gap-1">
+                        <span className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[10px] flex items-center gap-1">
                           <Clock className="w-3 h-3" /> Pending Review
                         </span>
                       ) : rest.applicationStatus === 'REJECTED' ? (
                         <button
                           onClick={() => handleApplyToRestaurant(rest.id, rest.name)}
                           disabled={applyingRestId === rest.id}
-                          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-orange-400 font-bold text-[10px] transition-all"
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-[#D7E5E8] text-[#3A7D7C] font-bold text-[10px] transition-all shadow-2xs"
                         >
                           {applyingRestId === rest.id ? 'Connecting...' : 'Reconnect'}
                         </button>
@@ -1037,7 +1037,7 @@ export default function DriverDashboardPage() {
                         <button
                           onClick={() => handleApplyToRestaurant(rest.id, rest.name)}
                           disabled={applyingRestId === rest.id}
-                          className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[10px] shadow-md shadow-orange-500/20 transition-all flex items-center gap-1"
+                          className="px-3.5 py-1.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-[10px] shadow-2xs transition-all flex items-center gap-1"
                         >
                           {applyingRestId === rest.id ? (
                             <>
@@ -1063,13 +1063,13 @@ export default function DriverDashboardPage() {
 
       {/* REPORT FAILURE MODAL */}
       {showFailureModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-4">
-            <div className="flex items-center gap-3 text-red-400">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 border border-[#D7E5E8] shadow-xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-700">
               <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-bold text-white text-base">Report Delivery Issue</h3>
+              <h3 className="font-bold text-[#1F2937] text-base">Report Delivery Issue</h3>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#64748B]">
               Specify the reason why this delivery could not be completed. The restaurant admin will be notified to resolve operationally.
             </p>
             <form onSubmit={handleMarkFailedSubmit} className="space-y-4">
@@ -1079,19 +1079,19 @@ export default function DriverDashboardPage() {
                 value={failureReason}
                 onChange={(e) => setFailureReason(e.target.value)}
                 placeholder="e.g. Customer unavailable / Wrong address / Customer refused order"
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white text-xs focus:border-red-500 focus:outline-none"
+                className="w-full bg-white border border-[#D7E5E8] rounded-xl p-3 text-[#1F2937] text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
               ></textarea>
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowFailureModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 text-slate-300 rounded-xl font-bold text-xs"
+                  className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] rounded-xl font-bold text-xs shadow-2xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-xs"
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-2xs"
                 >
                   Submit Issue
                 </button>

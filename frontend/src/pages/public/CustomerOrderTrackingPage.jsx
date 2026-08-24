@@ -194,20 +194,22 @@ export default function CustomerOrderTrackingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-400">
-        <Clock className="w-12 h-12 text-amber-500 animate-spin mb-3" />
-        <p className="text-sm font-semibold">Loading Live Order Status...</p>
+      <div className="min-h-screen bg-[#F4F8FA] flex flex-col items-center justify-center p-6 text-[#64748B]">
+        <div className="w-12 h-12 rounded-2xl bg-[#EAF4F7] border border-[#D7E5E8] flex items-center justify-center mb-3 shadow-xs">
+          <Clock className="w-6 h-6 text-[#3A7D7C] animate-spin" />
+        </div>
+        <p className="text-sm font-bold text-[#1F2937]">Loading Live Order Status...</p>
       </div>
     );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
-        <div className="glass-panel bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-sm text-center">
+      <div className="min-h-screen bg-[#F4F8FA] flex items-center justify-center p-6 font-sans">
+        <div className="bg-white border border-[#D7E5E8] rounded-3xl p-8 max-w-sm text-center shadow-xl">
           <UtensilsCrossed className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Order Not Found</h3>
-          <p className="text-sm text-slate-400 mb-6">{error || 'Order tracking information is unavailable.'}</p>
+          <h3 className="text-xl font-bold text-[#1F2937] mb-2">Order Not Found</h3>
+          <p className="text-sm text-[#64748B] mb-6">{error || 'Order tracking information is unavailable.'}</p>
         </div>
       </div>
     );
@@ -216,49 +218,55 @@ export default function CustomerOrderTrackingPage() {
   const activeStepIdx = getStepIndex(order.order_status);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 max-w-md mx-auto relative shadow-2xl">
+    <div className="min-h-screen bg-[#F4F8FA] text-[#1F2937] p-4 max-w-md mx-auto relative shadow-2xl font-sans antialiased border-x border-[#D7E5E8]">
       {/* Header */}
-      <div className="flex items-center justify-between py-4 border-b border-slate-800 mb-6">
+      <div className="flex items-center justify-between py-4 border-b border-[#D7E5E8] mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <UtensilsCrossed className="w-6 h-6 text-slate-950 font-bold" />
+          <div className="w-10 h-10 rounded-xl bg-[#3A7D7C] flex items-center justify-center shadow-md shadow-[#3A7D7C]/20">
+            <UtensilsCrossed className="w-5 h-5 text-white font-bold" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white tracking-wide">GRAND PALACE</h1>
-            <p className="text-xs text-amber-400 font-semibold">Order #{order.order_number}</p>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-base font-extrabold text-[#1F2937] tracking-tight">GRAND PALACE</h1>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]">
+                HMS
+              </span>
+            </div>
+            <p className="text-xs text-[#3A7D7C] font-bold">Order #{order.order_number}</p>
           </div>
         </div>
 
         <button
           onClick={fetchOrderTracking}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+          className="p-2.5 rounded-xl bg-white border border-[#D7E5E8] text-[#64748B] hover:text-[#1F2937] shadow-2xs hover:bg-slate-50 cursor-pointer"
+          title="Refresh Status"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-4 h-4 text-[#3A7D7C]" />
         </button>
       </div>
 
       {/* Live Status Banner */}
-      <div className="glass-panel bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 mb-6 text-center relative overflow-hidden">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 mb-3 animate-pulse">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Realtime Live Kitchen Sync</span>
+      <div className="bg-white border border-[#D7E5E8] rounded-3xl p-6 mb-6 text-center relative overflow-hidden shadow-sm">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] mb-3">
+          <Sparkles className="w-3.5 h-3.5 text-[#3A7D7C]" />
+          <span>Realtime Kitchen KOT Sync</span>
         </div>
 
-        <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-1">
+        <h2 className="text-2xl font-black text-[#1F2937] uppercase tracking-wider mb-1">
           {statusSteps[activeStepIdx]?.label || order.order_status}
         </h2>
-        <p className="text-xs text-slate-400">{statusSteps[activeStepIdx]?.desc}</p>
+        <p className="text-xs text-[#64748B]">{statusSteps[activeStepIdx]?.desc}</p>
         
         {order.table_number && (
-          <div className="mt-4 pt-3 border-t border-slate-800 text-xs font-bold text-amber-400">
+          <div className="mt-4 pt-3 border-t border-[#D7E5E8] text-xs font-bold text-[#3A7D7C]">
             Delivering to Table {order.table_number}
           </div>
         )}
       </div>
 
       {/* Timeline Steps */}
-      <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-3xl p-6 mb-6 space-y-6">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Order Status Timeline</h3>
+      <div className="bg-white border border-[#D7E5E8] rounded-3xl p-6 mb-6 space-y-6 shadow-xs">
+        <h3 className="text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2">Order Status Timeline</h3>
         {statusSteps.map((step, idx) => {
           const Icon = step.icon;
           const isDone = idx <= activeStepIdx;
@@ -270,7 +278,7 @@ export default function CustomerOrderTrackingPage() {
               {idx < statusSteps.length - 1 && (
                 <div
                   className={`absolute left-5 top-10 w-0.5 h-10 ${
-                    idx < activeStepIdx ? 'bg-amber-500' : 'bg-slate-800'
+                    idx < activeStepIdx ? 'bg-[#3A7D7C]' : 'bg-[#D7E5E8]'
                   }`}
                 ></div>
               )}
@@ -278,20 +286,20 @@ export default function CustomerOrderTrackingPage() {
               <div
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all ${
                   isCurrent
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/30 scale-110'
+                    ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-md shadow-[#3A7D7C]/20 scale-110'
                     : isDone
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40'
-                    : 'bg-slate-800/50 text-slate-600 border-slate-800'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-slate-50 text-[#94A3B8] border-[#D7E5E8]'
                 }`}
               >
                 <Icon className="w-5 h-5" />
               </div>
 
               <div>
-                <h4 className={`text-sm font-bold ${isDone ? 'text-white' : 'text-slate-500'}`}>
+                <h4 className={`text-sm font-bold ${isDone ? 'text-[#1F2937]' : 'text-[#94A3B8]'}`}>
                   {step.label}
                 </h4>
-                <p className="text-xs text-slate-400 mt-0.5">{step.desc}</p>
+                <p className="text-xs text-[#64748B] mt-0.5">{step.desc}</p>
               </div>
             </div>
           );
@@ -299,53 +307,53 @@ export default function CustomerOrderTrackingPage() {
       </div>
 
       {/* Itemized Order Breakdown & Digital Bill */}
-      <div className="glass-panel bg-slate-900/80 border border-slate-800 rounded-3xl p-5 mb-6 space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+      <div className="bg-white border border-[#D7E5E8] rounded-3xl p-5 mb-6 space-y-3 shadow-xs">
+        <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-2">
+          <h3 className="text-xs font-bold text-[#1F2937] uppercase tracking-wider">
             🧾 Digital Tax Bill ({order.items ? order.items.length : 0} items)
           </h3>
           {order.bill_number && (
-            <span className="text-[11px] font-mono text-amber-400 font-bold">{order.bill_number}</span>
+            <span className="text-[11px] font-mono text-[#3A7D7C] font-bold">{order.bill_number}</span>
           )}
         </div>
 
         {order.items && order.items.map((item, i) => (
-          <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-800/40 last:border-0">
+          <div key={i} className="flex items-center justify-between text-xs py-2 border-b border-[#D7E5E8]/60 last:border-0">
             <div>
-              <span className="font-bold text-white">{item.quantity}× </span>
-              <span className="text-slate-300 font-medium">{item.item_name}</span>
+              <span className="font-extrabold text-[#1F2937]">{item.quantity}× </span>
+              <span className="text-[#1F2937] font-medium">{item.item_name}</span>
             </div>
-            <span className="font-bold text-amber-400 font-mono">₹{parseFloat(item.total_price).toFixed(2)}</span>
+            <span className="font-bold text-[#1F2937] font-mono">₹{parseFloat(item.total_price).toFixed(2)}</span>
           </div>
         ))}
 
-        <div className="pt-2 border-t border-slate-800 space-y-1.5 text-xs text-slate-400">
+        <div className="pt-2 border-t border-[#D7E5E8] space-y-1.5 text-xs text-[#64748B]">
           <div className="flex justify-between">
             <span>Item Subtotal:</span>
-            <span className="font-mono text-slate-200">₹{parseFloat(order.subtotal || order.total_amount * 0.9523).toFixed(2)}</span>
+            <span className="font-mono text-[#1F2937] font-semibold">₹{parseFloat(order.subtotal || order.total_amount * 0.9523).toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
             <span>CGST + SGST (5%):</span>
-            <span className="font-mono text-slate-200">₹{parseFloat(order.tax_amount || order.total_amount * 0.0476).toFixed(2)}</span>
+            <span className="font-mono text-[#1F2937] font-semibold">₹{parseFloat(order.tax_amount || order.total_amount * 0.0476).toFixed(2)}</span>
           </div>
-          <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-black text-white">
+          <div className="pt-2 border-t border-[#D7E5E8] flex justify-between items-center text-sm font-black text-[#1F2937]">
             <span>Grand Total:</span>
-            <span className="text-amber-400 font-mono text-base">₹{parseFloat(order.total_amount).toFixed(2)}</span>
+            <span className="text-[#3A7D7C] font-mono text-base font-black">₹{parseFloat(order.total_amount).toFixed(2)}</span>
           </div>
         </div>
 
         {/* Payment Status Banner */}
-        <div className="pt-3 border-t border-slate-800">
+        <div className="pt-3 border-t border-[#D7E5E8]">
           {order.payment_status === 'PAID' || order.payment_status === 'ROOM_CHARGED' ? (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-1">
-              <div className="flex items-center justify-center gap-1.5 text-emerald-400 font-bold text-xs">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-bold text-xs">
                 <CheckCheck className="w-4 h-4" />
                 <span>PAYMENT RECEIVED • BILL SETTLED</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Payment Method: <span className="text-emerald-300 font-semibold">{order.payment_method || 'Cash/Card/UPI'}</span>
+              <p className="text-[11px] text-[#64748B]">
+                Payment Method: <span className="text-emerald-800 font-semibold">{order.payment_method || 'Cash/Card/UPI'}</span>
               </p>
-              <p className="text-[11px] text-slate-400">Thank you for dining at Grand Palace!</p>
+              <p className="text-[11px] text-[#64748B]">Thank you for dining at Grand Palace!</p>
             </div>
           ) : order.payment_status === 'BILL_REQUESTED' ? (
             <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-1">
@@ -359,12 +367,12 @@ export default function CustomerOrderTrackingPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-1">
-                <div className="flex items-center justify-center gap-1.5 text-amber-400 font-bold text-xs">
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-1">
+                <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold text-xs">
                   <Clock className="w-4 h-4" />
                   <span>SELECT PAYMENT METHOD</span>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-[#64748B]">
                   Pay directly online or request to settle with cash/card at the counter.
                 </p>
               </div>
@@ -375,7 +383,7 @@ export default function CustomerOrderTrackingPage() {
                   type="button"
                   onClick={handlePayOnline}
                   disabled={paying}
-                  className="w-full py-3.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 hover:opacity-95 transition-all disabled:opacity-50"
+                  className="w-full py-3.5 px-3 rounded-2xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#3A7D7C]/20 hover:opacity-95 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <span>{paying ? 'Opening Gateway...' : `💳 Pay ₹${parseFloat(order.total_amount).toFixed(2)} Online`}</span>
                 </button>
@@ -384,7 +392,7 @@ export default function CustomerOrderTrackingPage() {
                   type="button"
                   onClick={handlePayAtCounter}
                   disabled={requestingCounter}
-                  className="w-full py-3.5 px-3 rounded-2xl bg-slate-800 border border-amber-500/40 text-amber-400 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg hover:bg-slate-750 transition-all disabled:opacity-50"
+                  className="w-full py-3.5 px-3 rounded-2xl bg-white border border-[#D7E5E8] text-[#1F2937] hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <span>{requestingCounter ? 'Sending Request...' : '💵 Pay at Counter (Cash)'}</span>
                 </button>
@@ -409,7 +417,7 @@ export default function CustomerOrderTrackingPage() {
               alert('🛎️ Service call sent to waiter station.');
             }
           }}
-          className="w-full py-3 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-slate-850"
+          className="w-full py-3 rounded-2xl bg-[#EAF4F7] border border-[#D7E5E8] text-[#3A7D7C] hover:bg-[#D7E5E8] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
         >
           <Bell className="w-4 h-4 text-amber-500" />
           <span>Call Waiter / Request Service</span>
@@ -418,7 +426,7 @@ export default function CustomerOrderTrackingPage() {
         {order.qr_token && (
           <Link
             to={`/order/table/${order.qr_token}`}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:opacity-95 transition-all"
+            className="w-full py-3.5 rounded-2xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#3A7D7C]/20 hover:opacity-95 transition-all"
           >
             <UtensilsCrossed className="w-4 h-4" />
             <span>{order.payment_status === 'PAID' ? 'Start Next Order (Refresh Table Menu)' : 'Order More Dishes (Return to Menu)'}</span>

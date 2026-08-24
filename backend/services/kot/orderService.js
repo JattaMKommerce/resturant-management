@@ -68,7 +68,7 @@ async function createOrder(orderData, idempotencyKey = null) {
 
     for (const rawItem of items) {
       const [dbItems] = await connection.query(
-        `SELECT id, name, price, tax_percentage, is_available, is_active, kitchen_department_id, prep_time_minutes 
+        `SELECT id, name, price, tax_percentage, is_available, is_active, kitchen_department_id, prep_time_minutes, batch_capacity 
          FROM menu_items 
          WHERE id = ?`,
         [rawItem.menu_item_id]
@@ -114,6 +114,11 @@ async function createOrder(orderData, idempotencyKey = null) {
       subtotal += itemSubtotal;
       totalTaxAmount += itemTax;
 
+      const prepTimeMins = dbItem.prep_time_minutes !== null && dbItem.prep_time_minutes !== undefined ? parseInt(dbItem.prep_time_minutes) : null;
+      const batchCap = dbItem.batch_capacity !== null && dbItem.batch_capacity !== undefined ? parseInt(dbItem.batch_capacity) : null;
+      const batches = (batchCap && batchCap > 0) ? Math.ceil(qty / batchCap) : null;
+      const estimatedPrep = (batches && prepTimeMins && prepTimeMins > 0) ? (batches * prepTimeMins) : null;
+
       validatedItems.push({
         menu_item_id: dbItem.id,
         item_name: dbItem.name,
@@ -123,7 +128,10 @@ async function createOrder(orderData, idempotencyKey = null) {
         total_price: itemSubtotal + itemTax,
         special_instructions: rawItem.special_instructions || '',
         kitchen_department_id: dbItem.kitchen_department_id,
-        prep_time_minutes: dbItem.prep_time_minutes || 15,
+        prep_time_minutes: prepTimeMins,
+        batch_capacity: batchCap,
+        number_of_batches: batches,
+        estimated_prep_time_minutes: estimatedPrep,
         modifiers: validatedModifiers
       });
     }
@@ -166,8 +174,8 @@ async function createOrder(orderData, idempotencyKey = null) {
     for (const vItem of validatedItems) {
       const [orderItemResult] = await connection.query(
         `INSERT INTO order_items 
-          (order_id, menu_item_id, item_name, unit_price, quantity, tax_amount, item_total, special_instructions, kitchen_department_id, prep_time_minutes, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+          (order_id, menu_item_id, item_name, unit_price, quantity, tax_amount, item_total, special_instructions, kitchen_department_id, prep_time_minutes, batch_capacity, number_of_batches, estimated_prep_time_minutes, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
         [
           orderId,
           vItem.menu_item_id,
@@ -178,7 +186,10 @@ async function createOrder(orderData, idempotencyKey = null) {
           vItem.total_price, // value mapped to item_total column
           vItem.special_instructions,
           vItem.kitchen_department_id,
-          vItem.prep_time_minutes
+          vItem.prep_time_minutes,
+          vItem.batch_capacity,
+          vItem.number_of_batches,
+          vItem.estimated_prep_time_minutes
         ]
       );
 
@@ -217,27 +228,42 @@ async function createOrder(orderData, idempotencyKey = null) {
       const deptItems = itemsByDept[deptIdStr] || [];
       if (deptItems.length === 0) continue;
 
-      // Calculate KOT target completion time = MAX(prep_time_minutes)
-      const maxPrepMinutes = Math.max(...deptItems.map(i => i.prep_time_minutes || 15));
+      // Calculate initial KOT target completion estimate (for planning only, timer starts at START PREPARING)
+      const validEstimates = deptItems.map(i => i.estimated_prep_time_minutes).filter(t => t && t > 0);
+      const maxPrepMinutes = validEstimates.length > 0 ? Math.max(...validEstimates) : 15;
       const receivedAt = new Date();
       const targetAt = new Date(receivedAt.getTime() + maxPrepMinutes * 60000);
 
       const letter = String.fromCharCode(deptLetterCode++);
       const kotNumber = `KOT-${dateStr}-${randomSuffix}-${letter}`;
 
-      const [kotResult] = await connection.query(
-        `INSERT INTO kots 
-          (kot_number, restaurant_id, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
-        [kotNumber, orderRestaurantId, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt]
-      );
+      let kotResult;
+      try {
+        [kotResult] = await connection.query(
+          `INSERT INTO kots 
+            (kot_number, restaurant_id, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
+          [kotNumber, orderRestaurantId, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt]
+        );
+      } catch (insertKotErr) {
+        if (insertKotErr.message && insertKotErr.message.includes('restaurant_id')) {
+          [kotResult] = await connection.query(
+            `INSERT INTO kots 
+              (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
+            [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt]
+          );
+        } else {
+          throw insertKotErr;
+        }
+      }
 
       const kotId = kotResult.insertId;
 
       for (const dItem of deptItems) {
         await connection.query(
-          `INSERT INTO kot_items (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes)
-           VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
+          `INSERT INTO kot_items (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes, batch_capacity, number_of_batches, estimated_prep_time_minutes)
+           VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?)`,
           [
             kotId,
             dItem.order_item_id,
@@ -245,7 +271,10 @@ async function createOrder(orderData, idempotencyKey = null) {
             dItem.quantity,
             dItem.special_instructions,
             JSON.stringify(dItem.modifiers),
-            dItem.prep_time_minutes
+            dItem.prep_time_minutes,
+            dItem.batch_capacity,
+            dItem.number_of_batches,
+            dItem.estimated_prep_time_minutes
           ]
         );
       }
@@ -279,7 +308,7 @@ async function createOrder(orderData, idempotencyKey = null) {
       }
     }
 
-    // 9. Emit Real-time Socket.IO Events
+    // 9. Emit Real-time Socket.IO Events & Save Notification
     const createdOrderPayload = {
       id: orderId,
       order_number: orderNumber,
@@ -300,6 +329,21 @@ async function createOrder(orderData, idempotencyKey = null) {
     broadcastEvent('new_order', createdOrderPayload);
     if (validatedTableId) {
       broadcastEvent('table_status_changed', { table_id: validatedTableId, status: 'OCCUPIED' });
+    }
+
+    // Save notification for Hotel Admin notification center
+    try {
+      const notificationService = require('../NotificationService');
+      const tableLabel = tableNumber ? `Table ${tableNumber}` : (room_id ? `Room ${room_id}` : (order_type || 'Dine-In'));
+      await notificationService.sendNotification({
+        restaurantId: orderData.restaurant_id || 1,
+        orderId: null,
+        title: `🍽️ New KOT Order! #${orderNumber}`,
+        message: `${tableLabel} — ₹${grandTotal.toFixed(2)} (${validatedItems.length} items)`,
+        type: 'ORDER_UPDATE'
+      });
+    } catch (notifErr) {
+      console.warn('Could not record KOT notification:', notifErr.message);
     }
 
     return {

@@ -89,6 +89,9 @@ async function initDatabase(options = {}) {
         // Always ensure super admin exists
         await getOrCreateUser(connection, 'Master Super Admin', 'superadmin@gmail.com', 'admin@123', '+91 9999999999', 'SUPER_ADMIN');
 
+        // Ensure default SaaS Subscription Plans exist (without auto-assigning to hotels)
+        await ensureSubscriptionPlans(connection);
+
         // Seed / Ensure menu for all restaurants in database
         const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
         if (allRestaurants.length === 0) {
@@ -212,22 +215,21 @@ async function initDatabase(options = {}) {
       'ASSIGNED_TO_DRIVER','DRIVER_ACCEPTED','PICKED_UP','OUT_FOR_DELIVERY',
       'DELIVERED','REJECTED','CANCELLED','DELIVERY_FAILED'
     ) NOT NULL DEFAULT 'PENDING'`);
-
         await conn.query(`ALTER TABLE orders MODIFY COLUMN payment_status ENUM('PENDING','COMPLETED','FAILED','REFUNDED') NOT NULL DEFAULT 'PENDING'`);
         await conn.query(`ALTER TABLE payments MODIFY COLUMN payment_method VARCHAR(50) NOT NULL DEFAULT 'CASH'`);
         await conn.query(`ALTER TABLE restaurant_orders MODIFY COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'UNPAID'`);
         await conn.query(`ALTER TABLE bills MODIFY COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'UNPAID'`);
         await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
-        await addColumnIfNotExists(conn, 'restaurant_orders', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
-        await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
-        await addColumnIfNotExists(conn, 'kots', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
       } catch (e) { }
 
-      // Menu items columns
-      await addColumnIfNotExists(conn, 'menu_items', 'kitchen_department_id', "INT DEFAULT NULL");
-      await addColumnIfNotExists(conn, 'menu_items', 'tax_percentage', "DECIMAL(5, 2) DEFAULT 5.00");
-      await addColumnIfNotExists(conn, 'menu_items', 'is_available_online', "TINYINT(1) DEFAULT 1");
-      await addColumnIfNotExists(conn, 'menu_items', 'is_active', "TINYINT(1) DEFAULT 1");
+      // Menu Items columns
+      await addColumnIfNotExists(conn, 'menu_items', 'restaurant_id', "INT NOT NULL DEFAULT 1");
+      await addColumnIfNotExists(conn, 'menu_items', 'prep_time_minutes', "INT NOT NULL DEFAULT 15");
+      await addColumnIfNotExists(conn, 'menu_items', 'batch_capacity', "INT NOT NULL DEFAULT 10");
+
+      // Tables & Orders columns
+      await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', "INT NOT NULL DEFAULT 1");
+      await addColumnIfNotExists(conn, 'restaurant_orders', 'restaurant_id', "INT NOT NULL DEFAULT 1");
 
       // KOTs ENUM migration & Online/Offline FK relaxation
       try {
@@ -242,21 +244,43 @@ async function initDatabase(options = {}) {
       try {
         await conn.query(`ALTER TABLE order_items DROP FOREIGN KEY order_items_ibfk_1`);
       } catch (e) { }
+      await addColumnIfNotExists(conn, 'kots', 'restaurant_id', "INT NOT NULL DEFAULT 1");
       await addColumnIfNotExists(conn, 'kots', 'online_order_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'kot_items', 'online_order_item_id', "INT DEFAULT NULL");
 
-      // Order items columns
-      await addColumnIfNotExists(conn, 'order_items', 'status', "VARCHAR(30) DEFAULT 'PENDING'");
+      // Order Items columns & FK decoupling (supports both online & restaurant_orders)
+      await addColumnIfNotExists(conn, 'order_items', 'restaurant_id', "INT DEFAULT 1");
       await addColumnIfNotExists(conn, 'order_items', 'tax_amount', "DECIMAL(10, 2) DEFAULT 0.00");
       await addColumnIfNotExists(conn, 'order_items', 'kitchen_department_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'order_items', 'prep_time_minutes', "INT DEFAULT 15");
+      await addColumnIfNotExists(conn, 'order_items', 'batch_capacity', "INT DEFAULT 10");
+      await addColumnIfNotExists(conn, 'order_items', 'number_of_batches', "INT DEFAULT 1");
+      await addColumnIfNotExists(conn, 'order_items', 'estimated_prep_time_minutes', "INT DEFAULT 15");
+      await addColumnIfNotExists(conn, 'order_items', 'status', "ENUM('PENDING', 'PREPARING', 'READY', 'SERVED', 'CANCELLED') DEFAULT 'PENDING'");
 
-      // Phone column length fix for +91 formatting and plain_password
-      await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
+      // KOT Items columns
+      await addColumnIfNotExists(conn, 'kot_items', 'batch_capacity', "INT DEFAULT 10");
+      await addColumnIfNotExists(conn, 'kot_items', 'number_of_batches', "INT DEFAULT 1");
+      await addColumnIfNotExists(conn, 'kot_items', 'estimated_prep_time_minutes', "INT DEFAULT 15");
+
       try {
-        await conn.query(`ALTER TABLE users MODIFY COLUMN phone VARCHAR(30) NOT NULL`);
-        await conn.query(`ALTER TABLE restaurants MODIFY COLUMN phone VARCHAR(30) DEFAULT NULL`);
-      } catch (e) { }
+        const [fks] = await conn.query(`
+          SELECT CONSTRAINT_NAME 
+          FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
+          WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'order_items' 
+            AND COLUMN_NAME = 'order_id' 
+            AND REFERENCED_TABLE_NAME = 'orders'
+        `);
+        for (const fk of fks) {
+          await conn.query(`ALTER TABLE order_items DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+          console.log(`  ↳ Dropped FK ${fk.CONSTRAINT_NAME} on order_items (decoupled for offline/online orders)`);
+        }
+      } catch (e) {
+        // Non-fatal if not present
+      }
+      await addIndexIfNotExists(conn, 'order_items', 'idx_order_items_order_id', '`order_id`');
+
 
       // Payments columns
       await addColumnIfNotExists(conn, 'payments', 'bill_id', "INT DEFAULT NULL");
@@ -268,6 +292,29 @@ async function initDatabase(options = {}) {
       // Notifications columns
       await addColumnIfNotExists(conn, 'notifications', 'restaurant_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'notifications', 'customer_identity_id', "INT DEFAULT NULL");
+
+      // Subscription Payments columns
+      await addColumnIfNotExists(conn, 'subscription_payments', 'updated_at', "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+
+      // Subscription Approvals & Status ENUM Migrations
+      try {
+        await conn.query(`ALTER TABLE \`hotel_subscriptions\` MODIFY COLUMN \`status\` ENUM('PENDING', 'PENDING_APPROVAL', 'ACTIVE', 'EXPIRED', 'SUSPENDED', 'CANCELLED', 'REJECTED') NOT NULL DEFAULT 'PENDING'`);
+        await conn.query(`ALTER TABLE \`hotel_subscriptions\` MODIFY COLUMN \`starts_at\` TIMESTAMP NULL DEFAULT NULL`);
+        await conn.query(`ALTER TABLE \`hotel_subscriptions\` MODIFY COLUMN \`expires_at\` TIMESTAMP NULL DEFAULT NULL`);
+      } catch (e) { /* non-fatal */ }
+
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'subscription_type', "ENUM('TRIAL', 'PAID') NOT NULL DEFAULT 'PAID'");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'approved_by_user_id', "INT DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'approved_at', "TIMESTAMP NULL DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'rejected_by_user_id', "INT DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'rejected_at', "TIMESTAMP NULL DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'rejection_reason', "TEXT DEFAULT NULL");
+
+      try {
+        await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`action\` ENUM('ASSIGNED', 'PAYMENT_RECEIVED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'RENEWED', 'EXTENDED', 'EXPIRED', 'REACTIVATED', 'SUSPENDED', 'CANCELLED') NOT NULL`);
+        await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`starts_at\` TIMESTAMP NULL DEFAULT NULL`);
+        await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`expires_at\` TIMESTAMP NULL DEFAULT NULL`);
+      } catch (e) { /* non-fatal */ }
 
       // Table creations (idempotent via IF NOT EXISTS)
       const tableCreations = [
@@ -418,11 +465,32 @@ async function initDatabase(options = {}) {
           console.log('✅ Updated Waiter credentials: waiter@hotel.com (Password: 123456789)');
         }
 
-        // 3. Ensure Driver Accounts are approved and active
+        // 3. Admin User
+        const adminHash = await bcrypt.hash('admin123', 10);
+        const [adminRows] = await conn.query('SELECT id FROM users WHERE email = ?', ['admin@hotel.com']);
+        let adminUserId;
+        if (adminRows.length === 0) {
+          const [res] = await conn.query(
+            `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status) VALUES (?, ?, ?, ?, ?, 'RESTAURANT_ADMIN', 'ACTIVE')`,
+            ['Grand Palace Admin', 'admin@hotel.com', adminHash, 'admin123', '+91 9876543210']
+          );
+          adminUserId = res.insertId;
+          console.log('✅ Created Restaurant Admin: admin@hotel.com (Password: admin123)');
+        } else {
+          adminUserId = adminRows[0].id;
+          await conn.query(
+            `UPDATE users SET password_hash = ?, plain_password = 'admin123', role = 'RESTAURANT_ADMIN', status = 'ACTIVE' WHERE id = ?`,
+            [adminHash, adminUserId]
+          );
+          console.log('✅ Updated Restaurant Admin credentials: admin@hotel.com (Password: admin123)');
+        }
+
+        // 4. Ensure Driver Accounts are approved and active
         await conn.query(`UPDATE delivery_drivers SET approval_status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`);
         console.log('✅ Approved and activated all delivery drivers');
 
-        // Ensure restaurant 1 link
+        // Ensure restaurant 1 links
+        await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 1)', [adminUserId]);
         await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [chefId]);
         await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [waiterId]);
       } catch (e) {
@@ -558,6 +626,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Paneer, Mustard Oil, Yogurt, Kashmiri Chili, Spices',
           tags: 'Bestseller, Tandoor, Spicy',
           is_bestseller: 1,
@@ -572,6 +641,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
           prep_time_minutes: 20,
+          batch_capacity: 8,
           ingredients: 'Chicken Boneless, Cream, Cheese, Green Cardamom, Spices',
           tags: 'Chef Special, Mild, Non-Veg',
           is_bestseller: 1,
@@ -586,6 +656,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1628294895950-9805252327bc?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Button Mushrooms, Cottage Cheese, Herbs, Spices',
           tags: 'Vegetarian, Starter',
           is_bestseller: 0,
@@ -599,7 +670,8 @@ async function initDatabase(options = {}) {
           discounted_price: 350,
           image_url: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
-          prep_time_minutes: 25,
+          prep_time_minutes: 20,
+          batch_capacity: 8,
           ingredients: 'Chicken, Tomatoes, Fresh Cream, Butter, Cashews, Kasturi Methi',
           tags: 'Bestseller, Royal, Classic',
           is_bestseller: 1,
@@ -614,6 +686,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 20,
+          batch_capacity: 10,
           ingredients: 'Paneer, Butter, Tomatoes, Cream, Garam Masala',
           tags: 'Popular, Vegetarian, Rich',
           is_bestseller: 1,
@@ -628,6 +701,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Black Urad Dal, Kidney Beans, Butter, Cream, Spices',
           tags: 'Classic, Creamy, Vegetarian',
           is_bestseller: 1,
@@ -642,6 +716,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
           prep_time_minutes: 25,
+          batch_capacity: 5,
           ingredients: 'Basmati Rice, Marinated Chicken, Saffron, Fried Onions, Ghee',
           tags: 'Must Try, Hyderabadi, Authentic',
           is_bestseller: 1,
@@ -656,6 +731,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 20,
+          batch_capacity: 6,
           ingredients: 'Basmati Rice, Vegetables, Paneer, Mint, Saffron',
           tags: 'Vegetarian, Saffron, Dum',
           is_bestseller: 0,
@@ -669,7 +745,8 @@ async function initDatabase(options = {}) {
           discounted_price: null,
           image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
-          prep_time_minutes: 8,
+          prep_time_minutes: 10,
+          batch_capacity: 20,
           ingredients: 'Wheat Flour, Garlic, Butter, Coriander',
           tags: 'Tandoor, Bread',
           is_bestseller: 1,
@@ -684,6 +761,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=600&q=80',
           is_veg: 0,
           prep_time_minutes: 18,
+          batch_capacity: 8,
           ingredients: 'Chicken, Capsicum, Onion, Soy Sauce, Green Chili',
           tags: 'Indo-Chinese, Spicy',
           is_bestseller: 1,
@@ -698,6 +776,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 15,
+          batch_capacity: 10,
           ingredients: 'Noodles, Cabbage, Bell Peppers, Carrots, Soy Sauce',
           tags: 'Kids Friendly, Indo-Chinese',
           is_bestseller: 0,
@@ -712,6 +791,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 5,
+          batch_capacity: 15,
           ingredients: 'Fresh Mint, Lime, Soda, Sugar, Ice',
           tags: 'Refreshing, Cold, Mocktail',
           is_bestseller: 1,
@@ -726,6 +806,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 5,
+          batch_capacity: 15,
           ingredients: 'Fresh Lime, Soda, Rock Salt, Sugar',
           tags: 'Classic, Beverage',
           is_bestseller: 0,
@@ -740,6 +821,7 @@ async function initDatabase(options = {}) {
           image_url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
           is_veg: 1,
           prep_time_minutes: 5,
+          batch_capacity: 25,
           ingredients: 'Khoya, Rose Water, Cardamom, Sugar Syrup, Pistachio',
           tags: 'Dessert, Sweet, Hot',
           is_bestseller: 1,
@@ -758,14 +840,19 @@ async function initDatabase(options = {}) {
           await conn.query(
             `INSERT INTO menu_items (
           restaurant_id, category_id, name, description, price, discounted_price,
-          image_url, is_veg, prep_time_minutes, ingredients, tags,
+          image_url, is_veg, prep_time_minutes, batch_capacity, ingredients, tags,
           is_bestseller, is_recommended, is_available, display_order, is_active, is_available_online
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1, 1)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1, 1)`,
             [
               restaurantId, catId, item.name, item.description, item.price, item.discounted_price,
-              item.image_url, item.is_veg, item.prep_time_minutes, item.ingredients, item.tags,
+              item.image_url, item.is_veg, item.prep_time_minutes, item.batch_capacity, item.ingredients, item.tags,
               item.is_bestseller, item.is_recommended
             ]
+          );
+        } else {
+          await conn.query(
+            `UPDATE menu_items SET prep_time_minutes = ?, batch_capacity = ? WHERE id = ?`,
+            [item.prep_time_minutes, item.batch_capacity, existing[0].id]
           );
         }
       }
@@ -923,6 +1010,113 @@ async function initDatabase(options = {}) {
       }
 
       console.log('✅ KOT seed data verified.');
+    }
+
+    async function ensureSubscriptionPlans(conn) {
+      try {
+        const defaultPlans = [
+          {
+            name: '7-Day Free Trial',
+            slug: 'free-trial',
+            description: 'Full complimentary operational access to all HMS modules for 7 days.',
+            price: 0.00,
+            duration_days: 7,
+            max_orders_per_month: 100,
+            max_menu_items: 50,
+            max_staff_accounts: 5,
+            features_json: JSON.stringify([
+              'Kitchen Display System (KDS)',
+              'Table QR Digital Menus',
+              'POS Billing & GST Invoices',
+              'Online Customer Storefront',
+              'Dedicated Rider Dispatch'
+            ]),
+            display_order: 0
+          },
+          {
+            name: 'Starter Plan',
+            slug: 'starter',
+            description: 'Essential digital dining, table QR menu & KDS kitchen display for small restaurants & cafes.',
+            price: 999.00,
+            duration_days: 30,
+            max_orders_per_month: 300,
+            max_menu_items: 50,
+            max_staff_accounts: 3,
+            features_json: JSON.stringify([
+              'Table QR Digital Dine-In Menu',
+              'Kitchen Display System (KDS)',
+              'POS Billing & GST Invoices',
+              'Basic Sales & Order Reports'
+            ]),
+            display_order: 1
+          },
+          {
+            name: 'Professional Plan',
+            slug: 'professional',
+            description: 'Complete high-performance operations suite with online storefront, delivery fleet & live timers.',
+            price: 2499.00,
+            duration_days: 30,
+            max_orders_per_month: 1500,
+            max_menu_items: 250,
+            max_staff_accounts: 10,
+            features_json: JSON.stringify([
+              'Everything in Starter Plan',
+              'Online Customer Food Delivery Storefront',
+              'Dedicated Delivery Rider GPS Dispatch',
+              'Recipe Formulations & Raw Stock Inventory',
+              'Room Service & Hotel Guest Folio Billing',
+              'Real-Time KDS Batch Prep Timers'
+            ]),
+            display_order: 2
+          },
+          {
+            name: 'Enterprise Plan',
+            slug: 'enterprise',
+            description: 'Full-featured annual suite for premier hotels, luxury dining, and multi-floor banquet operations.',
+            price: 24999.00,
+            duration_days: 365,
+            max_orders_per_month: null,
+            max_menu_items: null,
+            max_staff_accounts: null,
+            features_json: JSON.stringify([
+              'Everything in Professional Plan',
+              'Unlimited Monthly Orders & Volume',
+              'Unlimited Menu Items & Staff Accounts',
+              'Annual Billing Savings Discount',
+              'Multi-Floor & Banquet Management',
+              'Advanced Audit Logs & Business Intelligence',
+              'Priority 24/7 Technical Support'
+            ]),
+            display_order: 3
+          }
+        ];
+
+        for (const plan of defaultPlans) {
+          const [existing] = await conn.query('SELECT id FROM subscription_plans WHERE slug = ?', [plan.slug]);
+          if (existing.length === 0) {
+            await conn.query(
+              `INSERT INTO subscription_plans 
+                (name, slug, description, price, duration_days, max_orders_per_month, max_menu_items, max_staff_accounts, features_json, is_active, display_order)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+              [
+                plan.name,
+                plan.slug,
+                plan.description,
+                plan.price,
+                plan.duration_days,
+                plan.max_orders_per_month,
+                plan.max_menu_items,
+                plan.max_staff_accounts,
+                plan.features_json,
+                plan.display_order
+              ]
+            );
+            console.log(`✅ Seeded subscription plan: ${plan.name} (₹${plan.price} / ${plan.duration_days} days)`);
+          }
+        }
+      } catch (err) {
+        console.warn('Subscription plans seed warning:', err.message);
+      }
     }
 
     if (require.main === module) {

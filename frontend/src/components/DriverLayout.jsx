@@ -8,39 +8,40 @@ export default function DriverLayout({ children }) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
-      {/* Driver Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3.5 flex items-center justify-between">
+    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased">
+      {/* Driver Light Header */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#D7E5E8] shadow-xs px-4 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-emerald-500/20">
-            <Bike className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold shadow-xs">
+            <Bike className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-extrabold text-white text-base leading-tight">Driver Partner</h1>
-            <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Active Duty Portal</p>
+            <h1 className="font-bold text-[#1F2937] text-base leading-tight">Driver Partner</h1>
+            <p className="text-[10px] text-[#3A7D7C] font-bold uppercase tracking-wider">Active Duty Portal</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <span className="block text-xs font-bold text-slate-200">{user?.name}</span>
-            <span className="block text-[10px] text-slate-400">{user?.phone}</span>
+            <span className="block text-xs font-bold text-[#1F2937]">{user?.name}</span>
+            <span className="block text-[10px] text-[#64748B] font-semibold">{user?.phone}</span>
           </div>
           <button
             onClick={() => {
               logout();
               navigate('/driver/login');
             }}
-            className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors shadow-2xs"
             title="Sign Out"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Sign Out</span>
           </button>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-lg mx-auto w-full p-4">
+      <main className="flex-1 max-w-xl mx-auto w-full p-4 sm:p-6">
         {children}
       </main>
     </div>

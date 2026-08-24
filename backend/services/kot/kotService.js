@@ -44,6 +44,51 @@ async function getKOTWithItems(kotId, existingConnection = null) {
   return kot;
 }
 
+async function resolveAndValidateItemPrepConfig(item, connection) {
+  let prepTimeMins = item.prep_time_minutes;
+  let batchCap = item.batch_capacity;
+
+  // If missing or invalid on kot_items, try resolving from order_items / menu_items
+  if ((!prepTimeMins || prepTimeMins <= 0 || !batchCap || batchCap <= 0) && item.order_item_id) {
+    const [oiRows] = await connection.query(
+      `SELECT oi.menu_item_id, oi.prep_time_minutes as oi_prep, oi.batch_capacity as oi_cap,
+              m.prep_time_minutes as m_prep, m.batch_capacity as m_cap
+       FROM order_items oi
+       LEFT JOIN menu_items m ON oi.menu_item_id = m.id
+       WHERE oi.id = ?`,
+      [item.order_item_id]
+    );
+    if (oiRows.length > 0) {
+      if (!prepTimeMins || prepTimeMins <= 0) {
+        prepTimeMins = oiRows[0].oi_prep || oiRows[0].m_prep;
+      }
+      if (!batchCap || batchCap <= 0) {
+        batchCap = oiRows[0].oi_cap || oiRows[0].m_cap;
+      }
+    }
+  }
+
+  const parsedPrep = parseInt(prepTimeMins);
+  const parsedCap = parseInt(batchCap);
+
+  if (isNaN(parsedPrep) || parsedPrep <= 0 || isNaN(parsedCap) || parsedCap <= 0) {
+    throw new Error(
+      `Menu item "${item.item_name}" is missing valid preparation-time or batch-capacity configuration. Please configure it in Admin Menu Management before starting preparation.`
+    );
+  }
+
+  const quantity = Math.max(1, parseInt(item.quantity) || 1);
+  const numberOfBatches = Math.ceil(quantity / parsedCap);
+  const estimatedPrepTimeMinutes = numberOfBatches * parsedPrep;
+
+  return {
+    prepTimeMinutes: parsedPrep,
+    batchCapacity: parsedCap,
+    numberOfBatches,
+    estimatedPrepTimeMinutes
+  };
+}
+
 async function updateKOTStatus(kotId, newStatus, userId = null, reason = '') {
   const connection = await pool.getConnection();
 
@@ -71,15 +116,45 @@ async function updateKOTStatus(kotId, newStatus, userId = null, reason = '') {
 
     // Update KOT items based on new status
     if (newStatus === 'PREPARING') {
-      // Set started_at and expected_finish_at ONLY for items that have not started yet
-      await connection.query(
-        `UPDATE kot_items 
-         SET status = ?, 
-             started_at = COALESCE(started_at, NOW()),
-             expected_finish_at = COALESCE(expected_finish_at, DATE_ADD(NOW(), INTERVAL COALESCE(prep_time_minutes, 15) MINUTE))
-         WHERE kot_id = ?`,
-        [newStatus, kotId]
+      const [kotItems] = await connection.query(
+        `SELECT * FROM kot_items WHERE kot_id = ? AND status != 'CANCELLED'`,
+        [kotId]
       );
+
+      for (const item of kotItems) {
+        if (!item.started_at) {
+          const config = await resolveAndValidateItemPrepConfig(item, connection);
+          const startTime = new Date();
+          const expectedTime = new Date(startTime.getTime() + config.estimatedPrepTimeMinutes * 60000);
+
+          await connection.query(
+            `UPDATE kot_items 
+             SET status = ?, 
+                 started_at = ?,
+                 expected_finish_at = ?,
+                 prep_time_minutes = ?,
+                 batch_capacity = ?,
+                 number_of_batches = ?,
+                 estimated_prep_time_minutes = ?
+             WHERE id = ?`,
+            [
+              newStatus,
+              startTime,
+              expectedTime,
+              config.prepTimeMinutes,
+              config.batchCapacity,
+              config.numberOfBatches,
+              config.estimatedPrepTimeMinutes,
+              item.id
+            ]
+          );
+        } else {
+          await connection.query(
+            `UPDATE kot_items SET status = ? WHERE id = ?`,
+            [newStatus, item.id]
+          );
+        }
+      }
     } else if (newStatus === 'READY' || newStatus === 'SERVED') {
       await connection.query(
         `UPDATE kot_items 
@@ -175,6 +250,17 @@ async function updateKOTStatus(kotId, newStatus, userId = null, reason = '') {
         table_number: updatedKOT ? updatedKOT.table_number : null,
         kitchen_department_name: updatedKOT ? updatedKOT.kitchen_department_name : null
       });
+
+      try {
+        const notificationService = require('../NotificationService');
+        notificationService.sendNotification({
+          restaurantId: kot.restaurant_id || 1,
+          orderId: null,
+          title: `🍽️ Food Ready for Service! #${kot.kot_number}`,
+          message: `${updatedKOT?.table_number ? `Table ${updatedKOT.table_number}` : 'Order'} items are prepared and ready to serve.`,
+          type: 'ORDER_UPDATE'
+        });
+      } catch (e) {}
     } else if (newStatus === 'SERVED') {
       emitToRoom('waiter', 'order_served', { kot_id: kotId, order_id: kot.order_id });
     }
@@ -210,18 +296,17 @@ async function updateKOTItemStatus(itemId, newStatus, userId = null) {
     let startedAt = item.started_at;
     let expectedFinishAt = item.expected_finish_at;
     let readyAt = item.ready_at;
+    let config = null;
 
     if (newStatus === 'PREPARING') {
       if (!startedAt) {
+        config = await resolveAndValidateItemPrepConfig(item, connection);
         startedAt = new Date();
-        const prepMins = item.prep_time_minutes || 15;
-        expectedFinishAt = new Date(startedAt.getTime() + prepMins * 60000);
+        expectedFinishAt = new Date(startedAt.getTime() + config.estimatedPrepTimeMinutes * 60000);
       }
     } else if (newStatus === 'READY' || newStatus === 'SERVED') {
       if (!startedAt) {
         startedAt = new Date();
-        const prepMins = item.prep_time_minutes || 15;
-        expectedFinishAt = new Date(startedAt.getTime() + prepMins * 60000);
       }
       if (!readyAt) {
         readyAt = new Date();
@@ -233,12 +318,38 @@ async function updateKOTItemStatus(itemId, newStatus, userId = null) {
       }
     }
 
-    await connection.query(
-      `UPDATE kot_items 
-       SET status = ?, started_at = ?, expected_finish_at = ?, ready_at = ? 
-       WHERE id = ?`,
-      [newStatus, startedAt, expectedFinishAt, readyAt, itemId]
-    );
+    if (config) {
+      await connection.query(
+        `UPDATE kot_items 
+         SET status = ?, 
+             started_at = ?, 
+             expected_finish_at = ?, 
+             ready_at = ?,
+             prep_time_minutes = ?,
+             batch_capacity = ?,
+             number_of_batches = ?,
+             estimated_prep_time_minutes = ? 
+         WHERE id = ?`,
+        [
+          newStatus,
+          startedAt,
+          expectedFinishAt,
+          readyAt,
+          config.prepTimeMinutes,
+          config.batchCapacity,
+          config.numberOfBatches,
+          config.estimatedPrepTimeMinutes,
+          itemId
+        ]
+      );
+    } else {
+      await connection.query(
+        `UPDATE kot_items 
+         SET status = ?, started_at = ?, expected_finish_at = ?, ready_at = ? 
+         WHERE id = ?`,
+        [newStatus, startedAt, expectedFinishAt, readyAt, itemId]
+      );
+    }
 
     // Update corresponding order item status
     await connection.query(`UPDATE order_items SET status = ? WHERE id = ?`, [newStatus, item.order_item_id]);

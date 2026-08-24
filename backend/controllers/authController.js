@@ -136,6 +136,14 @@ async function registerRestaurant(req, res) {
       [adminUserId, restaurantId]
     );
 
+    // Auto-provision 7-Day Free Trial
+    try {
+      const subscriptionService = require('../services/SubscriptionService');
+      await subscriptionService.provisionHotelTrial(restaurantId);
+    } catch (trialErr) {
+      console.warn('Trial auto-provisioning warning:', trialErr.message);
+    }
+
     // Generate JWT Token
     const token = jwt.sign(
       { id: adminUserId, email: adminEmail, name: adminName, role: 'RESTAURANT_ADMIN' },

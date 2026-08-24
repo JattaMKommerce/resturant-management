@@ -156,6 +156,14 @@ async function createRestaurant(req, res) {
       [name, slug, phone || null, email || null, address || null, city || null, state || null, area || null, postal_code || null]
     );
 
+    // Auto-provision 7-Day Free Trial
+    try {
+      const subscriptionService = require('../services/SubscriptionService');
+      await subscriptionService.provisionHotelTrial(result.insertId);
+    } catch (trialErr) {
+      console.warn('Trial auto-provisioning warning:', trialErr.message);
+    }
+
     const newRest = await query('SELECT * FROM restaurants WHERE id = ?', [result.insertId]);
     res.status(201).json({ success: true, message: 'Restaurant created.', restaurant: newRest[0] });
   } catch (err) {
@@ -332,10 +340,12 @@ async function getAllDrivers(req, res) {
       `SELECT d.id as driver_id, d.user_id, d.vehicle_type, d.vehicle_number, d.license_number,
               d.approval_status, d.availability_status, d.is_active, d.created_at,
               u.name, u.email, u.phone, u.plain_password, u.status as user_status,
-              r.name as restaurant_name
+              GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') as restaurant_name
        FROM delivery_drivers d
        JOIN users u ON d.user_id = u.id
-       LEFT JOIN restaurants r ON d.restaurant_id = r.id
+       LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id AND dra.status = 'ACTIVE'
+       LEFT JOIN restaurants r ON dra.restaurant_id = r.id
+       GROUP BY d.id
        ORDER BY d.id DESC`
     );
     res.json({ success: true, count: drivers.length, drivers });

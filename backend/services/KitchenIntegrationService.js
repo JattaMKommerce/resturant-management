@@ -25,11 +25,9 @@ async function notifyKitchen(orderData) {
       return { success: true, kotId: existingKots[0].id, kotNumber: existingKots[0].kot_number };
     }
 
-    let items = orderData.items || [];
-    if (items.length === 0) {
-      const [dbItems] = await pool.query(`SELECT * FROM order_items WHERE order_id = ?`, [orderId]);
-      items = dbItems;
-    }
+    // Query actual inserted order items for this order to ensure valid order_item_id references
+    const [dbItems] = await pool.query(`SELECT * FROM order_items WHERE order_id = ?`, [orderId]);
+    const itemsToProcess = dbItems.length > 0 ? dbItems : (orderData.items || []);
 
     // Resolve default kitchen department
     const [departments] = await pool.query(`SELECT id FROM kitchen_departments ORDER BY id ASC LIMIT 1`);
@@ -45,28 +43,62 @@ async function notifyKitchen(orderData) {
     const receivedAt = new Date();
     const maxPrepMinutes = 20;
     const targetAt = new Date(receivedAt.getTime() + maxPrepMinutes * 60000);
-
-    const [kotResult] = await pool.query(
-      `INSERT INTO kots 
-        (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
-       VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?)`,
-      [kotNumber, orderId, defaultDeptId, receivedAt, targetAt]
-    );
+    let kotResult;
+    try {
+      [kotResult] = await pool.query(
+        `INSERT INTO kots 
+          (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
+         VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?, ?)`,
+        [kotNumber, orderId, defaultDeptId, receivedAt, targetAt, orderData.restaurant_id || 1]
+      );
+    } catch (kotErr) {
+      if (kotErr.message && kotErr.message.includes('restaurant_id')) {
+        [kotResult] = await pool.query(
+          `INSERT INTO kots 
+            (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
+           VALUES (?, ?, NULL, NULL, ?, 'ONLINE', 'PENDING', ?, ?)`,
+          [kotNumber, orderId, defaultDeptId, receivedAt, targetAt]
+        );
+      } else {
+        throw kotErr;
+      }
+    }
 
     const kotId = kotResult.insertId;
 
-    for (const item of items) {
+    for (const item of itemsToProcess) {
+      let prepTimeMins = item.prep_time_minutes !== null && item.prep_time_minutes !== undefined ? parseInt(item.prep_time_minutes) : null;
+      let batchCap = item.batch_capacity !== null && item.batch_capacity !== undefined ? parseInt(item.batch_capacity) : null;
+
+      // If missing from order_items, look up from menu_items
+      if ((!prepTimeMins || !batchCap) && item.menu_item_id) {
+        try {
+          const [mRows] = await pool.query('SELECT prep_time_minutes, batch_capacity FROM menu_items WHERE id = ?', [item.menu_item_id]);
+          if (mRows.length > 0) {
+            if (!prepTimeMins && mRows[0].prep_time_minutes) prepTimeMins = parseInt(mRows[0].prep_time_minutes);
+            if (!batchCap && mRows[0].batch_capacity) batchCap = parseInt(mRows[0].batch_capacity);
+          }
+        } catch (e) {}
+      }
+
+      const qty = Math.max(1, parseInt(item.quantity) || 1);
+      const batches = (batchCap && batchCap > 0) ? Math.ceil(qty / batchCap) : null;
+      const estimatedPrep = (batches && prepTimeMins && prepTimeMins > 0) ? (batches * prepTimeMins) : null;
+
       await pool.query(
         `INSERT INTO kot_items 
-          (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes)
-         VALUES (?, ?, ?, ?, ?, '[]', 'PENDING', ?)`,
+          (kot_id, order_item_id, item_name, quantity, special_instructions, modifiers_json, status, prep_time_minutes, batch_capacity, number_of_batches, estimated_prep_time_minutes)
+         VALUES (?, ?, ?, ?, ?, '[]', 'PENDING', ?, ?, ?, ?)`,
         [
           kotId,
           item.id || null,
           item.item_name || item.name || 'Food Item',
-          item.quantity || 1,
+          qty,
           item.special_instructions || item.specialInstructions || null,
-          15
+          prepTimeMins,
+          batchCap,
+          batches,
+          estimatedPrep
         ]
       );
     }

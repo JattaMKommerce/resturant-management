@@ -224,16 +224,28 @@ export default function KOTCard({ kot, onStatusUpdate, onItemStatusUpdate, onPri
                   </div>
 
                   {/* Prep Time & Live Timer */}
-                  <div className="flex items-center justify-between text-xs pt-0.5 text-[#64748B]">
-                    <span>
-                      Prep: <strong className="text-[#1F2937] font-semibold">{item.prep_time_minutes || 15}m</strong>
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs pt-0.5 text-[#64748B]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span>
+                        Prep: <strong className="text-[#1F2937] font-semibold">{item.prep_time_minutes || 15}m</strong>
+                      </span>
+                      {item.batch_capacity && (
+                        <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-[#64748B] border border-[#D7E5E8]">
+                          Cap: {item.batch_capacity}
+                        </span>
+                      )}
+                      {(item.number_of_batches > 1 || (item.batch_capacity && item.quantity > item.batch_capacity)) && (
+                        <span className="text-[10px] bg-[#EAF4F7] text-[#3A7D7C] px-1.5 py-0.5 rounded font-bold border border-[#D7E5E8]">
+                          {item.number_of_batches || Math.ceil(item.quantity / item.batch_capacity)} Batches ({item.estimated_prep_time_minutes || (Math.ceil(item.quantity / item.batch_capacity) * (item.prep_time_minutes || 15))}m)
+                        </span>
+                      )}
+                    </div>
 
                     <LiveTimerBadge
                       startedAt={item.started_at}
                       expectedFinishAt={item.expected_finish_at}
                       readyAt={item.ready_at}
-                      prepTimeMinutes={item.prep_time_minutes || 15}
+                      prepTimeMinutes={item.estimated_prep_time_minutes || item.prep_time_minutes || 15}
                       status={item.status}
                       currentTime={currentTime}
                       receivedAt={kot.kitchen_received_at}

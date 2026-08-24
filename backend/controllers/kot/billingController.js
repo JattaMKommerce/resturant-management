@@ -187,6 +187,21 @@ async function processPaymentHandler(req, res, next) {
       console.error('Inventory stock deduction warning during payment processing:', invErr);
     }
 
+    // Send notification to admin
+    try {
+      const notificationService = require('../../services/NotificationService');
+      const restaurantId = req.user?.restaurant_id || req.adminRestaurantId || 1;
+      await notificationService.sendNotification({
+        restaurantId,
+        orderId: null,
+        title: `💵 Bill Settled #${updatedBill.bill_number}`,
+        message: `Received ₹${parseFloat(amount).toFixed(2)} via ${payment_method || 'CASH'}.`,
+        type: 'ORDER_UPDATE'
+      });
+    } catch (notifErr) {
+      console.warn('Bill payment notification warning:', notifErr.message);
+    }
+
     return sendSuccess(res, updatedBill, 'Payment completed successfully');
   } catch (err) {
     return sendError(res, err.message || 'Payment processing failed', 400);

@@ -41,6 +41,7 @@ import RestaurantOnboarding from './pages/admin/RestaurantOnboarding';
 import AdminRidersPage from './pages/admin/AdminRidersPage';
 import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
+import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
 
 // Offline Restaurant & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
@@ -72,8 +73,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center font-sans antialiased">
+        <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -111,8 +112,8 @@ const WaiterRedirect = () => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center font-sans antialiased">
+        <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -128,8 +129,8 @@ const RiderRedirect = () => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center font-sans antialiased">
+        <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -145,8 +146,8 @@ const KitchenRedirect = () => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center font-sans antialiased">
+        <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -162,8 +163,8 @@ const AdminRedirect = () => {
   const { restaurant, user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center font-sans antialiased">
+        <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -177,20 +178,25 @@ const AdminRedirect = () => {
 // Home redirect to published restaurants
 const HomeRedirect = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col items-center justify-center p-8">
-      <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-amber-300 mb-6">
-        Hotel & Restaurant Platform
-      </h1>
-      <p className="text-slate-400 text-lg mb-8 text-center max-w-md">
-        Unified online ordering, guest reservation management, and offline KOT kitchen display system.
-      </p>
-      <div className="flex flex-wrap gap-4 justify-center">
-        <a href="/admin/login" className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl transition-all text-sm font-bold shadow-lg shadow-amber-500/20">
-          Admin Portal Login
-        </a>
-        <a href="/driver/apply" className="px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-xl transition-all text-sm font-bold shadow-lg shadow-orange-500/20">
-          Delivery Partner 🛵
-        </a>
+    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col items-center justify-center p-8 font-sans antialiased">
+      <div className="max-w-xl w-full bg-white rounded-3xl p-8 sm:p-12 border border-[#D7E5E8] shadow-xl text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold text-2xl mx-auto shadow-md shadow-[#3A7D7C]/20">
+          HMS
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1F2937] tracking-tight">
+          Hotel & Restaurant Management
+        </h1>
+        <p className="text-[#64748B] text-sm leading-relaxed max-w-md mx-auto">
+          Unified online food ordering, table QR menus, live KDS kitchen display system, and fleet delivery dispatch.
+        </p>
+        <div className="flex flex-wrap gap-3 justify-center pt-2">
+          <a href="/admin/login" className="px-6 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl transition-all text-sm font-bold shadow-md shadow-[#3A7D7C]/20">
+            Admin Portal Login
+          </a>
+          <a href="/driver/apply" className="px-6 py-3 bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] rounded-xl transition-all text-sm font-bold shadow-2xs">
+            Delivery Partner 🛵
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -314,6 +320,20 @@ export default function App() {
             <AdminDeliveriesPage />
           </ProtectedRoute>
         } />
+        <Route path="/admin/:slug/subscription" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AdminSubscriptionPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/subscription" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AdminSubscriptionPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/admin/:slug/settings" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
             <AdminSettingsPage />
@@ -334,6 +354,15 @@ export default function App() {
         {/* 2. OFFLINE RESTAURANT & KOT SYSTEM ROUTES (Exact 10)     */}
         {/* ========================================================= */}
         <Route path="/admin/offline" element={<Navigate to="/admin/offline/dashboard" replace />} />
+        
+        {/* SaaS Subscription */}
+        <Route path="/admin/offline/subscription" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AdminSubscriptionPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
         
         {/* Staff Management */}
         <Route path="/admin/offline/staff" element={
