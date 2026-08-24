@@ -42,10 +42,44 @@ async function getNextTableNumberHandler(req, res, next) {
   }
 }
 
+async function autoSeedTablesIfEmpty(restaurantId = 1) {
+  try {
+    const [tCheck] = await pool.query(
+      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL)',
+      [restaurantId]
+    );
+    if (tCheck[0].count === 0) {
+      console.log('🔄 Auto-seeding default restaurant tables for restaurant:', restaurantId);
+      const tablesData = [
+        ['T01', 'Table 1', 'Main Dining', 'Section A', 2, 'STANDARD'],
+        ['T02', 'Table 2', 'Main Dining', 'Section A', 4, 'STANDARD'],
+        ['T03', 'Table 3', 'Main Dining', 'Section B', 4, 'BOOTH'],
+        ['T04', 'Table 4', 'Terrace Floor', 'Outdoor', 6, 'OUTDOOR'],
+        ['T05', 'Table 5 (VIP)', 'VIP Lounge', 'VIP Area', 8, 'VIP'],
+        ['T06', 'Table 6', 'Main Dining', 'Section B', 4, 'STANDARD'],
+        ['T07', 'Table 7', 'Terrace Floor', 'Outdoor', 4, 'OUTDOOR'],
+        ['T08', 'Table 8', 'Main Dining', 'Section A', 2, 'STANDARD']
+      ];
+      for (const [tNum, tName, floor, section, capacity, type] of tablesData) {
+        const qrToken = crypto.randomBytes(32).toString('hex');
+        await pool.query(
+          `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
+          [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
+        );
+      }
+      console.log('✅ Default restaurant tables seeded successfully!');
+    }
+  } catch (err) {
+    console.warn('Table auto-seed check warning:', err.message);
+  }
+}
+
 async function getTables(req, res, next) {
   try {
     const { floor, section, status, search } = req.query;
     const restaurantId = req.user?.restaurant_id || 1;
+    await autoSeedTablesIfEmpty(restaurantId);
     let query = `
       SELECT t.*, 
         (SELECT COUNT(*) FROM restaurant_orders o WHERE o.table_id = t.id AND o.order_status NOT IN ('COMPLETED', 'CANCELLED')) as active_orders_count
