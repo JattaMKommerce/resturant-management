@@ -107,7 +107,7 @@ async function submitApplication(req, res) {
 
       const applicationId = appRes.insertId;
 
-      // Process uploaded document files
+      // Process uploaded document files directly into MySQL (LONGBLOB) & virtual paths
       const documentEntries = [];
       const docTypeKeys = [
         'selfie', 'aadhaar_front', 'aadhaar_back',
@@ -119,16 +119,17 @@ async function submitApplication(req, res) {
         if (files[key] && files[key].length > 0) {
           const file = files[key][0];
           const docType = key.toUpperCase();
-          const relPath = getRelativeFilePath(file.path);
+          const virtualPath = `uploads/riders/${key}/${file.originalname}`;
+          const fileBuffer = file.buffer || null;
 
           const [docRes] = await conn.query(
             `INSERT INTO rider_documents (
-              application_id, document_type, file_path, original_file_name, mime_type, file_size, verification_status
-            ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
-            [applicationId, docType, relPath, file.originalname, file.mimetype, file.size]
+              application_id, document_type, file_path, file_data, original_file_name, mime_type, file_size, verification_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+            [applicationId, docType, virtualPath, fileBuffer, file.originalname, file.mimetype, file.size]
           );
 
-          documentEntries.push({ id: docRes.insertId, type: docType, path: relPath });
+          documentEntries.push({ id: docRes.insertId, type: docType, path: virtualPath });
         }
       }
 
@@ -369,12 +370,13 @@ async function approveApplication(req, res) {
       let driverId;
       const [existingDrivers] = await conn.query('SELECT id FROM delivery_drivers WHERE user_id = ?', [userId]);
 
-      // Get selfie document path
+      // Get selfie document path & binary data
       const [selfieDocs] = await conn.query(
-        `SELECT file_path FROM rider_documents WHERE application_id = ? AND document_type = 'SELFIE'`,
+        `SELECT file_path, file_data FROM rider_documents WHERE application_id = ? AND document_type = 'SELFIE'`,
         [app.id]
       );
       const selfiePath = selfieDocs.length > 0 ? selfieDocs[0].file_path : null;
+      const selfieData = selfieDocs.length > 0 ? selfieDocs[0].file_data : null;
 
       if (existingDrivers.length > 0) {
         driverId = existingDrivers[0].id;
@@ -382,13 +384,15 @@ async function approveApplication(req, res) {
           `UPDATE delivery_drivers SET
             full_name = ?, mobile = ?, email = ?, date_of_birth = ?,
             home_city = ?, current_city = ?, current_address = ?, emergency_contact = ?,
-            vehicle_type = ?, vehicle_number = ?, selfie_path = COALESCE(?, selfie_path),
+            vehicle_type = ?, vehicle_number = ?, 
+            selfie_path = COALESCE(?, selfie_path),
+            selfie_data = COALESCE(?, selfie_data),
             account_status = 'ACTIVE', approval_status = 'APPROVED'
            WHERE id = ?`,
           [
             app.full_name, app.mobile, app.email, app.date_of_birth,
             app.home_city, app.current_city, app.current_address, app.emergency_contact,
-            app.vehicle_type, app.vehicle_number || 'TEMP-000', selfiePath,
+            app.vehicle_type, app.vehicle_number || 'TEMP-000', selfiePath, selfieData,
             driverId
           ]
         );
@@ -397,12 +401,12 @@ async function approveApplication(req, res) {
           `INSERT INTO delivery_drivers (
             user_id, full_name, mobile, email, date_of_birth,
             home_city, current_city, current_address, emergency_contact,
-            vehicle_type, vehicle_number, selfie_path, account_status, availability_status, approval_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED')`,
+            vehicle_type, vehicle_number, selfie_path, selfie_data, account_status, availability_status, approval_status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED')`,
           [
             userId, app.full_name, app.mobile, app.email, app.date_of_birth,
             app.home_city, app.current_city, app.current_address, app.emergency_contact,
-            app.vehicle_type, app.vehicle_number || 'TEMP-000', selfiePath
+            app.vehicle_type, app.vehicle_number || 'TEMP-000', selfiePath, selfieData
           ]
         );
         driverId = driverRes.insertId;
@@ -456,7 +460,7 @@ async function approveApplication(req, res) {
 
   } catch (err) {
     console.error('approveApplication Error:', err);
-    res.status(500).json({ success: false, message: err.message || 'Server error approving application.' });
+    res.status(500).json({ success: false, message: 'Server error approving rider application.' });
   }
 }
 
@@ -466,12 +470,8 @@ async function approveApplication(req, res) {
 async function rejectApplication(req, res) {
   try {
     const { id } = req.params;
-    const { rejectionReason } = req.body;
+    const { reason } = req.body;
     const adminUserId = req.user.id;
-
-    if (!rejectionReason || !rejectionReason.trim()) {
-      return res.status(400).json({ success: false, message: 'Rejection reason is required.' });
-    }
 
     const [app] = await query('SELECT * FROM rider_applications WHERE id = ?', [id]);
     if (!app) {
@@ -486,18 +486,14 @@ async function rejectApplication(req, res) {
       `UPDATE rider_applications SET
         application_status = 'REJECTED', rejection_reason = ?, reviewed_by = ?, reviewed_at = NOW()
        WHERE id = ?`,
-      [rejectionReason.trim(), adminUserId, id]
+      [reason || 'Application documents did not meet requirements.', adminUserId, id]
     );
 
     await createAuditLog(adminUserId, 'RESTAURANT_ADMIN', 'REJECT_RIDER_APPLICATION', 'rider_applications', id, {
-      rejectionReason: rejectionReason.trim()
+      restaurantId: app.restaurant_id, email: app.email, reason
     });
 
-    res.json({
-      success: true,
-      message: `Application for "${app.full_name}" has been rejected.`,
-      applicationId: id
-    });
+    res.json({ success: true, message: 'Application rejected.' });
   } catch (err) {
     console.error('rejectApplication Error:', err);
     res.status(500).json({ success: false, message: 'Server error rejecting application.' });
@@ -507,6 +503,7 @@ async function rejectApplication(req, res) {
 /**
  * 7. ADMIN / AUTHORIZED: Stream Sensitive Rider Document
  * Prevents public direct URLs. Enforces auth & restaurant isolation.
+ * Supports direct MySQL LONGBLOB buffer streaming + fallback to disk.
  */
 async function streamDocument(req, res) {
   try {
@@ -514,11 +511,10 @@ async function streamDocument(req, res) {
 
     const [doc] = await query(
       `SELECT d.*, 
-              COALESCE(a.restaurant_id, dra.restaurant_id, dd.restaurant_id) as restaurant_id
+              COALESCE(a.restaurant_id, dra.restaurant_id) as restaurant_id
        FROM rider_documents d
        LEFT JOIN rider_applications a ON d.application_id = a.id
-       LEFT JOIN driver_restaurant_assignments dra ON d.rider_id = dra.driver_id
-       LEFT JOIN delivery_drivers dd ON d.rider_id = dd.id
+       LEFT JOIN driver_restaurant_assignments dra ON (d.rider_id IS NOT NULL AND d.rider_id = dra.driver_id)
        WHERE d.id = ?`,
       [documentId]
     );
@@ -544,7 +540,15 @@ async function streamDocument(req, res) {
       return res.status(403).json({ success: false, message: 'Access denied: document belongs to another restaurant.' });
     }
 
-    // Normalize path separators and candidate locations
+    // 1. Direct Persistent SQL Storage (LONGBLOB Buffer)
+    if (doc.file_data && (Buffer.isBuffer(doc.file_data) || doc.file_data.length > 0)) {
+      res.setHeader('Content-Type', doc.mime_type || 'image/jpeg');
+      res.setHeader('Content-Disposition', `inline; filename="${doc.original_file_name || 'document'}"`);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(doc.file_data);
+    }
+
+    // 2. Fallback: Stream from server storage if legacy file path exists
     const rawPath = (doc.file_path || '').replace(/\\/g, '/');
     let relativeSubPath = rawPath;
     const uploadsIdx = relativeSubPath.indexOf('uploads/');
@@ -557,15 +561,20 @@ async function streamDocument(req, res) {
     const candidatePaths = [
       path.resolve(__dirname, '..', relativeSubPath),
       path.resolve(__dirname, '..', 'uploads', relativeSubPath),
+      path.resolve(process.cwd(), relativeSubPath),
+      path.resolve(process.cwd(), 'backend', relativeSubPath),
       path.resolve(__dirname, '..', 'uploads', 'riders', path.basename(rawPath)),
-      path.resolve(__dirname, '..', 'uploads', 'riders', (doc.document_type ? doc.document_type.toLowerCase().replace(/_/g, '-') : ''), path.basename(rawPath)),
-      path.resolve(doc.file_path)
+      path.resolve(__dirname, '..', 'uploads', 'riders', (doc.document_type ? doc.document_type.toLowerCase().replace(/_/g, '-') : ''), path.basename(rawPath))
     ];
 
-    const absolutePath = candidatePaths.find(p => fs.existsSync(p));
+    if (doc.file_path && typeof doc.file_path === 'string' && doc.file_path.trim().length > 0) {
+      candidatePaths.push(path.resolve(doc.file_path));
+    }
+
+    const absolutePath = candidatePaths.find(p => p && fs.existsSync(p));
 
     if (!absolutePath) {
-      console.warn(`[Document Stream] File missing from disk. db path="${doc.file_path}", candidates:`, candidatePaths);
+      console.warn(`[Document Stream] File missing from database buffer and disk. db path="${doc.file_path}", candidates:`, candidatePaths);
       return res.status(404).json({ success: false, message: 'File missing from server storage.' });
     }
 
@@ -575,7 +584,7 @@ async function streamDocument(req, res) {
 
   } catch (err) {
     console.error('streamDocument Error:', err);
-    res.status(500).json({ success: false, message: 'Server error streaming document.' });
+    res.status(500).json({ success: false, message: err.message || 'Server error streaming document.' });
   }
 }
 

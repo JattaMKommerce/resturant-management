@@ -52,22 +52,9 @@ function generateSafeFilename(originalname, docType) {
 }
 
 /**
- * Create multer storage for rider documents
+ * Create multer memory storage for direct database persistence
  */
-const riderStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // Determine subdirectory from the fieldname which maps to document type
-    const docType = file.fieldname.toUpperCase();
-    const subdir = DOCUMENT_TYPE_DIR[docType] || 'selfies';
-    const destPath = path.join(riderUploadBase, subdir);
-    cb(null, destPath);
-  },
-  filename: function (req, file, cb) {
-    const docType = file.fieldname.toUpperCase();
-    const safeName = generateSafeFilename(file.originalname, docType);
-    cb(null, safeName);
-  }
-});
+const riderMemoryStorage = multer.memoryStorage();
 
 /**
  * File filter: validate MIME type and extension
@@ -94,7 +81,7 @@ const riderFileFilter = (req, file, cb) => {
  * Accepts specific document fields
  */
 const riderUpload = multer({
-  storage: riderStorage,
+  storage: riderMemoryStorage,
   limits: {
     fileSize: MAX_FILE_SIZE,
     files: MAX_FILES_PER_APPLICATION
