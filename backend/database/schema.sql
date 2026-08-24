@@ -671,3 +671,96 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- =========================================================================
+-- SAAS SUBSCRIPTION, PAYMENT & ACCESS CONTROL TABLES
+-- =========================================================================
+
+-- 31. Subscription Plans
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  slug VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT DEFAULT NULL,
+  price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  duration_days INT NOT NULL DEFAULT 30,
+  max_orders_per_month INT DEFAULT NULL,
+  max_menu_items INT DEFAULT NULL,
+  max_staff_accounts INT DEFAULT NULL,
+  features_json JSON NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  display_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- 32. Hotel Subscriptions
+CREATE TABLE IF NOT EXISTS hotel_subscriptions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id INT NOT NULL,
+  plan_id INT NOT NULL,
+  subscription_type ENUM('TRIAL', 'PAID') NOT NULL DEFAULT 'PAID',
+  status ENUM('PENDING', 'PENDING_APPROVAL', 'ACTIVE', 'EXPIRED', 'SUSPENDED', 'CANCELLED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  starts_at TIMESTAMP NULL DEFAULT NULL,
+  expires_at TIMESTAMP NULL DEFAULT NULL,
+  approved_by_user_id INT DEFAULT NULL,
+  approved_at TIMESTAMP NULL DEFAULT NULL,
+  rejected_by_user_id INT DEFAULT NULL,
+  rejected_at TIMESTAMP NULL DEFAULT NULL,
+  rejection_reason TEXT DEFAULT NULL,
+  auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+  notes TEXT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+  FOREIGN KEY (plan_id) REFERENCES subscription_plans(id),
+  FOREIGN KEY (approved_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (rejected_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_rest_sub_status (restaurant_id, status),
+  INDEX idx_sub_expiry (expires_at)
+) ENGINE=InnoDB;
+
+-- 33. Subscription Payments
+CREATE TABLE IF NOT EXISTS subscription_payments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  subscription_id INT NOT NULL,
+  restaurant_id INT NOT NULL,
+  plan_id INT NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+  payment_method ENUM('RAZORPAY', 'MANUAL_OFFLINE', 'SUPERADMIN_MANUAL') NOT NULL,
+  gateway_order_id VARCHAR(100) DEFAULT NULL,
+  gateway_payment_id VARCHAR(100) DEFAULT NULL,
+  transaction_reference VARCHAR(150) NOT NULL UNIQUE,
+  offline_proof_note TEXT DEFAULT NULL,
+  status ENUM('PENDING', 'SUCCESS', 'FAILED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+  verified_at TIMESTAMP NULL DEFAULT NULL,
+  verified_by_user_id INT DEFAULT NULL,
+  gateway_response_json JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (subscription_id) REFERENCES hotel_subscriptions(id) ON DELETE CASCADE,
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+  FOREIGN KEY (plan_id) REFERENCES subscription_plans(id),
+  FOREIGN KEY (verified_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_sub_pay_status (status)
+) ENGINE=InnoDB;
+
+-- 34. Subscription History & Audit Trail
+CREATE TABLE IF NOT EXISTS subscription_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id INT NOT NULL,
+  subscription_id INT NULL,
+  plan_id INT NOT NULL,
+  action ENUM('ASSIGNED', 'PAYMENT_RECEIVED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'RENEWED', 'EXTENDED', 'EXPIRED', 'REACTIVATED', 'SUSPENDED', 'CANCELLED') NOT NULL,
+  previous_status VARCHAR(50) DEFAULT NULL,
+  new_status VARCHAR(50) NOT NULL,
+  starts_at TIMESTAMP NULL DEFAULT NULL,
+  expires_at TIMESTAMP NULL DEFAULT NULL,
+  actor_user_id INT NULL,
+  notes TEXT DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+  FOREIGN KEY (plan_id) REFERENCES subscription_plans(id),
+  FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+

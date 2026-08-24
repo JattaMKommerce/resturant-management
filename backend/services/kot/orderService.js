@@ -301,7 +301,7 @@ async function createOrder(orderData, idempotencyKey = null) {
       }
     }
 
-    // 9. Emit Real-time Socket.IO Events
+    // 9. Emit Real-time Socket.IO Events & Save Notification
     const createdOrderPayload = {
       id: orderId,
       order_number: orderNumber,
@@ -317,6 +317,21 @@ async function createOrder(orderData, idempotencyKey = null) {
     emitToRoom('admin', 'new_order', createdOrderPayload);
     if (validatedTableId) {
       broadcastEvent('table_status_changed', { table_id: validatedTableId, status: 'OCCUPIED' });
+    }
+
+    // Save notification for Hotel Admin notification center
+    try {
+      const notificationService = require('../NotificationService');
+      const tableLabel = tableNumber ? `Table ${tableNumber}` : (room_id ? `Room ${room_id}` : (order_type || 'Dine-In'));
+      await notificationService.sendNotification({
+        restaurantId: orderData.restaurant_id || 1,
+        orderId: null,
+        title: `🍽️ New KOT Order! #${orderNumber}`,
+        message: `${tableLabel} — ₹${grandTotal.toFixed(2)} (${validatedItems.length} items)`,
+        type: 'ORDER_UPDATE'
+      });
+    } catch (notifErr) {
+      console.warn('Could not record KOT notification:', notifErr.message);
     }
 
     return {

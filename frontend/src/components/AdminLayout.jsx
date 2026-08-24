@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Power, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import UnifiedSidebar from './UnifiedSidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import SubscriptionCountdownBadge from './subscription/SubscriptionCountdownBadge';
+import PlanSelectorModal from './subscription/PlanSelectorModal';
+import SubscriptionPaywallModal from './subscription/SubscriptionPaywallModal';
+import NotificationBellDropdown from './notifications/NotificationBellDropdown';
 
 export default function AdminLayout({ children }) {
   const { user, restaurant, updateRestaurant } = useAuth();
   const location = useLocation();
   const [loadingToggle, setLoadingToggle] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [subscription, setSubscription] = useState(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('admin_sidebar_collapsed') === 'true';
@@ -17,6 +23,21 @@ export default function AdminLayout({ children }) {
       return false;
     }
   });
+
+  useEffect(() => {
+    fetchSubscription();
+  }, [location.pathname]);
+
+  const fetchSubscription = async () => {
+    try {
+      const res = await api.get('/admin/subscription/status');
+      if (res.data.success) {
+        setSubscription(res.data.data);
+      }
+    } catch (err) {
+      // Ignored if unauthenticated or on public routes
+    }
+  };
 
   const toggleSidebarCollapsed = () => {
     setIsSidebarCollapsed(prev => {
@@ -32,6 +53,7 @@ export default function AdminLayout({ children }) {
 
   const getPageTitle = () => {
     const p = location.pathname;
+    if (p.includes('/subscription')) return 'SaaS Plan & Billing Subscriptions';
     if (p.includes('/orders')) return 'Live Order Processing';
     if (p.includes('/history')) return 'Historical Order Intelligence';
     if (p.includes('/staff')) return 'Restaurant Staff & Access Controls';
@@ -68,6 +90,10 @@ export default function AdminLayout({ children }) {
       setLoadingToggle(false);
     }
   };
+
+  const isSubscriptionRoute = location.pathname.includes('/subscription');
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const shouldBlockWithPaywall = !isSuperAdmin && !isSubscriptionRoute && subscription && (subscription.status === 'EXPIRED' || !subscription.has_subscription);
 
   return (
     <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex font-sans antialiased relative">
@@ -107,7 +133,7 @@ export default function AdminLayout({ children }) {
             <button
               type="button"
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-2 -ml-1 text-[#1F2937] hover:bg-slate-100 rounded-xl lg:hidden shrink-0 border border-[#D7E5E8] transition-colors"
+              className="p-2 -ml-1 text-[#1F2937] hover:bg-slate-100 rounded-xl lg:hidden shrink-0 border border-[#D7E5E8] transition-colors cursor-pointer"
               title="Open Navigation Menu"
             >
               <Menu className="w-5 h-5 text-[#3A7D7C]" />
@@ -117,7 +143,7 @@ export default function AdminLayout({ children }) {
             <button
               type="button"
               onClick={toggleSidebarCollapsed}
-              className="hidden lg:flex p-2 -ml-2 text-[#64748B] hover:text-[#1F2937] rounded-xl hover:bg-[#EAF4F7] transition-colors shrink-0"
+              className="hidden lg:flex p-2 -ml-2 text-[#64748B] hover:text-[#1F2937] rounded-xl hover:bg-[#EAF4F7] transition-colors shrink-0 cursor-pointer"
               title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
               {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
@@ -135,8 +161,21 @@ export default function AdminLayout({ children }) {
           </div>
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             
+            {/* Notification Bell with Unread Count */}
+            <NotificationBellDropdown />
+
+            {/* SaaS Subscription Live Countdown Pill */}
+            {subscription && (
+              <SubscriptionCountdownBadge
+                subscription={subscription}
+                compact={true}
+                onExpire={() => fetchSubscription()}
+                onOpenRenew={() => setShowPlanModal(true)}
+              />
+            )}
+
             {/* ONLINE ORDERING TOGGLE BUTTON */}
             {restaurant && (() => {
               const isOrderingOn = Boolean(restaurant.is_online_ordering_enabled);
@@ -168,7 +207,7 @@ export default function AdminLayout({ children }) {
                   <button
                     onClick={handleToggleOnlineOrdering}
                     disabled={loadingToggle}
-                    className={`p-2 sm:px-3 sm:py-2 rounded-xl transition-all font-bold flex items-center gap-1.5 text-xs text-white shadow-2xs ${
+                    className={`p-2 sm:px-3 sm:py-2 rounded-xl transition-all font-bold flex items-center gap-1.5 text-xs text-white shadow-2xs cursor-pointer ${
                       isOrderingOn
                         ? 'bg-emerald-600 hover:bg-emerald-700'
                         : 'bg-rose-600 hover:bg-rose-700'
@@ -203,6 +242,22 @@ export default function AdminLayout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* Blocking Paywall Modal if subscription is expired and user is not on subscription page */}
+      {shouldBlockWithPaywall && (
+        <SubscriptionPaywallModal
+          subscription={subscription}
+          onRenewed={() => fetchSubscription()}
+        />
+      )}
+
+      {/* Plan Selector Modal */}
+      <PlanSelectorModal
+        isOpen={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        onSuccess={() => fetchSubscription()}
+        currentPlanId={subscription?.plan_id}
+      />
 
     </div>
   );

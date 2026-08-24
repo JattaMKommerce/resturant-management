@@ -243,11 +243,47 @@ export default function UnifiedSidebar({
           )}
         </div>
 
+        {/* SECTION 3: ACCOUNT & SETTINGS */}
+        <div className="space-y-1 pt-2 border-t border-[#D7E5E8]">
+          <div
+            className={`px-2 py-1 text-[10px] font-bold text-[#64748B] uppercase tracking-wider ${
+              isCollapsed ? 'lg:text-center' : 'text-left'
+            }`}
+          >
+            <span className={isCollapsed ? 'lg:hidden' : 'inline'}>Account & Settings</span>
+          </div>
+
+          <div className="space-y-0.5 pt-0.5">
+            <NavLink
+              to="/admin/offline/subscription"
+              onClick={handleLinkClick}
+              className={({ isActive }) =>
+                `flex items-center ${
+                  isCollapsed ? 'lg:justify-center lg:w-10 lg:h-10 lg:p-0 lg:mx-auto group relative' : 'justify-start gap-2.5'
+                } px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                  isActive
+                    ? 'bg-[#3A7D7C] text-white shadow-2xs font-bold'
+                    : 'text-[#1F2937] hover:text-[#3A7D7C] hover:bg-[#EAF4F7]'
+                }`
+              }
+              title="Hotel SaaS Subscription"
+            >
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'inline'}`}>SaaS Subscription</span>
+              {isCollapsed && (
+                <div className="fixed left-20 ml-2 px-2.5 py-1 bg-white border border-[#D7E5E8] text-[#1F2937] text-xs font-bold rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden lg:block">
+                  SaaS Subscription
+                </div>
+              )}
+            </NavLink>
+          </div>
+        </div>
+
       </div>
 
       {/* Sidebar Footer */}
       <div className="p-3 border-t border-[#D7E5E8] bg-[#EAF4F7]/40 space-y-2 shrink-0">
-        
+
         {/* Quick Customer Store Link */}
         <Link
           to={`/restaurant/${activeSlug}`}

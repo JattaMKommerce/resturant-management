@@ -41,6 +41,7 @@ import RestaurantOnboarding from './pages/admin/RestaurantOnboarding';
 import AdminRidersPage from './pages/admin/AdminRidersPage';
 import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
+import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
 
 // Offline Restaurant & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
@@ -319,6 +320,20 @@ export default function App() {
             <AdminDeliveriesPage />
           </ProtectedRoute>
         } />
+        <Route path="/admin/:slug/subscription" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AdminSubscriptionPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/subscription" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AdminSubscriptionPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/admin/:slug/settings" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
             <AdminSettingsPage />
@@ -339,6 +354,15 @@ export default function App() {
         {/* 2. OFFLINE RESTAURANT & KOT SYSTEM ROUTES (Exact 10)     */}
         {/* ========================================================= */}
         <Route path="/admin/offline" element={<Navigate to="/admin/offline/dashboard" replace />} />
+        
+        {/* SaaS Subscription */}
+        <Route path="/admin/offline/subscription" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AdminSubscriptionPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
         
         {/* Staff Management */}
         <Route path="/admin/offline/staff" element={

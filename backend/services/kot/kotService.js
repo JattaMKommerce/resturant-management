@@ -250,6 +250,17 @@ async function updateKOTStatus(kotId, newStatus, userId = null, reason = '') {
         table_number: updatedKOT ? updatedKOT.table_number : null,
         kitchen_department_name: updatedKOT ? updatedKOT.kitchen_department_name : null
       });
+
+      try {
+        const notificationService = require('../NotificationService');
+        notificationService.sendNotification({
+          restaurantId: kot.restaurant_id || 1,
+          orderId: null,
+          title: `🍽️ Food Ready for Service! #${kot.kot_number}`,
+          message: `${updatedKOT?.table_number ? `Table ${updatedKOT.table_number}` : 'Order'} items are prepared and ready to serve.`,
+          type: 'ORDER_UPDATE'
+        });
+      } catch (e) {}
     } else if (newStatus === 'SERVED') {
       emitToRoom('waiter', 'order_served', { kot_id: kotId, order_id: kot.order_id });
     }

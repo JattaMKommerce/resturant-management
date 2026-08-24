@@ -89,6 +89,9 @@ async function initDatabase(options = {}) {
         // Always ensure super admin exists
         await getOrCreateUser(connection, 'Master Super Admin', 'superadmin@gmail.com', 'admin@123', '+91 9999999999', 'SUPER_ADMIN');
 
+        // Ensure default SaaS Subscription Plans exist (without auto-assigning to hotels)
+        await ensureSubscriptionPlans(connection);
+
         if (userRows[0].count <= 1 || menuRows[0].count === 0 || (forceReset && process.env.NODE_ENV !== 'production')) {
           console.log('🌱 Seeding initial data...');
           await seedData(connection);
@@ -262,6 +265,29 @@ async function initDatabase(options = {}) {
       // Notifications columns
       await addColumnIfNotExists(conn, 'notifications', 'restaurant_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'notifications', 'customer_identity_id', "INT DEFAULT NULL");
+
+      // Subscription Payments columns
+      await addColumnIfNotExists(conn, 'subscription_payments', 'updated_at', "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+
+      // Subscription Approvals & Status ENUM Migrations
+      try {
+        await conn.query(`ALTER TABLE \`hotel_subscriptions\` MODIFY COLUMN \`status\` ENUM('PENDING', 'PENDING_APPROVAL', 'ACTIVE', 'EXPIRED', 'SUSPENDED', 'CANCELLED', 'REJECTED') NOT NULL DEFAULT 'PENDING'`);
+        await conn.query(`ALTER TABLE \`hotel_subscriptions\` MODIFY COLUMN \`starts_at\` TIMESTAMP NULL DEFAULT NULL`);
+        await conn.query(`ALTER TABLE \`hotel_subscriptions\` MODIFY COLUMN \`expires_at\` TIMESTAMP NULL DEFAULT NULL`);
+      } catch (e) { /* non-fatal */ }
+
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'subscription_type', "ENUM('TRIAL', 'PAID') NOT NULL DEFAULT 'PAID'");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'approved_by_user_id', "INT DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'approved_at', "TIMESTAMP NULL DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'rejected_by_user_id', "INT DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'rejected_at', "TIMESTAMP NULL DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'hotel_subscriptions', 'rejection_reason', "TEXT DEFAULT NULL");
+
+      try {
+        await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`action\` ENUM('ASSIGNED', 'PAYMENT_RECEIVED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'RENEWED', 'EXTENDED', 'EXPIRED', 'REACTIVATED', 'SUSPENDED', 'CANCELLED') NOT NULL`);
+        await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`starts_at\` TIMESTAMP NULL DEFAULT NULL`);
+        await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`expires_at\` TIMESTAMP NULL DEFAULT NULL`);
+      } catch (e) { /* non-fatal */ }
 
       // Table creations (idempotent via IF NOT EXISTS)
       const tableCreations = [
@@ -957,6 +983,113 @@ async function initDatabase(options = {}) {
       }
 
       console.log('✅ KOT seed data verified.');
+    }
+
+    async function ensureSubscriptionPlans(conn) {
+      try {
+        const defaultPlans = [
+          {
+            name: '7-Day Free Trial',
+            slug: 'free-trial',
+            description: 'Full complimentary operational access to all HMS modules for 7 days.',
+            price: 0.00,
+            duration_days: 7,
+            max_orders_per_month: 100,
+            max_menu_items: 50,
+            max_staff_accounts: 5,
+            features_json: JSON.stringify([
+              'Kitchen Display System (KDS)',
+              'Table QR Digital Menus',
+              'POS Billing & GST Invoices',
+              'Online Customer Storefront',
+              'Dedicated Rider Dispatch'
+            ]),
+            display_order: 0
+          },
+          {
+            name: 'Starter Plan',
+            slug: 'starter',
+            description: 'Essential digital dining, table QR menu & KDS kitchen display for small restaurants & cafes.',
+            price: 999.00,
+            duration_days: 30,
+            max_orders_per_month: 300,
+            max_menu_items: 50,
+            max_staff_accounts: 3,
+            features_json: JSON.stringify([
+              'Table QR Digital Dine-In Menu',
+              'Kitchen Display System (KDS)',
+              'POS Billing & GST Invoices',
+              'Basic Sales & Order Reports'
+            ]),
+            display_order: 1
+          },
+          {
+            name: 'Professional Plan',
+            slug: 'professional',
+            description: 'Complete high-performance operations suite with online storefront, delivery fleet & live timers.',
+            price: 2499.00,
+            duration_days: 30,
+            max_orders_per_month: 1500,
+            max_menu_items: 250,
+            max_staff_accounts: 10,
+            features_json: JSON.stringify([
+              'Everything in Starter Plan',
+              'Online Customer Food Delivery Storefront',
+              'Dedicated Delivery Rider GPS Dispatch',
+              'Recipe Formulations & Raw Stock Inventory',
+              'Room Service & Hotel Guest Folio Billing',
+              'Real-Time KDS Batch Prep Timers'
+            ]),
+            display_order: 2
+          },
+          {
+            name: 'Enterprise Plan',
+            slug: 'enterprise',
+            description: 'Full-featured annual suite for premier hotels, luxury dining, and multi-floor banquet operations.',
+            price: 24999.00,
+            duration_days: 365,
+            max_orders_per_month: null,
+            max_menu_items: null,
+            max_staff_accounts: null,
+            features_json: JSON.stringify([
+              'Everything in Professional Plan',
+              'Unlimited Monthly Orders & Volume',
+              'Unlimited Menu Items & Staff Accounts',
+              'Annual Billing Savings Discount',
+              'Multi-Floor & Banquet Management',
+              'Advanced Audit Logs & Business Intelligence',
+              'Priority 24/7 Technical Support'
+            ]),
+            display_order: 3
+          }
+        ];
+
+        for (const plan of defaultPlans) {
+          const [existing] = await conn.query('SELECT id FROM subscription_plans WHERE slug = ?', [plan.slug]);
+          if (existing.length === 0) {
+            await conn.query(
+              `INSERT INTO subscription_plans 
+                (name, slug, description, price, duration_days, max_orders_per_month, max_menu_items, max_staff_accounts, features_json, is_active, display_order)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+              [
+                plan.name,
+                plan.slug,
+                plan.description,
+                plan.price,
+                plan.duration_days,
+                plan.max_orders_per_month,
+                plan.max_menu_items,
+                plan.max_staff_accounts,
+                plan.features_json,
+                plan.display_order
+              ]
+            );
+            console.log(`✅ Seeded subscription plan: ${plan.name} (₹${plan.price} / ${plan.duration_days} days)`);
+          }
+        }
+      } catch (err) {
+        console.warn('Subscription plans seed warning:', err.message);
+      }
     }
 
     if (require.main === module) {

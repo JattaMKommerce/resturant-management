@@ -321,10 +321,15 @@ const kotReportRoutes = require('./routes/kot/reportRoutes');
 const kotAuditRoutes = require('./routes/kot/auditRoutes');
 const kotPublicRoutes = require('./routes/kot/publicRoutes');
 const kotOperationsRoutes = require('./routes/kot/operationsRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 // Apply stricter rate limiting to auth routes
 app.use('/api/auth', authRateLimiter, kotAuthRoutes);
 app.use('/api/restaurant/auth', authRateLimiter, kotAuthRoutes);
+
+// Mount SaaS Subscription & Platform Governance Routes (Unblocked for expired renewals)
+app.use('/api', subscriptionRoutes);
+app.use('/api/v1', subscriptionRoutes);
 
 const kotRouteMap = [
   ['/api/tables', kotTableRoutes],
@@ -349,8 +354,15 @@ const kotRouteMap = [
   ['/api/restaurant/operations', kotOperationsRoutes],
 ];
 
+const { enforceSubscriptionAccess } = require('./middleware/subscriptionAuth');
+
 for (const [routePath, routerHandler] of kotRouteMap) {
-  app.use(routePath, routerHandler);
+  // Public customer menu and guest tracking are strictly unblocked
+  if (routePath.includes('/public')) {
+    app.use(routePath, routerHandler);
+  } else {
+    app.use(routePath, enforceSubscriptionAccess, routerHandler);
+  }
 }
 
 // Mount Online Store & Platform API Routes

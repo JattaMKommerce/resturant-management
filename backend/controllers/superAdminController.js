@@ -156,6 +156,14 @@ async function createRestaurant(req, res) {
       [name, slug, phone || null, email || null, address || null, city || null, state || null, area || null, postal_code || null]
     );
 
+    // Auto-provision 7-Day Free Trial
+    try {
+      const subscriptionService = require('../services/SubscriptionService');
+      await subscriptionService.provisionHotelTrial(result.insertId);
+    } catch (trialErr) {
+      console.warn('Trial auto-provisioning warning:', trialErr.message);
+    }
+
     const newRest = await query('SELECT * FROM restaurants WHERE id = ?', [result.insertId]);
     res.status(201).json({ success: true, message: 'Restaurant created.', restaurant: newRest[0] });
   } catch (err) {

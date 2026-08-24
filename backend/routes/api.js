@@ -122,9 +122,10 @@ router.patch('/superadmin/drivers/:driverId/status', ...superAuth, superAdminCon
 router.get('/superadmin/orders', ...superAuth, superAdminController.getAllPlatformOrders);
 
 // ═══════════════════════════════════════════════
-// 9. RESTAURANT ADMIN ROUTES (With Isolation)
+// 9. RESTAURANT ADMIN ROUTES (With Tenant Isolation & SaaS Subscription Enforcement)
 // ═══════════════════════════════════════════════
-const adminAuth = [authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'), resolveRestaurantAccess];
+const { enforceSubscriptionAccess } = require('../middleware/subscriptionAuth');
+const adminAuth = [authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'), resolveRestaurantAccess, enforceSubscriptionAccess];
 
 // Dashboard
 router.get('/admin/dashboard/kpis', ...adminAuth, orderController.getDashboardKPIs);
@@ -204,6 +205,9 @@ router.patch('/admin/drivers/:id/status', ...adminAuth, driverController.updateD
 // 10. NOTIFICATIONS
 // ═══════════════════════════════════════════════
 router.get('/notifications', authenticateToken, notificationController.getNotifications);
+router.patch('/notifications/read-all', authenticateToken, notificationController.markAllNotificationsRead);
 router.patch('/notifications/:id/read', authenticateToken, notificationController.markNotificationRead);
+router.delete('/notifications/clear-all', authenticateToken, notificationController.clearAllNotifications);
+router.delete('/notifications/:id', authenticateToken, notificationController.deleteNotification);
 
 module.exports = router;
