@@ -4,11 +4,11 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const dbHost = process.env.DB_HOST || 'localhost';
-const dbPort = parseInt(process.env.DB_PORT || '3306');
-const dbUser = process.env.DB_USER || 'root';
-const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
-const dbName = process.env.DB_NAME || 'hotel_db';
+const dbHost = process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST || process.env.MYSQL_PRIVATE_HOST || process.env.MYSQL_PUBLIC_HOST || 'localhost';
+const dbPort = parseInt(process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || process.env.MYSQL_PUBLIC_PORT || '3306', 10);
+const dbUser = process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER || 'root';
+const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : (process.env.MYSQLPASSWORD !== undefined ? process.env.MYSQLPASSWORD : (process.env.MYSQL_PASSWORD !== undefined ? process.env.MYSQL_PASSWORD : ''));
+const dbName = process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || process.env.MYSQLDB || 'hotel_db';
 
 function isValidUri(uri) {
   if (!uri || typeof uri !== 'string') return false;
@@ -27,7 +27,7 @@ async function initDatabase(options = {}) {
   const forceReset = (options === true || options.forceReset || process.argv.includes('--reset')) && process.env.NODE_ENV !== 'production';
   let connection;
   try {
-    const rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL;
+    const rawUri = process.env.DATABASE_URL || process.env.MYSQL_URL || process.env.MYSQLURL || process.env.MYSQL_PRIVATE_URL || process.env.MYSQL_PUBLIC_URL;
     const uri = isValidUri(rawUri) ? rawUri.trim() : null;
 
         if (uri) {
