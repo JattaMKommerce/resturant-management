@@ -68,7 +68,7 @@ import AdminLayout from './components/AdminLayout';
 import NotificationToast from './components/NotificationToast';
 
 // Role Guard Component
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, allowedRoles, loginPath = '/admin/login' }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -80,7 +80,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
   const effectiveRole = user.role === 'ADMIN' ? 'RESTAURANT_ADMIN' : user.role;
@@ -92,16 +92,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (mappedAllowed.length > 0 && !mappedAllowed.includes(effectiveRole) && !mappedAllowed.includes(user.role)) {
-    if (user.role === 'KITCHEN' || user.role === 'CHEF') {
-      return <Navigate to="/kitchen" replace />;
-    }
-    if (user.role === 'WAITER') {
-      return <Navigate to="/waiter/dashboard" replace />;
-    }
-    if (user.role === 'DELIVERY_DRIVER' || user.role === 'DRIVER') {
-      return <Navigate to="/rider/dashboard" replace />;
-    }
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to={loginPath} replace />;
   }
 
   return children;
@@ -168,6 +159,10 @@ const AdminRedirect = () => {
       </div>
     );
   }
+  const adminRoles = ['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER'];
+  if (!user || !adminRoles.includes(user.role)) {
+    return <Navigate to="/admin/login" replace />;
+  }
   const slug = restaurant?.slug || user?.restaurant_slug;
   if (slug) {
     return <Navigate to={`/admin/${slug}`} replace />;
@@ -225,7 +220,7 @@ export default function App() {
         <Route path="/driver/apply" element={<DriverApplicationPage />} />
         <Route path="/driver/login" element={<DriverLoginPage />} />
         <Route path="/driver/dashboard" element={
-          <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']}>
+          <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']} loginPath="/driver/login">
             <DriverDashboardPage />
           </ProtectedRoute>
         } />
@@ -235,7 +230,7 @@ export default function App() {
         <Route path="/rider/apply" element={<DriverApplicationPage />} />
         <Route path="/rider/register" element={<DriverApplicationPage />} />
         <Route path="/rider/dashboard" element={
-          <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']}>
+          <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']} loginPath="/driver/login">
             <DriverDashboardPage />
           </ProtectedRoute>
         } />
@@ -245,12 +240,12 @@ export default function App() {
         <Route path="/waiter/login" element={<WaiterLoginPage />} />
         <Route path="/waiter/register" element={<WaiterRegisterPage />} />
         <Route path="/waiter/dashboard" element={
-          <ProtectedRoute allowedRoles={['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+          <ProtectedRoute allowedRoles={['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']} loginPath="/waiter/login">
             <WaiterDashboard />
           </ProtectedRoute>
         } />
         <Route path="/waiter/ready" element={
-          <ProtectedRoute allowedRoles={['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+          <ProtectedRoute allowedRoles={['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']} loginPath="/waiter/login">
             <WaiterDashboard />
           </ProtectedRoute>
         } />

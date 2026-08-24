@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-  Bike, Power, MapPin, Phone, CheckCircle2, Navigation, AlertTriangle, 
+import {
+  Bike, Power, MapPin, Phone, CheckCircle2, Navigation, AlertTriangle,
   Package, Clock, RefreshCw, LogOut, Shield, DollarSign, User, ListOrdered,
   Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle
 } from 'lucide-react';
@@ -31,10 +31,12 @@ export default function DriverDashboardPage() {
   // Status & Location state
   const [availabilityStatus, setAvailabilityStatus] = useState('OFFLINE');
   const [currentCoords, setCurrentCoords] = useState({ lat: 12.9716, lng: 77.5946 });
+  const [locationName, setLocationName] = useState('Detecting live location...');
   const [lastLocationTime, setLastLocationTime] = useState(null);
   const [updatingLocation, setUpdatingLocation] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const lastGeocodedCoordsRef = useRef({ lat: null, lng: null });
 
   // Multi-Restaurant Apply Modal State
   const [showApplyModal, setShowApplyModal] = useState(false);
@@ -170,6 +172,74 @@ export default function DriverDashboardPage() {
     );
   };
 
+  // Reverse Geocode (lat, lng -> Clean Human-Readable Location Name)
+  const fetchLocationName = async (lat, lng) => {
+    if (!lat || !lng) return;
+
+    // Check if coordinates have moved by at least ~80 meters (0.0008 deg) to avoid redundant requests
+    const last = lastGeocodedCoordsRef.current;
+    if (last.lat && last.lng) {
+      const dLat = Math.abs(lat - last.lat);
+      const dLng = Math.abs(lng - last.lng);
+      if (dLat < 0.0008 && dLng < 0.0008) return;
+    }
+
+    try {
+      // 1. Try BigDataCloud (Free, Fast, Client-Side, No CORS)
+      const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+      const res = await fetch(bdcUrl);
+      if (res.ok) {
+        const data = await res.json();
+        const parts = [
+          data.locality || data.localityInfo?.administrative?.[3]?.name || data.localityInfo?.administrative?.[4]?.name,
+          data.city || data.principalSubdivisionCity || data.localityInfo?.administrative?.[2]?.name,
+          data.principalSubdivision
+        ].filter(Boolean);
+
+        const uniqueParts = [...new Set(parts)];
+        if (uniqueParts.length > 0) {
+          setLocationName(uniqueParts.join(', '));
+          lastGeocodedCoordsRef.current = { lat, lng };
+          return;
+        }
+      }
+    } catch (e1) {
+      // Fallback to OpenStreetMap Nominatim
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+        const nomRes = await fetch(nomUrl, { headers: { 'Accept-Language': 'en' } });
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          const addr = nomData.address || {};
+          const nameParts = [
+            addr.suburb || addr.neighbourhood || addr.road || addr.village,
+            addr.city || addr.town || addr.county,
+            addr.state
+          ].filter(Boolean);
+          const uniqueNom = [...new Set(nameParts)];
+          if (uniqueNom.length > 0) {
+            setLocationName(uniqueNom.join(', '));
+            lastGeocodedCoordsRef.current = { lat, lng };
+            return;
+          }
+        }
+      } catch (e2) { }
+    }
+
+    // Fallback if offline/failed
+    if (assignedRestaurants && assignedRestaurants.length > 0 && assignedRestaurants[0].city) {
+      setLocationName(`${assignedRestaurants[0].city} (Live Location)`);
+    } else {
+      setLocationName('Live Location Active');
+    }
+  };
+
+  useEffect(() => {
+    if (currentCoords?.lat && currentCoords?.lng) {
+      fetchLocationName(currentCoords.lat, currentCoords.lng);
+    }
+  }, [currentCoords]);
+
   const getQuickLocation = () => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -195,7 +265,7 @@ export default function DriverDashboardPage() {
 
   const handleToggleOnline = async () => {
     setError('');
-    
+
     if (availabilityStatus === 'OFFLINE' && assignedRestaurants.length === 0) {
       setError('You are not assigned to any restaurant yet. Click "Apply More" to partner with a restaurant first.');
       setShowApplyModal(true);
@@ -437,7 +507,7 @@ export default function DriverDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased pb-12">
-      
+
       {/* Mobile Top App Bar */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#D7E5E8] shadow-xs p-4 px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -450,7 +520,7 @@ export default function DriverDashboardPage() {
             </h1>
             <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-              {assignedRestaurants.length > 0 
+              {assignedRestaurants.length > 0
                 ? `Partnered with ${assignedRestaurants.length} Restaurant${assignedRestaurants.length > 1 ? 's' : ''}`
                 : 'No Restaurant Assigned'}
             </p>
@@ -461,11 +531,10 @@ export default function DriverDashboardPage() {
         <button
           onClick={handleToggleOnline}
           disabled={updatingLocation}
-          className={`px-4 py-2 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 shadow-2xs ${
-            availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY'
+          className={`px-4 py-2 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 shadow-2xs ${availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY'
               ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
               : 'bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8]'
-          }`}
+            }`}
         >
           <Power className="w-4 h-4" />
           {updatingLocation ? 'Updating...' : availabilityStatus === 'AVAILABLE' ? 'ONLINE 🟢' : availabilityStatus === 'BUSY' ? 'ON DELIVERY 🛵' : 'GO ONLINE 🔴'}
@@ -492,25 +561,23 @@ export default function DriverDashboardPage() {
         )}
 
         {/* LIVE DUTY STATUS CARD */}
-        <div className={`p-4 sm:p-5 rounded-3xl border transition-all flex items-center justify-between shadow-xs bg-white ${
-          availabilityStatus === 'AVAILABLE'
+        <div className={`p-4 sm:p-5 rounded-3xl border transition-all flex items-center justify-between shadow-xs bg-white ${availabilityStatus === 'AVAILABLE'
             ? 'border-emerald-300'
             : availabilityStatus === 'BUSY'
-            ? 'border-amber-300'
-            : 'border-[#D7E5E8]'
-        }`}>
+              ? 'border-amber-300'
+              : 'border-[#D7E5E8]'
+          }`}>
           <div className="flex items-center gap-3">
-            <div className={`w-3.5 h-3.5 rounded-full ${
-              availabilityStatus === 'AVAILABLE'
+            <div className={`w-3.5 h-3.5 rounded-full ${availabilityStatus === 'AVAILABLE'
                 ? 'bg-emerald-500 animate-ping'
                 : availabilityStatus === 'BUSY'
-                ? 'bg-amber-500 animate-pulse'
-                : 'bg-rose-500'
-            }`} />
+                  ? 'bg-amber-500 animate-pulse'
+                  : 'bg-rose-500'
+              }`} />
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider block text-[#64748B]">Current Rider Status</span>
               <span className="font-bold text-sm text-[#1F2937] tracking-tight">
-                {availabilityStatus === 'AVAILABLE' ? '🟢 ONLINE — READY FOR ORDERS' : availabilityStatus === 'BUSY' ? '🛵 ON ACTIVE DELIVERY TRIP' : '🔴 OFFLINE (NOT RECEIVING ORDERS)'}
+                {availabilityStatus === 'AVAILABLE' ? '🟢 ONLINE - READY FOR ORDERS' : availabilityStatus === 'BUSY' ? '🛵 ON ACTIVE DELIVERY TRIP' : '🔴 OFFLINE (NOT RECEIVING ORDERS)'}
               </span>
             </div>
           </div>
@@ -518,11 +585,10 @@ export default function DriverDashboardPage() {
           <button
             onClick={handleToggleOnline}
             disabled={updatingLocation}
-            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs ${
-              availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY'
+            className={`px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs ${availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY'
                 ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
                 : 'bg-[#3A7D7C] hover:bg-[#2F6665] text-white'
-            }`}
+              }`}
           >
             {updatingLocation ? 'Updating...' : (availabilityStatus === 'AVAILABLE' || availabilityStatus === 'BUSY') ? 'Go Offline 🔴' : 'Go Online 🟢'}
           </button>
@@ -575,17 +641,28 @@ export default function DriverDashboardPage() {
 
         {/* Location Status Bar */}
         <div className="bg-white p-3.5 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2.5">
-            <MapPin className={`w-4 h-4 ${availabilityStatus === 'OFFLINE' ? 'text-[#64748B]' : 'text-[#3A7D7C]'}`} />
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Current GPS</span>
-              <span className="font-semibold text-[#1F2937]">
-                {currentCoords.lat.toFixed(4)}, {currentCoords.lng.toFixed(4)}
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${availabilityStatus === 'OFFLINE'
+                ? 'bg-slate-50 text-[#64748B] border-slate-200'
+                : 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-2xs'
+              }`}>
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase font-extrabold text-[#64748B] block tracking-wider">Current Location</span>
+              <span className="font-bold text-[#1F2937] text-xs sm:text-sm truncate block" title={locationName}>
+                {locationName}
               </span>
             </div>
           </div>
-          <div className="text-right text-[10px] text-[#64748B]">
-            {lastLocationTime ? `GPS: ${new Date(lastLocationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'GPS Ready'}
+          <div className="text-right text-[10px] text-[#64748B] shrink-0">
+            <span className="inline-flex items-center gap-1.5 font-bold text-emerald-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live GPS
+            </span>
+            <span className="block text-[9px] text-[#64748B]">
+              {lastLocationTime ? new Date(lastLocationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'}
+            </span>
           </div>
         </div>
 
@@ -615,11 +692,10 @@ export default function DriverDashboardPage() {
                     setSelectedRestaurantFilter('ALL');
                     fetchAvailableOrdersPool('ALL');
                   }}
-                  className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
-                    selectedRestaurantFilter === 'ALL'
+                  className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${selectedRestaurantFilter === 'ALL'
                       ? 'bg-[#3A7D7C] text-white shadow-2xs'
                       : 'bg-white text-[#64748B] hover:text-[#1F2937] border border-[#D7E5E8]'
-                  }`}
+                    }`}
                 >
                   All Stores ({assignedRestaurants.length})
                 </button>
@@ -630,11 +706,10 @@ export default function DriverDashboardPage() {
                       setSelectedRestaurantFilter(r.id);
                       fetchAvailableOrdersPool(r.id);
                     }}
-                    className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
-                      selectedRestaurantFilter === r.id
+                    className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${selectedRestaurantFilter === r.id
                         ? 'bg-[#3A7D7C] text-white shadow-2xs'
                         : 'bg-white text-[#64748B] hover:text-[#1F2937] border border-[#D7E5E8]'
-                    }`}
+                      }`}
                   >
                     {r.name}
                   </button>
@@ -709,11 +784,10 @@ export default function DriverDashboardPage() {
                     <button
                       onClick={() => handleClaimOrder(order.id)}
                       disabled={claimingOrderId === order.id || availabilityStatus === 'OFFLINE'}
-                      className={`w-full py-3.5 rounded-2xl font-bold text-xs text-white shadow-2xs transition-all flex items-center justify-center gap-2 ${
-                        availabilityStatus === 'OFFLINE'
+                      className={`w-full py-3.5 rounded-2xl font-bold text-xs text-white shadow-2xs transition-all flex items-center justify-center gap-2 ${availabilityStatus === 'OFFLINE'
                           ? 'bg-slate-200 text-[#94A3B8] cursor-not-allowed'
                           : 'bg-[#3A7D7C] hover:bg-[#2F6665] active:scale-[0.98]'
-                      }`}
+                        }`}
                     >
                       {claimingOrderId === order.id ? (
                         <>
@@ -737,7 +811,7 @@ export default function DriverDashboardPage() {
         {/* ACTIVE DELIVERY CARD (Priority) */}
         {activeDelivery && (
           <div className="bg-white rounded-3xl p-6 border-2 border-[#3A7D7C] shadow-md space-y-5">
-            
+
             {/* Header Badge */}
             <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-4">
               <div className="flex items-center gap-2">
@@ -809,7 +883,7 @@ export default function DriverDashboardPage() {
 
             {/* STATE MACHINE ACTION BUTTONS */}
             <div className="space-y-4 pt-2 border-t border-[#D7E5E8]">
-              
+
               {/* 1. ASSIGNED_TO_DRIVER -> ACCEPT / DECLINE */}
               {activeDelivery.order_status === 'ASSIGNED_TO_DRIVER' && (
                 <div className="flex gap-3">
@@ -940,7 +1014,7 @@ export default function DriverDashboardPage() {
       {showApplyModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-8 border border-[#D7E5E8] shadow-xl max-h-[85vh] overflow-y-auto space-y-5">
-            
+
             <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center">
