@@ -641,7 +641,21 @@ async function getAdminDrivers(req, res) {
     }
 
     let sql = `
-      SELECT d.*,
+      SELECT DISTINCT
+             d.id,
+             d.user_id,
+             d.vehicle_type,
+             d.vehicle_number,
+             d.license_number,
+             d.selfie_path,
+             d.account_status,
+             d.availability_status,
+             d.approval_status,
+             d.current_latitude,
+             d.current_longitude,
+             d.last_location_at,
+             d.created_at,
+             d.updated_at,
              COALESCE(NULLIF(d.full_name, ''), u.name, 'Delivery Partner') as full_name,
              COALESCE(NULLIF(d.full_name, ''), u.name, 'Delivery Partner') as name,
              COALESCE(NULLIF(d.email, ''), u.email, '') as email,
@@ -649,7 +663,7 @@ async function getAdminDrivers(req, res) {
              COALESCE(NULLIF(d.mobile, ''), u.phone, '') as mobile,
              COALESCE(NULLIF(d.mobile, ''), u.phone, '') as user_phone,
              u.status as user_status,
-             COALESCE(dra.status, 'ACTIVE') as assignment_status,
+             dra.status as assignment_status,
              dra.restaurant_id
       FROM delivery_drivers d
       LEFT JOIN users u ON d.user_id = u.id
@@ -692,7 +706,7 @@ async function getAdminDrivers(req, res) {
     }
 
     if (wheres.length > 0) sql += ' WHERE ' + wheres.join(' AND ');
-    sql += ` GROUP BY d.id ORDER BY d.id DESC`;
+    sql += ` ORDER BY d.id DESC`;
 
     const drivers = await query(sql, params);
     res.json({ success: true, count: drivers.length, drivers });
@@ -775,16 +789,14 @@ async function createAdminDriver(req, res) {
       driverId = driverRes.insertId;
     }
 
-    // Assign to active restaurants
-    const restaurants = await query('SELECT id FROM restaurants WHERE status = "ACTIVE"');
-    for (const r of restaurants) {
-      await query(
-        `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
-         VALUES (?, ?, 'ACTIVE', NOW())
-         ON DUPLICATE KEY UPDATE status = 'ACTIVE', approved_at = NOW()`,
-        [driverId, r.id]
-      );
-    }
+    // Assign to managing restaurant
+    const targetRestId = req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || 1;
+    await query(
+      `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
+       VALUES (?, ?, 'ACTIVE', NOW())
+       ON DUPLICATE KEY UPDATE status = 'ACTIVE', approved_at = NOW()`,
+      [driverId, targetRestId]
+    );
 
     res.status(201).json({
       success: true,
