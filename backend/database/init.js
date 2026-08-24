@@ -316,6 +316,13 @@ async function initDatabase(options = {}) {
         await conn.query(`ALTER TABLE \`subscription_history\` MODIFY COLUMN \`expires_at\` TIMESTAMP NULL DEFAULT NULL`);
       } catch (e) { /* non-fatal */ }
 
+      // Rider documents & Delivery drivers BLOB columns for persistent SQL storage
+      await addColumnIfNotExists(conn, 'rider_documents', 'file_data', "LONGBLOB DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'selfie_data', "LONGBLOB DEFAULT NULL");
+      try {
+        await conn.query(`ALTER TABLE rider_documents MODIFY COLUMN file_path VARCHAR(500) DEFAULT NULL`);
+      } catch (e) { }
+
       // Table creations (idempotent via IF NOT EXISTS)
       const tableCreations = [
         `CREATE TABLE IF NOT EXISTS rider_applications (
@@ -345,7 +352,8 @@ async function initDatabase(options = {}) {
       application_id INT NOT NULL,
       rider_id INT DEFAULT NULL,
       document_type ENUM('SELFIE','AADHAAR_FRONT','AADHAAR_BACK','DRIVING_LICENSE_FRONT','DRIVING_LICENSE_BACK','PAN','VEHICLE_RC','INSURANCE') NOT NULL,
-      file_path VARCHAR(500) NOT NULL,
+      file_path VARCHAR(500) DEFAULT NULL,
+      file_data LONGBLOB DEFAULT NULL,
       original_file_name VARCHAR(255) DEFAULT NULL,
       mime_type VARCHAR(100) DEFAULT NULL,
       file_size INT DEFAULT NULL,

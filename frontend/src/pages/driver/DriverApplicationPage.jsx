@@ -234,41 +234,94 @@ export default function DriverApplicationPage() {
   ];
 
   if (successData) {
+    const totalDocsCount = Object.keys(files).filter(k => files[k]).length;
     return (
-      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center p-6 font-sans antialiased">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-[#D7E5E8] shadow-xl text-center space-y-6">
-          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200 shadow-2xs">
+      <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex items-center justify-center p-4 sm:p-6 font-sans antialiased">
+        <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-8 border border-[#D7E5E8] shadow-xl text-center space-y-6 animate-fade-in">
+          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border-2 border-emerald-200 shadow-sm">
             <CheckCircle2 className="w-12 h-12" />
           </div>
-          <h2 className="text-2xl font-extrabold text-[#1F2937]">Application Submitted!</h2>
-          <p className="text-[#64748B] text-sm leading-relaxed">
-            Your application to join <strong className="text-[#3A7D7C]">{successData.restaurantName}</strong> as a delivery partner has been received.
-          </p>
-          <div className="bg-slate-50 p-4 rounded-2xl border border-[#D7E5E8] text-left space-y-2.5 text-xs">
-            <div className="flex justify-between text-[#64748B]">
-              <span>Application ID:</span>
-              <span className="font-mono text-[#1F2937] font-bold">#{successData.applicationId}</span>
+          
+          <div className="space-y-1.5">
+            <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-extrabold uppercase rounded-full tracking-wider border border-emerald-300">
+              ✓ Application Successfully Submitted
+            </span>
+            <h2 className="text-2xl font-black text-[#1F2937]">Welcome, {formData.fullName || 'Rider'}!</h2>
+            <p className="text-[#64748B] text-xs sm:text-sm leading-relaxed">
+              Your delivery partner application to join <strong className="text-[#3A7D7C]">{successData.restaurantName || 'the restaurant'}</strong> has been received and logged for review.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-[#D7E5E8] text-left space-y-3 text-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="font-bold text-[#64748B]">Application ID:</span>
+              <span className="font-mono text-[#1F2937] font-extrabold text-sm">#{successData.applicationId}</span>
             </div>
-            <div className="flex justify-between text-[#64748B]">
-              <span>Status:</span>
-              <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold uppercase text-[10px] border border-amber-200">PENDING REVIEW</span>
+
+            <div className="grid grid-cols-2 gap-3 py-1">
+              <div>
+                <span className="text-[#64748B] block text-[11px]">Applicant Name</span>
+                <span className="font-bold text-[#1F2937]">{formData.fullName}</span>
+              </div>
+              <div>
+                <span className="text-[#64748B] block text-[11px]">Mobile Number</span>
+                <span className="font-bold text-[#1F2937]">{formData.mobile}</span>
+              </div>
+              <div>
+                <span className="text-[#64748B] block text-[11px]">Vehicle Type</span>
+                <span className="font-bold text-[#1F2937]">{formData.vehicleType} ({formData.vehicleNumber})</span>
+              </div>
+              <div>
+                <span className="text-[#64748B] block text-[11px]">Uploaded Documents</span>
+                <span className="font-bold text-emerald-700">{totalDocsCount} files attached</span>
+              </div>
             </div>
-            <div className="flex justify-between text-[#64748B] border-t border-[#D7E5E8] pt-2">
-              <span>Login Email:</span>
-              <span className="font-bold text-[#1F2937]">{formData.email}</span>
-            </div>
-            <div className="flex justify-between text-[#64748B]">
-              <span>Password:</span>
-              <span className="font-mono text-emerald-700 font-bold">•••••••• (Created during registration)</span>
+
+            <div className="pt-2.5 border-t border-slate-200 space-y-1.5">
+              <div className="flex justify-between text-[#64748B]">
+                <span>Registered Email:</span>
+                <span className="font-bold text-[#1F2937]">{formData.email}</span>
+              </div>
+              <div className="flex justify-between text-[#64748B]">
+                <span>Status:</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold uppercase text-[10px] border border-amber-300">
+                  UNDER REVIEW
+                </span>
+              </div>
             </div>
           </div>
-          <p className="text-[#64748B] text-xs leading-relaxed">
-            The restaurant admin will review your identity documents and vehicle details. Once approved, you can sign in to your Driver Portal using your <strong className="text-[#1F2937]">Email ({formData.email})</strong> and <strong className="text-[#1F2937]">Password</strong>!
-          </p>
-          <div className="pt-2">
+
+          <div className="p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200/80 text-left text-xs text-emerald-900 space-y-1">
+            <p className="font-bold flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-emerald-700 shrink-0" /> Next Steps:
+            </p>
+            <p className="text-[11px] text-emerald-800 leading-relaxed">
+              The restaurant manager will verify your uploaded documents. Once approved, you can immediately sign in with your email and chosen password to start accepting orders!
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => {
+                setSuccessData(null);
+                setStep(1);
+                setFormData({
+                  fullName: '', mobile: '', email: '', password: '', confirmPassword: '',
+                  dateOfBirth: '', homeCity: '', currentCity: '', currentAddress: '',
+                  emergencyContact: '', vehicleType: 'Bike', vehicleNumber: ''
+                });
+                setFiles({
+                  selfie: null, aadhaar_front: null, aadhaar_back: null,
+                  driving_license_front: null, driving_license_back: null
+                });
+              }}
+              className="py-3 px-4 rounded-2xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-xs font-bold text-[#1F2937] transition-all"
+            >
+              Submit Another Application
+            </button>
             <button
               onClick={() => navigate('/driver/login')}
-              className="w-full py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] rounded-2xl font-extrabold text-white shadow-md shadow-[#3A7D7C]/20 transition-all text-sm flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 bg-[#3A7D7C] hover:bg-[#2F6665] rounded-2xl font-extrabold text-white shadow-md shadow-[#3A7D7C]/20 transition-all text-xs flex items-center justify-center gap-2"
             >
               Go to Driver Sign In <ArrowRight className="w-4 h-4" />
             </button>
