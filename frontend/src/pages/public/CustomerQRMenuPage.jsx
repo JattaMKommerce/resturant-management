@@ -339,9 +339,9 @@ export default function CustomerQRMenuPage() {
           >
             All Items
           </button>
-          {categories.map((c) => (
+          {categories.map((c, idx) => (
             <button
-              key={c.id}
+              key={c.id ? `cat-${c.id}-${idx}` : `cat-${idx}`}
               onClick={() => setSelectedCategory(c.id.toString())}
               className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                 selectedCategory === c.id.toString()

@@ -302,7 +302,6 @@ CREATE TABLE IF NOT EXISTS order_items (
   item_total DECIMAL(10, 2) NOT NULL,
   special_instructions TEXT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE SET NULL
 );
 

@@ -220,6 +220,7 @@ async function initDatabase(options = {}) {
         await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
         await addColumnIfNotExists(conn, 'restaurant_orders', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
         await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
+        await addColumnIfNotExists(conn, 'kots', 'restaurant_id', 'INT NOT NULL DEFAULT 1');
       } catch (e) { }
 
       // Menu items columns
@@ -228,7 +229,7 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'menu_items', 'is_available_online', "TINYINT(1) DEFAULT 1");
       await addColumnIfNotExists(conn, 'menu_items', 'is_active', "TINYINT(1) DEFAULT 1");
 
-      // KOTs ENUM migration & Online Order FK relaxation
+      // KOTs ENUM migration & Online/Offline FK relaxation
       try {
         await conn.query(`ALTER TABLE kots MODIFY COLUMN order_type ENUM('DINE_IN','ROOM_SERVICE','TAKEAWAY','ONLINE','DELIVERY') DEFAULT 'DINE_IN'`);
       } catch (e) { }
@@ -237,6 +238,9 @@ async function initDatabase(options = {}) {
       } catch (e) { }
       try {
         await conn.query(`ALTER TABLE kot_items DROP FOREIGN KEY kot_items_ibfk_2`);
+      } catch (e) { }
+      try {
+        await conn.query(`ALTER TABLE order_items DROP FOREIGN KEY order_items_ibfk_1`);
       } catch (e) { }
       await addColumnIfNotExists(conn, 'kots', 'online_order_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'kot_items', 'online_order_item_id', "INT DEFAULT NULL");

@@ -4,7 +4,10 @@ import Badge from '../../../components/common/Badge';
 import Modal from '../../../components/common/Modal';
 import { Receipt, CreditCard, Printer, Search, RefreshCw, CheckCircle2, DollarSign, Building, Globe } from 'lucide-react';
 
+import { useSocket } from '../../../context/SocketContext';
+
 export default function BillingPage() {
+  const { socket, joinRoom } = useSocket();
   const [bills, setBills] = useState([]);
   const [unbilledOrders, setUnbilledOrders] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -41,7 +44,24 @@ export default function BillingPage() {
 
   useEffect(() => {
     fetchBillingData();
-  }, []);
+    joinRoom('cashier');
+    joinRoom('admin');
+
+    if (socket) {
+      const handleRefresh = () => fetchBillingData();
+      socket.on('bill_requested', handleRefresh);
+      socket.on('bill_generated', handleRefresh);
+      socket.on('table_status_changed', handleRefresh);
+      socket.on('payment_recorded', handleRefresh);
+
+      return () => {
+        socket.off('bill_requested', handleRefresh);
+        socket.off('bill_generated', handleRefresh);
+        socket.off('table_status_changed', handleRefresh);
+        socket.off('payment_recorded', handleRefresh);
+      };
+    }
+  }, [socket]);
 
   const handleGenerateBill = async (orderId) => {
     try {
@@ -172,6 +192,45 @@ export default function BillingPage() {
           />
         </div>
       </div>
+
+      {/* Pay at Counter Live Alerts */}
+      {bills.filter(b => b.payment_status === 'BILL_REQUESTED' || b.status === 'BILL_REQUESTED').length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 space-y-3 shadow-md animate-pulse">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-500 animate-ping"></span>
+              <span>🔔 Pay at Counter Requests ({bills.filter(b => b.payment_status === 'BILL_REQUESTED' || b.status === 'BILL_REQUESTED').length})</span>
+            </h3>
+            <span className="text-xs font-semibold text-amber-800">Customer is ready to settle bill</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {bills.filter(b => b.payment_status === 'BILL_REQUESTED' || b.status === 'BILL_REQUESTED').map((req) => (
+              <div key={req.id} className="p-3.5 rounded-xl bg-white border border-amber-300 flex items-center justify-between shadow-2xs">
+                <div>
+                  <div className="text-xs font-bold text-amber-900">
+                    {req.table_number ? `🍽️ Table ${req.table_number}` : `Bill #${req.bill_number}`}
+                  </div>
+                  <div className="text-xs font-semibold text-slate-600">Order #{req.order_number}</div>
+                  <div className="text-sm font-black text-amber-700 font-mono mt-0.5">
+                    ₹{parseFloat(req.grand_total || req.total_amount).toFixed(2)}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setSelectedBill(req);
+                    setIsPaymentModalOpen(true);
+                  }}
+                  className="py-2 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-colors shadow-2xs"
+                >
+                  💵 Settle Bill
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Orders Ready for Billing (Top Section) */}
       {unbilledOrders.length > 0 && (
