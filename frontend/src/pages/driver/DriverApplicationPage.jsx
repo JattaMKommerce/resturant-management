@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building, User, Camera, FileText, Bike, CheckCircle2, ChevronRight, ChevronLeft, 
-  Upload, Shield, AlertCircle, ArrowLeft, RefreshCw, Smartphone, MapPin,
+  Upload, Shield, AlertCircle, ArrowLeft, ArrowRight, RefreshCw, Smartphone, MapPin,
   Lock, Eye, EyeOff, KeyRound
 } from 'lucide-react';
 import api from '../../api/axios';
