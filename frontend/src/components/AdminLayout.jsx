@@ -78,11 +78,15 @@ export default function AdminLayout({ children }) {
     setLoadingToggle(true);
     try {
       const nextState = !Boolean(restaurant.is_online_ordering_enabled);
-      const res = await api.patch(`/restaurants/${restaurant.id}/status`, {
+      const res = await api.post('/admin/restaurant/toggle-ordering', {
+        enabled: nextState,
         is_online_ordering_enabled: nextState
       });
-      if (res.data.success && res.data.restaurant) {
-        updateRestaurant(res.data.restaurant);
+      if (res.data.success) {
+        const updatedRest = res.data.restaurant || { ...restaurant, is_online_ordering_enabled: nextState ? 1 : 0 };
+        if (updateRestaurant) {
+          updateRestaurant(updatedRest);
+        }
       }
     } catch (err) {
       console.error('Failed to toggle online ordering status:', err);

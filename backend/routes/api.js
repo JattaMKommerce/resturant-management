@@ -151,6 +151,7 @@ router.get('/admin/restaurant/:id/setup-progress', ...adminAuth, restaurantContr
 router.post('/admin/restaurant/:id/publish', ...adminAuth, restaurantController.publishWebsite);
 router.post('/admin/restaurant/:id/unpublish', ...adminAuth, restaurantController.unpublishWebsite);
 router.post('/admin/restaurant/:id/toggle-ordering', ...adminAuth, restaurantController.toggleOnlineOrdering);
+router.patch('/restaurants/:id/status', ...adminAuth, restaurantController.toggleOnlineOrdering);
 
 // Categories
 router.get('/admin/categories', ...adminAuth, categoryController.getAdminCategories);

@@ -380,7 +380,7 @@ async function unpublishWebsite(req, res) {
 
 async function toggleOnlineOrdering(req, res) {
   try {
-    const { enabled } = req.body;
+    const enabled = req.body.enabled !== undefined ? req.body.enabled : req.body.is_online_ordering_enabled;
     const restId = await resolveTargetRestaurantId(req);
 
     if (!restId) {
@@ -394,6 +394,8 @@ async function toggleOnlineOrdering(req, res) {
     const isEnabledVal = (enabled === true || enabled === 1 || enabled === '1' || enabled === 'true') ? 1 : 0;
     await query('UPDATE restaurants SET is_online_ordering_enabled = ? WHERE id = ?', [isEnabledVal, restId]);
 
+    const [updatedRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
+
     // Broadcast via socket if available
     try {
       const { getSocketIO } = require('../services/NotificationService');
@@ -403,7 +405,12 @@ async function toggleOnlineOrdering(req, res) {
       }
     } catch (e) {}
 
-    res.json({ success: true, message: `Online ordering ${isEnabledVal ? 'enabled' : 'disabled'}.`, is_online_ordering_enabled: isEnabledVal });
+    res.json({ 
+      success: true, 
+      message: `Online ordering ${isEnabledVal ? 'enabled' : 'disabled'}.`, 
+      is_online_ordering_enabled: isEnabledVal,
+      restaurant: updatedRest 
+    });
   } catch (err) {
     console.error('toggleOnlineOrdering Error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });

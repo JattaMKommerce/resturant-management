@@ -98,6 +98,14 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const updateRestaurant = (updatedData) => {
+    setRestaurant(prev => {
+      const merged = { ...(prev || {}), ...updatedData };
+      localStorage.setItem('hotel_admin_restaurant', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
   const logout = () => {
     localStorage.removeItem('hotel_token');
     localStorage.removeItem('hotel_user');
@@ -113,7 +121,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user, restaurant, restaurants, guestInfo,
-      setRestaurant, loading,
+      setRestaurant, updateRestaurant, loading,
       login, register, registerRestaurant, logout
     }}>
       {children}
