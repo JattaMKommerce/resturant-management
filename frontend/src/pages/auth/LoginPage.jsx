@@ -23,14 +23,16 @@ export default function LoginPage() {
       const res = await login(email, password);
       if (res.success) {
         const r = res.user?.role;
+        if (r === 'DELIVERY_DRIVER' || r === 'DRIVER') {
+          setError('This account is registered as a Delivery Partner. Please sign in at the Delivery Partner Portal (/driver/login) or use an Admin account.');
+          return;
+        }
         if (r === 'SUPER_ADMIN') {
           navigate('/super-admin');
         } else if (r === 'KITCHEN' || r === 'CHEF') {
           navigate('/kitchen');
         } else if (r === 'WAITER') {
           navigate('/waiter/dashboard');
-        } else if (r === 'DELIVERY_DRIVER' || r === 'DRIVER') {
-          navigate('/rider/dashboard');
         } else if (r === 'ADMIN' || r === 'RESTAURANT_ADMIN' || r === 'MANAGER') {
           const targetSlug = res.restaurant?.slug;
           if (targetSlug) navigate(`/admin/${targetSlug}`);
