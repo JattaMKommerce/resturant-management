@@ -226,7 +226,10 @@ async function getAdminApplications(req, res) {
     const wheres = [];
 
     if (!req.isSuperAdmin) {
-      if (req.adminRestaurantIds && req.adminRestaurantIds.length > 0) {
+      if (restaurant_id && req.adminRestaurantIds && req.adminRestaurantIds.includes(parseInt(restaurant_id, 10))) {
+        wheres.push('a.restaurant_id = ?');
+        params.push(parseInt(restaurant_id, 10));
+      } else if (req.adminRestaurantIds && req.adminRestaurantIds.length > 0) {
         const placeholders = req.adminRestaurantIds.map(() => '?').join(',');
         wheres.push(`a.restaurant_id IN (${placeholders})`);
         params.push(...req.adminRestaurantIds);
@@ -286,7 +289,7 @@ async function getAdminApplicationById(req, res) {
     }
 
     const documents = await query(
-      `SELECT id, document_type, original_file_name, mime_type, file_size, verification_status, created_at
+      `SELECT id, application_id, rider_id, document_type, file_path, original_file_name, mime_type, file_size, verification_status, created_at
        FROM rider_documents
        WHERE application_id = ?`,
       [app.id]
@@ -510,10 +513,12 @@ async function streamDocument(req, res) {
     const { riderId, documentId } = req.params;
 
     const [doc] = await query(
-      `SELECT d.*, COALESCE(a.restaurant_id, dra.restaurant_id) as restaurant_id
+      `SELECT d.*, 
+              COALESCE(a.restaurant_id, dra.restaurant_id, dd.restaurant_id) as restaurant_id
        FROM rider_documents d
        LEFT JOIN rider_applications a ON d.application_id = a.id
        LEFT JOIN driver_restaurant_assignments dra ON d.rider_id = dra.driver_id
+       LEFT JOIN delivery_drivers dd ON d.rider_id = dd.id
        WHERE d.id = ?`,
       [documentId]
     );
@@ -535,15 +540,32 @@ async function streamDocument(req, res) {
       return res.status(403).json({ success: false, message: 'Access denied to rider document.' });
     }
 
-    if (isAdmin && !validateRestaurantAccess(doc.restaurant_id, req)) {
+    if (isAdmin && doc.restaurant_id && !validateRestaurantAccess(doc.restaurant_id, req)) {
       return res.status(403).json({ success: false, message: 'Access denied: document belongs to another restaurant.' });
     }
 
-    // Resolve file path safely
-    const cleanPath = doc.file_path.replace(/^[/\\]+/, '');
-    const absolutePath = path.isAbsolute(doc.file_path) ? doc.file_path : path.resolve(__dirname, '..', cleanPath);
+    // Normalize path separators and candidate locations
+    const rawPath = (doc.file_path || '').replace(/\\/g, '/');
+    let relativeSubPath = rawPath;
+    const uploadsIdx = relativeSubPath.indexOf('uploads/');
+    if (uploadsIdx !== -1) {
+      relativeSubPath = relativeSubPath.substring(uploadsIdx);
+    } else {
+      relativeSubPath = relativeSubPath.replace(/^[/\\]+/, '');
+    }
 
-    if (!fs.existsSync(absolutePath)) {
+    const candidatePaths = [
+      path.resolve(__dirname, '..', relativeSubPath),
+      path.resolve(__dirname, '..', 'uploads', relativeSubPath),
+      path.resolve(__dirname, '..', 'uploads', 'riders', path.basename(rawPath)),
+      path.resolve(__dirname, '..', 'uploads', 'riders', (doc.document_type ? doc.document_type.toLowerCase().replace(/_/g, '-') : ''), path.basename(rawPath)),
+      path.resolve(doc.file_path)
+    ];
+
+    const absolutePath = candidatePaths.find(p => fs.existsSync(p));
+
+    if (!absolutePath) {
+      console.warn(`[Document Stream] File missing from disk. db path="${doc.file_path}", candidates:`, candidatePaths);
       return res.status(404).json({ success: false, message: 'File missing from server storage.' });
     }
 

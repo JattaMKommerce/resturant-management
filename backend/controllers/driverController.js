@@ -640,24 +640,6 @@ async function getAdminDrivers(req, res) {
       return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
     }
 
-    // Auto-ensure active drivers in delivery_drivers are assigned to active restaurants
-    try {
-      const activeRests = await query('SELECT id FROM restaurants WHERE status = "ACTIVE"');
-      const activeDrivers = await query('SELECT id FROM delivery_drivers WHERE account_status = "ACTIVE" AND approval_status = "APPROVED"');
-      for (const d of activeDrivers) {
-        for (const r of activeRests) {
-          await query(
-            `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
-             VALUES (?, ?, 'ACTIVE', NOW())
-             ON DUPLICATE KEY UPDATE status = VALUES(status)`,
-            [d.id, r.id]
-          );
-        }
-      }
-    } catch (e) {
-      // Non-fatal auto-linking
-    }
-
     let sql = `
       SELECT d.*,
              COALESCE(NULLIF(d.full_name, ''), u.name, 'Delivery Partner') as full_name,
@@ -667,25 +649,29 @@ async function getAdminDrivers(req, res) {
              COALESCE(NULLIF(d.mobile, ''), u.phone, '') as mobile,
              COALESCE(NULLIF(d.mobile, ''), u.phone, '') as user_phone,
              u.status as user_status,
-             COALESCE(MAX(dra.status), 'ACTIVE') as assignment_status
+             COALESCE(dra.status, 'ACTIVE') as assignment_status,
+             dra.restaurant_id
       FROM delivery_drivers d
       LEFT JOIN users u ON d.user_id = u.id
-      LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id AND dra.status = 'ACTIVE'
+      JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
     `;
     const params = [];
     const wheres = [];
 
     if (!req.isSuperAdmin) {
-      if (req.adminRestaurantIds && req.adminRestaurantIds.length > 0) {
+      if (restaurant_id && req.adminRestaurantIds && req.adminRestaurantIds.includes(parseInt(restaurant_id, 10))) {
+        wheres.push('dra.restaurant_id = ?');
+        params.push(parseInt(restaurant_id, 10));
+      } else if (req.adminRestaurantIds && req.adminRestaurantIds.length > 0) {
         const placeholders = req.adminRestaurantIds.map(() => '?').join(',');
-        wheres.push(`(dra.restaurant_id IN (${placeholders}) OR dra.restaurant_id IS NULL)`);
+        wheres.push(`dra.restaurant_id IN (${placeholders})`);
         params.push(...req.adminRestaurantIds);
       } else if (restId) {
-        wheres.push('(dra.restaurant_id = ? OR dra.restaurant_id IS NULL)');
+        wheres.push('dra.restaurant_id = ?');
         params.push(restId);
       }
     } else if (restaurant_id) {
-      wheres.push('(dra.restaurant_id = ? OR dra.restaurant_id IS NULL)');
+      wheres.push('dra.restaurant_id = ?');
       params.push(restaurant_id);
     }
 
@@ -866,13 +852,17 @@ async function getAdminDriverById(req, res) {
       }
     }
 
-    // Fetch driver documents
+    // Fetch driver documents with multiple fallbacks
     const documents = await query(
-      `SELECT id, application_id, rider_id, document_type, original_file_name, mime_type, file_size, verification_status, verified_by, verified_at, created_at
-       FROM rider_documents
-       WHERE rider_id = ? OR (application_id IS NOT NULL AND application_id = ?)
-       ORDER BY id ASC`,
-      [driver.id, driver.application_id || 0]
+      `SELECT d.id, d.application_id, d.rider_id, d.document_type, d.file_path, d.original_file_name, d.mime_type, d.file_size, d.verification_status, d.verified_by, d.verified_at, d.created_at
+       FROM rider_documents d
+       WHERE d.rider_id = ? 
+          OR (d.application_id IS NOT NULL AND d.application_id = ?)
+          OR d.application_id IN (
+            SELECT id FROM rider_applications WHERE rider_id = ? OR (email IS NOT NULL AND email = ?) OR (mobile IS NOT NULL AND mobile = ?)
+          )
+       ORDER BY d.id ASC`,
+      [driver.id, driver.application_id || 0, driver.id, driver.email || '', driver.mobile || '']
     );
 
     // Fetch delivery statistics for this driver
