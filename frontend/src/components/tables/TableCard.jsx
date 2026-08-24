@@ -86,8 +86,18 @@ export default function TableCard({ table, onEdit, onDelete, onStatusChange, onQ
           )}
         </div>
 
-        {/* Status Dropdown */}
-        <div className="min-w-0 shrink">
+        {/* Status Action / Dropdown */}
+        <div className="min-w-0 shrink flex items-center gap-1.5">
+          {table.status === 'CLEANING' && (
+            <button
+              onClick={() => onStatusChange(table.id, 'AVAILABLE')}
+              className="py-1 px-2.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white text-[11px] font-bold transition-all shadow-2xs whitespace-nowrap animate-bounce"
+              title="Click when table is cleaned and ready for next guests"
+            >
+              ✨ Mark Cleaned
+            </button>
+          )}
+
           <select
             value={table.status}
             onChange={(e) => onStatusChange(table.id, e.target.value)}

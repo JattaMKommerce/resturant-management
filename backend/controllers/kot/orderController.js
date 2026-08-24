@@ -186,10 +186,66 @@ async function getCustomerOrderTracking(req, res, next) {
   }
 }
 
+async function requestCounterPaymentHandler(req, res, next) {
+  try {
+    const { orderId } = req.params;
+    const [orders] = await pool.query(
+      `SELECT o.*, t.table_number, t.id as table_id FROM restaurant_orders o LEFT JOIN restaurant_tables t ON o.table_id = t.id WHERE o.id = ?`,
+      [orderId]
+    );
+    if (orders.length === 0) {
+      return sendError(res, 'Order not found', 404);
+    }
+    const order = orders[0];
+
+    // Update order payment status to BILL_REQUESTED
+    await pool.query(`UPDATE restaurant_orders SET payment_status = 'BILL_REQUESTED' WHERE id = ?`, [orderId]);
+
+    // Update table status to BILL_REQUESTED if associated with a table
+    if (order.table_id) {
+      await pool.query(`UPDATE restaurant_tables SET status = 'BILL_REQUESTED' WHERE id = ?`, [order.table_id]);
+      broadcastEvent('table_status_changed', { table_id: order.table_id, status: 'BILL_REQUESTED' });
+    }
+
+    // Generate or fetch bill
+    const billingService = require('../../services/kot/billingService');
+    let bill = null;
+    try {
+      bill = await billingService.generateBill(order.id, 0, 0);
+    } catch (e) {
+      const [bills] = await pool.query(`SELECT * FROM bills WHERE order_id = ?`, [order.id]);
+      if (bills.length > 0) bill = bills[0];
+    }
+
+    const payload = {
+      order_id: order.id,
+      order_number: order.order_number,
+      table_id: order.table_id,
+      table_number: order.table_number || 'N/A',
+      total_amount: order.total_amount,
+      bill_id: bill ? bill.id : null,
+      message: `Table ${order.table_number || 'N/A'} requested to Pay at Counter! Amount: ₹${parseFloat(order.total_amount).toFixed(2)}`
+    };
+
+    const { emitToTenant } = require('../../config/socket');
+    const restaurantId = order.restaurant_id || 1;
+    emitToTenant(restaurantId, 'admin', 'bill_requested', payload);
+    emitToTenant(restaurantId, 'waiter', 'bill_requested', payload);
+    emitToRoom('cashier', 'bill_requested', payload);
+    emitToRoom('admin', 'bill_requested', payload);
+    broadcastEvent('bill_requested', payload);
+
+    return sendSuccess(res, payload, 'Counter payment request sent successfully. Cashier & Admin notified.');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createOrderHandler,
   getOrders,
   getOrderById,
   updateOrderStatus,
-  getCustomerOrderTracking
+  getCustomerOrderTracking,
+  requestCounterPaymentHandler
 };

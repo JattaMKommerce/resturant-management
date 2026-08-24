@@ -22,9 +22,9 @@ async function getKOTs(req, res, next) {
       LEFT JOIN rooms r ON k.room_id = r.id
       LEFT JOIN restaurant_orders o ON k.order_id = o.id
       LEFT JOIN orders ord ON k.order_id = ord.id
-      WHERE (k.restaurant_id = ? OR k.restaurant_id IS NULL OR o.restaurant_id = ? OR ord.restaurant_id = ?)
+      WHERE (o.restaurant_id = ? OR ord.restaurant_id = ? OR (o.restaurant_id IS NULL AND ord.restaurant_id IS NULL))
     `;
-    const params = [restaurantId, restaurantId, restaurantId];
+    const params = [restaurantId, restaurantId];
 
     if (status) {
       if (status === 'ACTIVE') {

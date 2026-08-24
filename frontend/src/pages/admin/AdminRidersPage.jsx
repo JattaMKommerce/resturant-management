@@ -28,6 +28,7 @@ export default function AdminRidersPage() {
 
   // Inline Document Viewer State
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [counts, setCounts] = useState({ applications: 0, active: 0, rejected: 0, suspended: 0 });
 
   useEffect(() => {
     fetchData();
@@ -39,17 +40,49 @@ export default function AdminRidersPage() {
     try {
       if (activeTab === 'applications') {
         const res = await api.get('/admin/rider-applications?status=PENDING');
-        if (res.data.success) setApplications(res.data.applications || []);
+        if (res.data.success) {
+          const list = res.data.applications || [];
+          setApplications(list);
+          setCounts(prev => ({ ...prev, applications: list.length }));
+        }
       } else if (activeTab === 'rejected') {
         const res = await api.get('/admin/rider-applications?status=REJECTED');
-        if (res.data.success) setApplications(res.data.applications || []);
+        if (res.data.success) {
+          const list = res.data.applications || [];
+          setApplications(list);
+          setCounts(prev => ({ ...prev, rejected: list.length }));
+        }
       } else if (activeTab === 'active') {
         const res = await api.get('/admin/drivers?accountStatus=ACTIVE');
-        if (res.data.success) setDrivers(res.data.drivers || []);
+        if (res.data.success) {
+          const list = res.data.drivers || [];
+          setDrivers(list);
+          setCounts(prev => ({ ...prev, active: list.length }));
+        }
       } else if (activeTab === 'suspended') {
         const res = await api.get('/admin/drivers?accountStatus=SUSPENDED');
-        if (res.data.success) setDrivers(res.data.drivers || []);
+        if (res.data.success) {
+          const list = res.data.drivers || [];
+          setDrivers(list);
+          setCounts(prev => ({ ...prev, suspended: list.length }));
+        }
       }
+
+      // Fetch background counts for all tabs quietly
+      Promise.allSettled([
+        api.get('/admin/rider-applications?status=PENDING'),
+        api.get('/admin/drivers?accountStatus=ACTIVE'),
+        api.get('/admin/rider-applications?status=REJECTED'),
+        api.get('/admin/drivers?accountStatus=SUSPENDED')
+      ]).then(([pApp, pAct, pRej, pSus]) => {
+        setCounts({
+          applications: pApp.status === 'fulfilled' && pApp.value.data?.success ? (pApp.value.data.applications?.length || 0) : 0,
+          active: pAct.status === 'fulfilled' && pAct.value.data?.success ? (pAct.value.data.drivers?.length || 0) : 0,
+          rejected: pRej.status === 'fulfilled' && pRej.value.data?.success ? (pRej.value.data.applications?.length || 0) : 0,
+          suspended: pSus.status === 'fulfilled' && pSus.value.data?.success ? (pSus.value.data.drivers?.length || 0) : 0,
+        });
+      });
+
     } catch (err) {
       console.error('Failed to load rider data:', err);
       setError(err.response?.data?.message || 'Failed to load data. Make sure you are logged in as a restaurant admin.');
@@ -289,10 +322,10 @@ export default function AdminRidersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#D7E5E8] pb-1">
           <div className="flex gap-2 sm:gap-4 overflow-x-auto custom-scrollbar">
             {[
-              { id: 'applications', label: 'Pending Applications', icon: FileText, count: activeTab === 'applications' ? applications.length : null },
-              { id: 'active', label: 'Active Delivery Riders', icon: Bike, count: activeTab === 'active' ? drivers.length : null },
-              { id: 'rejected', label: 'Rejected Applications', icon: XCircle, count: activeTab === 'rejected' ? applications.length : null },
-              { id: 'suspended', label: 'Suspended Riders', icon: ShieldAlert, count: activeTab === 'suspended' ? drivers.length : null },
+              { id: 'applications', label: 'Pending Applications', icon: FileText, count: counts.applications },
+              { id: 'active', label: 'Active Delivery Riders', icon: Bike, count: counts.active },
+              { id: 'rejected', label: 'Rejected Applications', icon: XCircle, count: counts.rejected },
+              { id: 'suspended', label: 'Suspended Riders', icon: ShieldAlert, count: counts.suspended },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;

@@ -1,6 +1,6 @@
 const pool = require('../../config/database');
 const crypto = require('crypto');
-const { emitToRoom, broadcastEvent } = require('../../config/socket');
+const { emitToRoom, broadcastEvent, emitToTenant } = require('../../config/socket');
 const kotService = require('./kotService');
 
 async function createOrder(orderData, idempotencyKey = null) {
@@ -27,13 +27,15 @@ async function createOrder(orderData, idempotencyKey = null) {
       }
     }
 
+    let orderRestaurantId = orderData.restaurant_id || 1;
+
     // 2. Table Validation (If Dine-In / QR)
     let validatedTableId = table_id || null;
     let tableNumber = null;
 
     if (qr_token) {
       const [tables] = await connection.query(
-        `SELECT id, table_number, is_active, status, qr_status FROM restaurant_tables WHERE qr_token = ?`,
+        `SELECT id, table_number, is_active, status, qr_status, restaurant_id FROM restaurant_tables WHERE qr_token = ?`,
         [qr_token]
       );
 
@@ -50,9 +52,13 @@ async function createOrder(orderData, idempotencyKey = null) {
 
       validatedTableId = table.id;
       tableNumber = table.table_number;
+      if (table.restaurant_id) orderRestaurantId = table.restaurant_id;
     } else if (table_id) {
-      const [tables] = await connection.query(`SELECT table_number FROM restaurant_tables WHERE id = ?`, [table_id]);
-      if (tables.length > 0) tableNumber = tables[0].table_number;
+      const [tables] = await connection.query(`SELECT table_number, restaurant_id FROM restaurant_tables WHERE id = ?`, [table_id]);
+      if (tables.length > 0) {
+        tableNumber = tables[0].table_number;
+        if (tables[0].restaurant_id) orderRestaurantId = tables[0].restaurant_id;
+      }
     }
 
     // 3. Backend Price & Item Validation
@@ -142,10 +148,11 @@ async function createOrder(orderData, idempotencyKey = null) {
     // 5. Insert Restaurant Order
     const [orderResult] = await connection.query(
       `INSERT INTO restaurant_orders 
-        (order_number, table_id, room_id, customer_name, customer_phone, order_type, order_status, subtotal, discount_amount, tax_amount, service_charge, total_amount, payment_status, source, idempotency_key)
-       VALUES (?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, 'UNPAID', ?, ?)`,
+        (order_number, restaurant_id, table_id, room_id, customer_name, customer_phone, order_type, order_status, subtotal, discount_amount, tax_amount, service_charge, total_amount, payment_status, source, idempotency_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, 'UNPAID', ?, ?)`,
       [
         orderNumber,
+        orderRestaurantId,
         validatedTableId,
         room_id || null,
         customer_name || 'Guest',
@@ -234,9 +241,9 @@ async function createOrder(orderData, idempotencyKey = null) {
       try {
         [kotResult] = await connection.query(
           `INSERT INTO kots 
-            (kot_number, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at, restaurant_id)
-           VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`,
-          [kotNumber, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt, 1]
+            (kot_number, restaurant_id, order_id, table_id, room_id, kitchen_department_id, order_type, status, kitchen_received_at, target_completion_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)`,
+          [kotNumber, orderRestaurantId, orderId, validatedTableId, room_id || null, deptId, order_type, receivedAt, targetAt]
         );
       } catch (insertKotErr) {
         if (insertKotErr.message && insertKotErr.message.includes('restaurant_id')) {
@@ -312,9 +319,14 @@ async function createOrder(orderData, idempotencyKey = null) {
       kots: fullCreatedKOTs
     };
 
+    emitToTenant(orderRestaurantId, 'kitchen', 'new_kot', createdOrderPayload);
+    emitToTenant(orderRestaurantId, 'waiter', 'new_order', createdOrderPayload);
+    emitToTenant(orderRestaurantId, 'admin', 'new_order', createdOrderPayload);
     emitToRoom('kitchen', 'new_kot', createdOrderPayload);
     emitToRoom('waiter', 'new_order', createdOrderPayload);
     emitToRoom('admin', 'new_order', createdOrderPayload);
+    broadcastEvent('new_kot', createdOrderPayload);
+    broadcastEvent('new_order', createdOrderPayload);
     if (validatedTableId) {
       broadcastEvent('table_status_changed', { table_id: validatedTableId, status: 'OCCUPIED' });
     }

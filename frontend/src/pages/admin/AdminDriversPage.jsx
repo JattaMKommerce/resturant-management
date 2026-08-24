@@ -85,59 +85,67 @@ export default function AdminDriversPage() {
         </div>
 
         {/* Drivers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {drivers.map((drv) => (
-            <div key={drv.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 font-extrabold flex items-center justify-center">
-                      <Bike className="w-5 h-5" />
+        {loading ? (
+          <div className="py-12 text-center text-slate-500 text-xs">Loading drivers list...</div>
+        ) : drivers.length === 0 ? (
+          <div className="py-12 text-center text-slate-500 text-xs">No delivery drivers found in database.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {drivers.map((drv) => (
+              <div key={drv.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 font-extrabold flex items-center justify-center">
+                        <Bike className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-base text-slate-900">{drv.full_name || drv.name || 'Delivery Partner'}</h3>
+                        <span className="text-[11px] text-slate-400 block font-semibold">{drv.mobile || drv.phone || drv.user_phone || 'N/A'}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-extrabold text-base text-slate-900">{drv.name}</h3>
-                      <span className="text-[11px] text-slate-400 block font-semibold">{drv.phone}</span>
-                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                      drv.availability_status === 'AVAILABLE'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : drv.availability_status === 'BUSY'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {drv.availability_status || 'OFFLINE'}
+                    </span>
                   </div>
 
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                    drv.availability_status === 'AVAILABLE'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : drv.availability_status === 'BUSY'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-slate-100 text-slate-600'
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-medium">Vehicle:</span>
+                      <span className="font-bold text-slate-900">{drv.vehicle_type || 'Bike'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-medium">Plate #:</span>
+                      <span className="font-extrabold text-slate-900">{drv.vehicle_number || 'N/A'}</span>
+                    </div>
+                    {drv.license_number && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-medium">License:</span>
+                        <span className="font-semibold text-slate-700">{drv.license_number}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-semibold truncate max-w-[150px]">{drv.email || drv.user_email || 'N/A'}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                    drv.account_status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
-                    {drv.availability_status}
+                    {drv.account_status || 'ACTIVE'}
                   </span>
                 </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-medium">Vehicle:</span>
-                    <span className="font-bold text-slate-900">{drv.vehicle_type}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-medium">Plate #:</span>
-                    <span className="font-extrabold text-slate-900">{drv.vehicle_number}</span>
-                  </div>
-                  {drv.license_number && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-medium">License:</span>
-                      <span className="font-semibold text-slate-700">{drv.license_number}</span>
-                    </div>
-                  )}
-                </div>
               </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-semibold">{drv.email}</span>
-                <span className="text-emerald-600 font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4" /> Active Duty
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
       </div>
 

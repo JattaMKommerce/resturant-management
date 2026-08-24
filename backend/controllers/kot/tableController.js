@@ -33,8 +33,7 @@ function calculateNextTableNumber(tables) {
 
 async function getNextTableNumberHandler(req, res, next) {
   try {
-    const restaurantId = req.user?.restaurant_id || 1;
-    const [rows] = await pool.query(`SELECT table_number, table_name FROM restaurant_tables WHERE is_active = TRUE AND (restaurant_id = ? OR restaurant_id IS NULL)`, [restaurantId]);
+    const [rows] = await pool.query(`SELECT table_number, table_name FROM restaurant_tables`);
     const nextTable = calculateNextTableNumber(rows);
     return sendSuccess(res, nextTable, 'Next available table number calculated');
   } catch (err) {
@@ -120,13 +119,18 @@ async function getTables(req, res, next) {
 
 async function createTable(req, res, next) {
   const connection = await pool.getConnection();
+  let table_number = '';
+  let table_name = '';
   try {
     await connection.beginTransaction();
     const restaurantId = req.user?.restaurant_id || 1;
-    let { table_number, table_name, floor, section, capacity, table_type } = req.body;
+    let body = req.body || {};
+    table_number = body.table_number;
+    table_name = body.table_name;
+    const { floor, section, capacity, table_type } = body;
 
-    // Auto-generate if not provided or empty
-    const [allTables] = await connection.query(`SELECT table_number, table_name FROM restaurant_tables WHERE is_active = TRUE AND (restaurant_id = ? OR restaurant_id IS NULL)`, [restaurantId]);
+    // Auto-generate if not provided or empty (check all tables globally)
+    const [allTables] = await connection.query(`SELECT table_number, table_name FROM restaurant_tables`);
     const autoGen = calculateNextTableNumber(allTables);
 
     if (!table_number || String(table_number).trim() === '') {
@@ -139,13 +143,17 @@ async function createTable(req, res, next) {
     table_number = String(table_number).trim();
     table_name = String(table_name).trim();
 
-    // Check duplicate per restaurant
+    // Check duplicate across entire restaurant_tables since table_number is UNIQUE in schema
     const [existing] = await connection.query(
-      `SELECT id FROM restaurant_tables WHERE table_number = ? AND (restaurant_id = ? OR restaurant_id IS NULL)`,
-      [table_number, restaurantId]
+      `SELECT id, table_number, table_name FROM restaurant_tables WHERE table_number = ? OR table_name = ?`,
+      [table_number, table_name]
     );
     if (existing.length > 0) {
-      return sendError(res, `Table number "${table_number}" already exists.`, 400);
+      const isNumMatch = existing.some(e => String(e.table_number).toLowerCase() === table_number.toLowerCase());
+      if (isNumMatch) {
+        return sendError(res, `Table number "${table_number}" already exists.`, 400);
+      }
+      return sendError(res, `Table name "${table_name}" already exists.`, 400);
     }
 
     const qrToken = crypto.randomBytes(32).toString('hex');
@@ -173,6 +181,9 @@ async function createTable(req, res, next) {
     return sendSuccess(res, newTable[0], 'Table created successfully', 201);
   } catch (err) {
     await connection.rollback();
+    if (err.code === 'ER_DUP_ENTRY') {
+      return sendError(res, `Table number "${table_number || 'specified'}" already exists.`, 400);
+    }
     next(err);
   } finally {
     connection.release();

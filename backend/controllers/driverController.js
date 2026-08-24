@@ -628,6 +628,9 @@ async function markDeliveryFailed(req, res) {
 /**
  * 14. ADMIN: Get Drivers List (Restaurant-Isolated)
  */
+/**
+ * 14. ADMIN: Get Drivers List (Restaurant-Isolated with SQL Fallback)
+ */
 async function getAdminDrivers(req, res) {
   try {
     const { availability, accountStatus, search, restaurant_id } = req.query;
@@ -637,27 +640,52 @@ async function getAdminDrivers(req, res) {
       return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
     }
 
+    // Auto-ensure active drivers in delivery_drivers are assigned to active restaurants
+    try {
+      const activeRests = await query('SELECT id FROM restaurants WHERE status = "ACTIVE"');
+      const activeDrivers = await query('SELECT id FROM delivery_drivers WHERE account_status = "ACTIVE" AND approval_status = "APPROVED"');
+      for (const d of activeDrivers) {
+        for (const r of activeRests) {
+          await query(
+            `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
+             VALUES (?, ?, 'ACTIVE', NOW())
+             ON DUPLICATE KEY UPDATE status = VALUES(status)`,
+            [d.id, r.id]
+          );
+        }
+      }
+    } catch (e) {
+      // Non-fatal auto-linking
+    }
+
     let sql = `
-      SELECT d.*, u.name, u.email as user_email, u.phone as user_phone, u.status as user_status,
-             dra.status as assignment_status, dra.approved_at
+      SELECT d.*,
+             COALESCE(NULLIF(d.full_name, ''), u.name, 'Delivery Partner') as full_name,
+             COALESCE(NULLIF(d.full_name, ''), u.name, 'Delivery Partner') as name,
+             COALESCE(NULLIF(d.email, ''), u.email, '') as email,
+             COALESCE(NULLIF(d.email, ''), u.email, '') as user_email,
+             COALESCE(NULLIF(d.mobile, ''), u.phone, '') as mobile,
+             COALESCE(NULLIF(d.mobile, ''), u.phone, '') as user_phone,
+             u.status as user_status,
+             COALESCE(MAX(dra.status), 'ACTIVE') as assignment_status
       FROM delivery_drivers d
-      JOIN users u ON d.user_id = u.id
-      JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
+      LEFT JOIN users u ON d.user_id = u.id
+      LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id AND dra.status = 'ACTIVE'
     `;
     const params = [];
-    const wheres = ['dra.status = "ACTIVE"'];
+    const wheres = [];
 
     if (!req.isSuperAdmin) {
       if (req.adminRestaurantIds && req.adminRestaurantIds.length > 0) {
         const placeholders = req.adminRestaurantIds.map(() => '?').join(',');
-        wheres.push(`dra.restaurant_id IN (${placeholders})`);
+        wheres.push(`(dra.restaurant_id IN (${placeholders}) OR dra.restaurant_id IS NULL)`);
         params.push(...req.adminRestaurantIds);
       } else if (restId) {
-        wheres.push('dra.restaurant_id = ?');
+        wheres.push('(dra.restaurant_id = ? OR dra.restaurant_id IS NULL)');
         params.push(restId);
       }
     } else if (restaurant_id) {
-      wheres.push('dra.restaurant_id = ?');
+      wheres.push('(dra.restaurant_id = ? OR dra.restaurant_id IS NULL)');
       params.push(restaurant_id);
     }
 
@@ -666,25 +694,131 @@ async function getAdminDrivers(req, res) {
       params.push(availability);
     }
 
-    if (accountStatus) {
+    if (accountStatus && accountStatus !== 'ALL') {
       wheres.push('d.account_status = ?');
       params.push(accountStatus);
     }
 
     if (search) {
-      wheres.push('(d.full_name LIKE ? OR d.mobile LIKE ? OR d.vehicle_number LIKE ?)');
+      wheres.push('(d.full_name LIKE ? OR d.mobile LIKE ? OR d.vehicle_number LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)');
       const s = `%${search}%`;
-      params.push(s, s, s);
+      params.push(s, s, s, s, s, s);
     }
 
     if (wheres.length > 0) sql += ' WHERE ' + wheres.join(' AND ');
-    sql += ` ORDER BY d.id DESC`;
+    sql += ` GROUP BY d.id ORDER BY d.id DESC`;
 
     const drivers = await query(sql, params);
     res.json({ success: true, count: drivers.length, drivers });
   } catch (err) {
     console.error('getAdminDrivers Error:', err);
     res.status(500).json({ success: false, message: 'Server error retrieving drivers.' });
+  }
+}
+
+/**
+ * 14c. ADMIN: Create Delivery Rider directly
+ */
+async function createAdminDriver(req, res) {
+  try {
+    const { name, email, password, phone, vehicle_type, vehicle_number, license_number } = req.body;
+
+    if (!name || !email || !phone || !vehicle_number) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, phone, and vehicle plate number are required.'
+      });
+    }
+
+    // Check existing user
+    const existingUsers = await query(
+      'SELECT id FROM users WHERE email = ? OR phone = ?',
+      [email.trim().toLowerCase(), phone.trim()]
+    );
+
+    let userId;
+    const userPassword = password && password.trim() ? password.trim() : 'driver123';
+    const hash = await bcrypt.hash(userPassword, 10);
+
+    if (existingUsers.length > 0) {
+      userId = existingUsers[0].id;
+      await query(
+        `UPDATE users SET role = 'DRIVER', status = 'ACTIVE', password_hash = ?, plain_password = ? WHERE id = ?`,
+        [hash, userPassword, userId]
+      );
+    } else {
+      const userRes = await query(
+        `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
+         VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
+        [name.trim(), email.trim().toLowerCase(), hash, userPassword, phone.trim()]
+      );
+      userId = userRes.insertId;
+    }
+
+    // Check existing delivery_drivers profile
+    const existingDrivers = await query('SELECT id FROM delivery_drivers WHERE user_id = ?', [userId]);
+
+    let driverId;
+    if (existingDrivers.length > 0) {
+      driverId = existingDrivers[0].id;
+      await query(
+        `UPDATE delivery_drivers SET
+          full_name = ?, mobile = ?, email = ?,
+          vehicle_type = COALESCE(?, vehicle_type), vehicle_number = COALESCE(?, vehicle_number),
+          license_number = COALESCE(?, license_number),
+          account_status = 'ACTIVE', approval_status = 'APPROVED'
+         WHERE id = ?`,
+        [
+          name.trim(), phone.trim(), email.trim().toLowerCase(),
+          vehicle_type || 'Bike', vehicle_number.trim(),
+          license_number || null, driverId
+        ]
+      );
+    } else {
+      const driverRes = await query(
+        `INSERT INTO delivery_drivers (
+          user_id, full_name, mobile, email,
+          vehicle_type, vehicle_number, license_number,
+          account_status, availability_status, approval_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED')`,
+        [
+          userId, name.trim(), phone.trim(), email.trim().toLowerCase(),
+          vehicle_type || 'Bike', vehicle_number.trim(), license_number || null
+        ]
+      );
+      driverId = driverRes.insertId;
+    }
+
+    // Assign to active restaurants
+    const restaurants = await query('SELECT id FROM restaurants WHERE status = "ACTIVE"');
+    for (const r of restaurants) {
+      await query(
+        `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
+         VALUES (?, ?, 'ACTIVE', NOW())
+         ON DUPLICATE KEY UPDATE status = 'ACTIVE', approved_at = NOW()`,
+        [driverId, r.id]
+      );
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Delivery rider "${name}" created successfully.`,
+      driver: {
+        id: driverId,
+        user_id: userId,
+        name: name.trim(),
+        full_name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        vehicle_type: vehicle_type || 'Bike',
+        vehicle_number: vehicle_number.trim(),
+        account_status: 'ACTIVE',
+        availability_status: 'OFFLINE'
+      }
+    });
+  } catch (err) {
+    console.error('createAdminDriver Error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error creating driver.' });
   }
 }
 
@@ -1208,6 +1342,7 @@ async function applyToRestaurant(req, res) {
       deliverOrder,
       markDeliveryFailed,
       getAdminDrivers,
+      createAdminDriver,
       getAdminDriverById,
       updateDriverStatus,
       getAvailableRestaurants,

@@ -71,25 +71,38 @@ export default function KitchenDisplayPage() {
   useEffect(() => {
     fetchKOTs();
 
+    const tenantId = user?.restaurant_id || 1;
+    const tenantRoom = `restaurant_${tenantId}_kitchen`;
+
     joinRoom('kitchen');
+    joinRoom(tenantRoom);
 
     if (socket) {
-      socket.on('new_kot', () => fetchKOTs());
-      socket.on('kot_updated', () => fetchKOTs());
-      socket.on('kot_item_updated', () => fetchKOTs());
-      socket.on('kot_delayed', () => fetchKOTs());
-    }
+      const handleRefresh = () => fetchKOTs();
+      socket.on('new_kot', handleRefresh);
+      socket.on('new_order', handleRefresh);
+      socket.on('kot_updated', handleRefresh);
+      socket.on('order_updated', handleRefresh);
+      socket.on('kot_item_updated', handleRefresh);
+      socket.on('kot_delayed', handleRefresh);
 
-    return () => {
-      leaveRoom('kitchen');
-      if (socket) {
-        socket.off('new_kot');
-        socket.off('kot_updated');
-        socket.off('kot_item_updated');
-        socket.off('kot_delayed');
-      }
-    };
-  }, [selectedDept, selectedStatus, delayedOnly, socket]);
+      return () => {
+        leaveRoom('kitchen');
+        leaveRoom(tenantRoom);
+        socket.off('new_kot', handleRefresh);
+        socket.off('new_order', handleRefresh);
+        socket.off('kot_updated', handleRefresh);
+        socket.off('order_updated', handleRefresh);
+        socket.off('kot_item_updated', handleRefresh);
+        socket.off('kot_delayed', handleRefresh);
+      };
+    } else {
+      return () => {
+        leaveRoom('kitchen');
+        leaveRoom(tenantRoom);
+      };
+    }
+  }, [selectedDept, selectedStatus, delayedOnly, socket, user]);
 
   const handleStatusUpdate = async (kotId, newStatus) => {
     try {

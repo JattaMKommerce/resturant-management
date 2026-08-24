@@ -79,11 +79,14 @@ const corsOptions = {
     'x-request-id',
     'X-Idempotency-Key',
     'x-idempotency-key',
+    'X-Guest-Token',
+    'x-guest-token',
     'X-Guest-Identity-Token',
     'x-guest-identity-token',
     'X-Requested-With',
     'x-client-platform',
-    'Accept'
+    'Accept',
+    'Origin'
   ]
 };
 

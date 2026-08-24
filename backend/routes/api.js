@@ -197,7 +197,9 @@ router.delete('/admin/staff/:id', ...adminAuth, staffController.deleteStaffMembe
 
 // Drivers & Riders
 router.get('/admin/drivers', ...adminAuth, driverController.getAdminDrivers);
+router.post('/admin/drivers', ...adminAuth, driverController.createAdminDriver);
 router.get('/admin/riders', ...adminAuth, driverController.getAdminDrivers);
+router.post('/admin/riders', ...adminAuth, driverController.createAdminDriver);
 router.patch('/admin/riders/:id/status', ...adminAuth, driverController.updateDriverStatus);
 router.patch('/admin/drivers/:id/status', ...adminAuth, driverController.updateDriverStatus);
 

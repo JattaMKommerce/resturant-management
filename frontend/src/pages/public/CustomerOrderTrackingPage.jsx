@@ -29,6 +29,25 @@ export default function CustomerOrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paying, setPaying] = useState(false);
+  const [requestingCounter, setRequestingCounter] = useState(false);
+
+  const handlePayAtCounter = async () => {
+    if (!order || requestingCounter) return;
+    setRequestingCounter(true);
+    try {
+      const res = await api.post(`/public/orders/${order.id}/request-counter-payment`);
+      if (res.success) {
+        alert('🔔 Pay at Counter request sent! The Cashier & Waiter have been notified.');
+        fetchOrderTracking();
+      } else {
+        alert(res.message || 'Failed to send request to counter');
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to connect to cashier counter');
+    } finally {
+      setRequestingCounter(false);
+    }
+  };
 
   const fetchOrderTracking = async () => {
     try {
@@ -336,27 +355,48 @@ export default function CustomerOrderTrackingPage() {
               </p>
               <p className="text-[11px] text-[#64748B]">Thank you for dining at Grand Palace!</p>
             </div>
+          ) : order.payment_status === 'BILL_REQUESTED' ? (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-amber-400 font-bold text-xs">
+                <Clock className="w-4 h-4" />
+                <span>PAY AT COUNTER REQUESTED • CASHIER NOTIFIED</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                Please visit the Cashier Counter to settle your bill of <span className="text-amber-400 font-bold font-mono">₹{parseFloat(order.total_amount).toFixed(2)}</span> in cash or card.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-1">
                 <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold text-xs">
                   <Clock className="w-4 h-4" />
-                  <span>BILL PENDING PAYMENT</span>
+                  <span>SELECT PAYMENT METHOD</span>
                 </div>
                 <p className="text-[11px] text-[#64748B]">
-                  Pay directly from your phone via UPI / Card or settle with cash at the counter.
+                  Pay directly online or request to settle with cash/card at the counter.
                 </p>
               </div>
 
-              {/* Direct Online Payment Button for Table QR Diners */}
-              <button
-                type="button"
-                onClick={handlePayOnline}
-                disabled={paying}
-                className="w-full py-3.5 rounded-2xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#3A7D7C]/20 hover:opacity-95 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                <span>{paying ? 'Opening Gateway...' : `💳 Pay ₹${parseFloat(order.total_amount).toFixed(2)} Online (UPI / Card)`}</span>
-              </button>
+              {/* 2 Payment Options: Pay Online vs Pay at Counter */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={handlePayOnline}
+                  disabled={paying}
+                  className="w-full py-3.5 px-3 rounded-2xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#3A7D7C]/20 hover:opacity-95 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <span>{paying ? 'Opening Gateway...' : `💳 Pay ₹${parseFloat(order.total_amount).toFixed(2)} Online`}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePayAtCounter}
+                  disabled={requestingCounter}
+                  className="w-full py-3.5 px-3 rounded-2xl bg-white border border-[#D7E5E8] text-[#1F2937] hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <span>{requestingCounter ? 'Sending Request...' : '💵 Pay at Counter (Cash)'}</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
