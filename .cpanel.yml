@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - cd backend && npm install --omit=dev
-    - cd frontend && npm install && npm run build
-    - mkdir -p backend/tmp
-    - touch backend/tmp/restart.txt
+    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd backend && npm install --omit=dev
+    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd frontend && npm install && npm run build
+    - mkdir -p tmp backend/tmp
+    - touch tmp/restart.txt backend/tmp/restart.txt
