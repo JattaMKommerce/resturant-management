@@ -1,0 +1,30 @@
+# ======================================================================
+# Hostinger / Apache / LiteSpeed Web Server Configuration
+# ======================================================================
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. If frontend/dist has built files, rewrite requests there
+  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -f [OR]
+  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -d
+  RewriteRule ^(.*)$ frontend/dist/$1 [L]
+
+  # 2. If root dist has built files, rewrite requests there
+  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f [OR]
+  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -d
+  RewriteRule ^(.*)$ dist/$1 [L]
+
+  # 3. SPA Fallback: Route all unmatched paths to React SPA index.html
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/index.html -f
+  RewriteRule . /frontend/dist/index.html [L]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
+  RewriteRule . /dist/index.html [L]
+</IfModule>
