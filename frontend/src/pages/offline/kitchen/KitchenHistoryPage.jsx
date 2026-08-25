@@ -53,16 +53,16 @@ export default function KitchenHistoryPage() {
 
       {/* History Table */}
       <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-[#1F2937]">
+        <div className="table-scrollbar pb-2">
+          <table className="w-full min-w-[850px] text-left text-sm text-[#1F2937]">
             <thead className="bg-slate-50 text-xs font-bold text-[#64748B] uppercase tracking-wider border-b border-[#D7E5E8]">
               <tr>
-                <th className="px-6 py-4">KOT #</th>
-                <th className="px-6 py-4">Table</th>
-                <th className="px-6 py-4">Kitchen Dept</th>
-                <th className="px-6 py-4">Items Count</th>
-                <th className="px-6 py-4">Completed Time</th>
-                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 whitespace-nowrap">KOT #</th>
+                <th className="px-6 py-4 whitespace-nowrap">Table</th>
+                <th className="px-6 py-4 whitespace-nowrap">Kitchen Dept</th>
+                <th className="px-6 py-4 whitespace-nowrap">Items Count</th>
+                <th className="px-6 py-4 whitespace-nowrap">Completed Time</th>
+                <th className="px-6 py-4 whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#D7E5E8]">

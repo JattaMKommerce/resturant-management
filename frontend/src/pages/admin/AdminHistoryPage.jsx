@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   History, 
   Search, 
@@ -24,7 +24,10 @@ import {
   CreditCard,
   Building,
   Layers,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeftRight
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -53,6 +56,66 @@ export default function AdminHistoryPage() {
 
   // Selected Order Modal
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Table Horizontal Scroll & Swipe State
+  const tableScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
+  const [dragMoved, setDragMoved] = useState(false);
+
+  const updateScrollIndicators = () => {
+    if (tableScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tableScrollRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    updateScrollIndicators();
+    const el = tableScrollRef.current;
+    if (el) {
+      el.addEventListener('scroll', updateScrollIndicators);
+      window.addEventListener('resize', updateScrollIndicators);
+      return () => {
+        el.removeEventListener('scroll', updateScrollIndicators);
+        window.removeEventListener('resize', updateScrollIndicators);
+      };
+    }
+  }, [historyData, loading]);
+
+  const scrollTable = (direction) => {
+    if (tableScrollRef.current) {
+      const shift = direction === 'left' ? -350 : 350;
+      tableScrollRef.current.scrollBy({ left: shift, behavior: 'smooth' });
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('button, input, select, a, [role="button"]')) return;
+    setIsDragging(true);
+    setDragMoved(false);
+    setStartX(e.pageX - tableScrollRef.current.offsetLeft);
+    setScrollLeftState(tableScrollRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || !tableScrollRef.current) return;
+    const x = e.pageX - tableScrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.3;
+    if (Math.abs(walk) > 5) {
+      setDragMoved(true);
+    }
+    tableScrollRef.current.scrollLeft = scrollLeftState - walk;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
 
   useEffect(() => {
     handleDatePresetChange(dateRangePreset);
@@ -495,127 +558,180 @@ export default function AdminHistoryPage() {
           </div>
         </div>
 
-        {/* History Table */}
-        <div className="bg-white border border-[#D7E5E8] rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full min-w-[850px] text-left text-xs text-[#1F2937]">
-              <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-[#64748B] border-b border-[#D7E5E8]">
-                <tr>
-                  <th className="px-5 py-4">Order / Channel</th>
-                  <th className="px-5 py-4">Date & Time</th>
-                  <th className="px-5 py-4">Customer / Destination</th>
-                  <th className="px-5 py-4">Items Summary</th>
-                  <th className="px-5 py-4">Payment</th>
-                  <th className="px-5 py-4">Status</th>
-                  <th className="px-5 py-4 text-right">Amount</th>
-                  <th className="px-5 py-4 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#D7E5E8]">
-                {loading ? (
+        {/* History Table Container */}
+        <div className="bg-white border border-[#D7E5E8] rounded-2xl shadow-xs overflow-hidden">
+          {/* Scroll & Swipe Helper Toolbar */}
+          <div className="px-4 py-2.5 bg-slate-50 border-b border-[#D7E5E8] flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-[#64748B] font-medium">
+              <span className="inline-flex items-center justify-center p-1 rounded-md bg-[#EAF4F7] text-[#3A7D7C]">
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-[11px] sm:text-xs">
+                Swipe or drag horizontally to view full order details
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-bold uppercase text-[#64748B] hidden sm:inline mr-1">Scroll:</span>
+              <button
+                onClick={() => scrollTable('left')}
+                disabled={!canScrollLeft}
+                className="p-1.5 rounded-lg border border-[#D7E5E8] bg-white text-[#1F2937] hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs flex items-center justify-center"
+                title="Scroll Left"
+                aria-label="Scroll Table Left"
+              >
+                <ChevronLeft className="w-3.5 h-3.5 text-[#3A7D7C]" />
+              </button>
+              <button
+                onClick={() => scrollTable('right')}
+                disabled={!canScrollRight}
+                className="p-1.5 rounded-lg border border-[#D7E5E8] bg-white text-[#1F2937] hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs flex items-center justify-center"
+                title="Scroll Right"
+                aria-label="Scroll Table Right"
+              >
+                <ChevronRight className="w-3.5 h-3.5 text-[#3A7D7C]" />
+              </button>
+            </div>
+          </div>
+
+          {/* Table with visible scrollbar & drag swiping */}
+          <div className="relative">
+            {canScrollLeft && (
+              <div className="pointer-events-none absolute left-0 top-0 bottom-3 w-8 bg-gradient-to-r from-white/90 to-transparent z-10" />
+            )}
+            {canScrollRight && (
+              <div className="pointer-events-none absolute right-0 top-0 bottom-3 w-8 bg-gradient-to-l from-white/90 to-transparent z-10" />
+            )}
+
+            <div
+              ref={tableScrollRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUpOrLeave}
+              onMouseLeave={handleMouseUpOrLeave}
+              className={`table-scrollbar pb-2 ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+            >
+              <table className="w-full min-w-[1050px] text-left text-xs text-[#1F2937]">
+                <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-[#64748B] border-b border-[#D7E5E8]">
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-[#64748B]">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <div className="w-8 h-8 border-3 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-xs font-bold text-[#1F2937]">Loading past data archive...</span>
-                      </div>
-                    </td>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[180px]">Order / Channel</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[140px]">Date & Time</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[190px]">Customer / Destination</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[200px]">Items Summary</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[120px]">Payment</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[120px]">Status</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[110px] text-right">Amount</th>
+                    <th className="px-5 py-4 whitespace-nowrap min-w-[110px] text-center">Action</th>
                   </tr>
-                ) : filteredOrders.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center text-[#64748B]">
-                      <History className="w-10 h-10 mx-auto mb-2 text-[#64748B]/40" />
-                      <p className="font-bold text-[#1F2937] text-sm">No History Records Found</p>
-                      <p className="text-xs text-[#64748B] mt-1">Try adjusting the date range, status, or search query.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredOrders.map((order) => (
-                    <tr
-                      key={`${order.source_type}-${order.id}`}
-                      onClick={() => setSelectedOrder(order)}
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
-                    >
-                      {/* Order Number & Channel */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          {order.source_type === 'ONLINE' ? (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] flex items-center gap-1">
-                              <Globe className="w-2.5 h-2.5" /> ONLINE
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                              <UtensilsCrossed className="w-2.5 h-2.5" /> DINE-IN
-                            </span>
-                          )}
-                          <span className="font-bold text-[#3A7D7C] font-mono text-xs">{order.order_number}</span>
+                </thead>
+                <tbody className="divide-y divide-[#D7E5E8]">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-12 text-center text-[#64748B]">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="w-8 h-8 border-3 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-xs font-bold text-[#1F2937]">Loading past data archive...</span>
                         </div>
-                      </td>
-
-                      {/* Date & Time */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="text-xs font-semibold text-[#1F2937]">
-                          {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
-                        </div>
-                        <div className="text-[11px] text-[#64748B]">
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </div>
-                      </td>
-
-                      {/* Customer / Destination */}
-                      <td className="px-5 py-4 max-w-xs">
-                        <div className="font-bold text-[#1F2937] truncate">{order.customer_name || 'Guest'}</div>
-                        <div className="text-[11px] text-[#64748B] truncate">
-                          {order.source_type === 'ONLINE' ? (
-                            order.delivery_address || order.delivery_area || 'Online delivery'
-                          ) : (
-                            order.table_number ? `Table #${order.table_number}` : (order.room_number ? `Room #${order.room_number}` : 'Takeaway Counter')
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Items Summary */}
-                      <td className="px-5 py-4 max-w-xs">
-                        <span className="text-xs text-[#1F2937] line-clamp-1">
-                          {order.items_summary || (order.items && order.items.map(i => `${i.quantity}x ${i.item_name}`).join(', ')) || 'Standard Meal'}
-                        </span>
-                      </td>
-
-                      {/* Payment Method */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="font-bold text-xs text-[#1F2937]">{order.payment_method || 'CASH'}</div>
-                        <div className={`text-[10px] font-bold ${order.payment_status === 'COMPLETED' || order.payment_status === 'PAID' ? 'text-emerald-700' : 'text-amber-700'}`}>
-                          • {order.payment_status || 'PENDING'}
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        {getStatusBadge(order.order_status)}
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-5 py-4 text-right whitespace-nowrap">
-                        <span className="font-mono font-bold text-sm text-[#1F2937]">
-                          ₹{parseFloat(order.total_amount || 0).toLocaleString()}
-                        </span>
-                      </td>
-
-                      {/* Action */}
-                      <td className="px-5 py-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => setSelectedOrder(order)}
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 mx-auto"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-[#3A7D7C]" />
-                          <span>Receipt</span>
-                        </button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-12 text-center text-[#64748B]">
+                        <History className="w-10 h-10 mx-auto mb-2 text-[#64748B]/40" />
+                        <p className="font-bold text-[#1F2937] text-sm">No History Records Found</p>
+                        <p className="text-xs text-[#64748B] mt-1">Try adjusting the date range, status, or search query.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <tr
+                        key={`${order.source_type}-${order.id}`}
+                        onClick={() => {
+                          if (!dragMoved) setSelectedOrder(order);
+                        }}
+                        className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                      >
+                        {/* Order Number & Channel */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            {order.source_type === 'ONLINE' ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] flex items-center gap-1 shrink-0">
+                                <Globe className="w-2.5 h-2.5" /> ONLINE
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 shrink-0">
+                                <UtensilsCrossed className="w-2.5 h-2.5" /> DINE-IN
+                              </span>
+                            )}
+                            <span className="font-bold text-[#3A7D7C] font-mono text-xs">{order.order_number}</span>
+                          </div>
+                        </td>
+
+                        {/* Date & Time */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          <div className="text-xs font-semibold text-[#1F2937]">
+                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
+                          </div>
+                          <div className="text-[11px] text-[#64748B]">
+                            {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </div>
+                        </td>
+
+                        {/* Customer / Destination */}
+                        <td className="px-5 py-4 max-w-xs">
+                          <div className="font-bold text-[#1F2937] truncate">{order.customer_name || 'Guest'}</div>
+                          <div className="text-[11px] text-[#64748B] truncate">
+                            {order.source_type === 'ONLINE' ? (
+                              order.delivery_address || order.delivery_area || 'Online delivery'
+                            ) : (
+                              order.table_number ? `Table #${order.table_number}` : (order.room_number ? `Room #${order.room_number}` : 'Takeaway Counter')
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Items Summary */}
+                        <td className="px-5 py-4 max-w-xs">
+                          <span className="text-xs text-[#1F2937] line-clamp-1" title={order.items_summary}>
+                            {order.items_summary || (order.items && order.items.map(i => `${i.quantity}x ${i.item_name}`).join(', ')) || 'Standard Meal'}
+                          </span>
+                        </td>
+
+                        {/* Payment Method */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          <div className="font-bold text-xs text-[#1F2937]">{order.payment_method || 'CASH'}</div>
+                          <div className={`text-[10px] font-bold ${order.payment_status === 'COMPLETED' || order.payment_status === 'PAID' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            • {order.payment_status || 'PENDING'}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {getStatusBadge(order.order_status)}
+                        </td>
+
+                        {/* Amount */}
+                        <td className="px-5 py-4 text-right whitespace-nowrap">
+                          <span className="font-mono font-bold text-sm text-[#1F2937]">
+                            ₹{parseFloat(order.total_amount || 0).toLocaleString()}
+                          </span>
+                        </td>
+
+                        {/* Action */}
+                        <td className="px-5 py-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 mx-auto"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-[#3A7D7C]" />
+                            <span>Receipt</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -706,34 +822,36 @@ export default function AdminHistoryPage() {
                 <div>
                   <h4 className="font-bold text-xs uppercase tracking-wider text-[#64748B] mb-2">Itemized Items</h4>
                   <div className="border border-[#D7E5E8] rounded-xl overflow-hidden bg-white">
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-50 text-[10px] uppercase font-bold text-[#64748B] border-b border-[#D7E5E8]">
-                        <tr>
-                          <th className="px-4 py-2.5">Item Name</th>
-                          <th className="px-4 py-2.5 text-center">Qty</th>
-                          <th className="px-4 py-2.5 text-right">Unit Price</th>
-                          <th className="px-4 py-2.5 text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#D7E5E8] text-[#1F2937]">
-                        {selectedOrder.items && selectedOrder.items.length > 0 ? (
-                          selectedOrder.items.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50">
-                              <td className="px-4 py-2.5 font-semibold text-[#1F2937]">{item.item_name}</td>
-                              <td className="px-4 py-2.5 text-center font-bold">{item.quantity}</td>
-                              <td className="px-4 py-2.5 text-right font-mono text-[#64748B]">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
-                              <td className="px-4 py-2.5 text-right font-mono font-bold text-[#1F2937]">₹{parseFloat(item.item_total || 0).toFixed(2)}</td>
-                            </tr>
-                          ))
-                        ) : (
+                    <div className="table-scrollbar">
+                      <table className="w-full text-left min-w-[380px]">
+                        <thead className="bg-slate-50 text-[10px] uppercase font-bold text-[#64748B] border-b border-[#D7E5E8]">
                           <tr>
-                            <td colSpan="4" className="px-4 py-4 text-center text-[#64748B] italic">
-                              Item details recorded in billing ledger
-                            </td>
+                            <th className="px-4 py-2.5 whitespace-nowrap">Item Name</th>
+                            <th className="px-4 py-2.5 text-center whitespace-nowrap">Qty</th>
+                            <th className="px-4 py-2.5 text-right whitespace-nowrap">Unit Price</th>
+                            <th className="px-4 py-2.5 text-right whitespace-nowrap">Total</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-[#D7E5E8] text-[#1F2937]">
+                          {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                            selectedOrder.items.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50">
+                                <td className="px-4 py-2.5 font-semibold text-[#1F2937]">{item.item_name}</td>
+                                <td className="px-4 py-2.5 text-center font-bold">{item.quantity}</td>
+                                <td className="px-4 py-2.5 text-right font-mono text-[#64748B] whitespace-nowrap">₹{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                                <td className="px-4 py-2.5 text-right font-mono font-bold text-[#1F2937] whitespace-nowrap">₹{parseFloat(item.item_total || 0).toFixed(2)}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="4" className="px-4 py-4 text-center text-[#64748B] italic">
+                                Item details recorded in billing ledger
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 

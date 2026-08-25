@@ -235,17 +235,17 @@ export default function AdminOrdersPage() {
 
         {/* Orders Table */}
         <div className="bg-white rounded-2xl border border-[#D7E5E8] shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-[#1F2937]">
+          <div className="table-scrollbar pb-2">
+            <table className="w-full min-w-[950px] text-left text-xs text-[#1F2937]">
               <thead className="bg-slate-50 text-[#64748B] font-bold uppercase tracking-wider text-[11px] border-b border-[#D7E5E8]">
                 <tr>
-                  <th className="p-4">Order #</th>
-                  <th className="p-4">Customer</th>
-                  <th className="p-4">Delivery Area & Distance</th>
-                  <th className="p-4">Total</th>
-                  <th className="p-4">Payment</th>
-                  <th className="p-4">Status Pipeline</th>
-                  <th className="p-4 text-right">Quick Action</th>
+                  <th className="p-4 whitespace-nowrap min-w-[140px]">Order #</th>
+                  <th className="p-4 whitespace-nowrap min-w-[160px]">Customer</th>
+                  <th className="p-4 whitespace-nowrap min-w-[200px]">Delivery Area & Distance</th>
+                  <th className="p-4 whitespace-nowrap min-w-[120px]">Total</th>
+                  <th className="p-4 whitespace-nowrap min-w-[120px]">Payment</th>
+                  <th className="p-4 whitespace-nowrap min-w-[150px]">Status Pipeline</th>
+                  <th className="p-4 whitespace-nowrap min-w-[130px] text-right">Quick Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D7E5E8]">
