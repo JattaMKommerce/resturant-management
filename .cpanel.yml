@@ -1,0 +1,7 @@
+---
+deployment:
+  tasks:
+    - cd backend && npm install --omit=dev
+    - cd frontend && npm install && npm run build
+    - mkdir -p backend/tmp
+    - touch backend/tmp/restart.txt
