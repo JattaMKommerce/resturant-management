@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd backend && npm install --omit=dev
-    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd frontend && npm install && npm run build
-    - mkdir -p tmp backend/tmp
-    - touch tmp/restart.txt backend/tmp/restart.txt
+    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd /home/jattamkommerce/hotel-management/backend && npm install --omit=dev
+    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd /home/jattamkommerce/hotel-management/frontend && npm install && npm run build
+    - mkdir -p /home/jattamkommerce/hotel-management/tmp /home/jattamkommerce/hotel-management/backend/tmp
+    - touch /home/jattamkommerce/hotel-management/tmp/restart.txt /home/jattamkommerce/hotel-management/backend/tmp/restart.txt
