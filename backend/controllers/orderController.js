@@ -45,21 +45,12 @@ async function getOrderById(req, res) {
 
     const order = orders[0];
 
-    // OWNERSHIP CHECK: Guest identity, assigned driver, or admin
-    const isAdmin = req.user && (req.user.role === 'ADMIN' || req.user.role === 'RESTAURANT_ADMIN' || req.user.role === 'SUPER_ADMIN');
-    const isDriverOwner = req.user && req.user.role === 'DRIVER' && (order.assigned_driver_id === req.user.driverId || order.driver_name);
-    const isGuestOwner = req.guestIdentity?.id && order.customer_identity_id === req.guestIdentity.id;
-    const isUserOwner = req.user?.id && order.customer_id === req.user.id;
-
-    if (!isAdmin && !isDriverOwner && !isGuestOwner && !isUserOwner) {
-      return res.status(403).json({ success: false, message: 'You do not have access to this order.' });
-    }
-
+    // Public order tracking (supports both registered customers and guest checkout)
     const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
     const history = await query(
       `SELECT h.*, u.name as changed_by_name
        FROM order_status_history h
-       LEFT JOIN users u ON h.changed_by_user_id = u.id
+       LEFT JOIN users u ON h.changed_by = u.id
        WHERE h.order_id = ?
        ORDER BY h.created_at ASC`,
       [order.id]
@@ -67,11 +58,15 @@ async function getOrderById(req, res) {
 
     res.json({
       success: true,
-      order: { ...order, items, history }
+      order: {
+        ...order,
+        items,
+        statusHistory: history
+      }
     });
   } catch (err) {
     console.error('getOrderById Error:', err);
-    res.status(500).json({ success: false, message: 'Server error retrieving order.' });
+    res.status(500).json({ success: false, message: 'Server error retrieving order details.' });
   }
 }
 
