@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd /home/jattamkommerce/hotel-app/backend && npm install --omit=dev
+    - chmod -R 755 /home/jattamkommerce/hotel-app
     - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd /home/jattamkommerce/hotel-app/backend && node database/init.js
     - mkdir -p /home/jattamkommerce/hotel-app/tmp /home/jattamkommerce/hotel-app/backend/tmp
     - touch /home/jattamkommerce/hotel-app/tmp/restart.txt /home/jattamkommerce/hotel-app/backend/tmp/restart.txt
