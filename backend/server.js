@@ -375,8 +375,14 @@ app.use('/api/v1', apiRoutes);
 // ──────────────────────────────────────────────────────────
 // 6. SPA STATIC SERVING & ROOT HANDLER
 // ──────────────────────────────────────────────────────────
-const frontendDist = path.join(__dirname, '../frontend/dist');
-if (fs.existsSync(frontendDist)) {
+const distCandidates = [
+  path.join(__dirname, '../dist'),
+  path.join(__dirname, '../frontend/dist'),
+  path.join(__dirname, 'dist')
+];
+const frontendDist = distCandidates.find(p => fs.existsSync(p));
+
+if (frontendDist) {
   app.use(express.static(frontendDist));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/health')) {
@@ -411,12 +417,20 @@ async function startServer() {
     console.error('Database initialization warning/error:', err.message);
   }
 
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Hotel Restaurant Backend Server running on port ${PORT}`);
-    console.log(`📡 Socket.IO server bound to 0.0.0.0:${PORT}`);
-    console.log(`🛡️  Security headers and rate limiting active`);
-    console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
-  });
+  if (typeof(PhusionPassenger) !== 'undefined') {
+    server.listen('passenger', () => {
+      console.log(`🚀 Hotel Restaurant Backend Server running under Phusion Passenger`);
+      console.log(`🛡️  Security headers and rate limiting active`);
+      console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
+    });
+  } else {
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Hotel Restaurant Backend Server running on port ${PORT}`);
+      console.log(`📡 Socket.IO server bound to 0.0.0.0:${PORT}`);
+      console.log(`🛡️  Security headers and rate limiting active`);
+      console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
+    });
+  }
 }
 
 let isShuttingDown = false;
