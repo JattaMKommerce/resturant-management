@@ -223,6 +223,7 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'menu_items', 'prep_time_minutes', "INT NOT NULL DEFAULT 15");
       await addColumnIfNotExists(conn, 'menu_items', 'batch_capacity', "INT NOT NULL DEFAULT 10");
       await addColumnIfNotExists(conn, 'menu_items', 'is_available_online', "TINYINT(1) DEFAULT 1");
+      await addColumnIfNotExists(conn, 'menu_items', 'is_active', "TINYINT(1) DEFAULT 1");
 
       // Tables & Orders columns
       await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', "INT NOT NULL DEFAULT 1");
