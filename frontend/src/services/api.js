@@ -10,12 +10,17 @@ function resolveKotBaseUrl() {
   }
   const mainApi = import.meta.env.VITE_API_BASE_URL;
   if (mainApi) {
-    // If mainApi is 'https://backend.railway.app/api/v1', strip /v1 and append /api
     const origin = mainApi.replace(/\/api\/v1\/?$/, '').replace(/\/v1\/?$/, '').replace(/\/api\/?$/, '');
     return `${origin}/api`;
   }
-  // Development fallback
-  return 'http://localhost:5000/api';
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5000/api';
+    }
+    return '/api';
+  }
+  return '/api';
 }
 
 const api = axios.create({
