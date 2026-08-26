@@ -222,6 +222,7 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'menu_items', 'restaurant_id', "INT NOT NULL DEFAULT 1");
       await addColumnIfNotExists(conn, 'menu_items', 'prep_time_minutes', "INT NOT NULL DEFAULT 15");
       await addColumnIfNotExists(conn, 'menu_items', 'batch_capacity', "INT NOT NULL DEFAULT 10");
+      await addColumnIfNotExists(conn, 'menu_items', 'is_available_online', "TINYINT(1) DEFAULT 1");
 
       // Tables & Orders columns
       await addColumnIfNotExists(conn, 'restaurant_tables', 'restaurant_id', "INT NOT NULL DEFAULT 1");
@@ -847,8 +848,8 @@ async function initDatabase(options = {}) {
             `INSERT INTO menu_items (
           restaurant_id, category_id, name, description, price, discounted_price,
           image_url, is_veg, prep_time_minutes, batch_capacity, ingredients, tags,
-          is_bestseller, is_recommended, is_available, display_order, is_active, is_available_online
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1, 1)`,
+          is_bestseller, is_recommended, is_available, display_order
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)`,
             [
               restaurantId, catId, item.name, item.description, item.price, item.discounted_price,
               item.image_url, item.is_veg, item.prep_time_minutes, item.batch_capacity, item.ingredients, item.tags,
