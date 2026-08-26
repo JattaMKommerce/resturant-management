@@ -9,9 +9,9 @@ function resolveApiBaseUrl() {
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:5000/api/v1';
     }
-    return '/api/v1';
+    return 'https://jattamkommerce.com/api/v1';
   }
-  return '/api/v1';
+  return 'https://jattamkommerce.com/api/v1';
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
