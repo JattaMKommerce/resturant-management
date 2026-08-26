@@ -1,13 +1,19 @@
 # ======================================================================
-# Hostinger / Apache / LiteSpeed Web Server Configuration
+# Hostinger CloudLinux / Phusion Passenger Node.js Configuration
 # ======================================================================
-DirectoryIndex index.html index.php
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/u605028047/domains/springgreen-gorilla-821094.hostingersite.com/public_html/backend"
+PassengerBaseURI "/"
+PassengerNodejs "/opt/alt/alt-nodejs22/root/usr/bin/node"
+PassengerAppType node
+PassengerStartupFile server.js
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend (Port 5000)
+  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
   RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
 
