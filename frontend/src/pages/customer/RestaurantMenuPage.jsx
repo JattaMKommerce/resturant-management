@@ -126,10 +126,15 @@ export default function RestaurantMenuPage() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center">
         <AlertCircle className="w-16 h-16 text-slate-300 mb-4 mx-auto" />
         <h2 className="text-2xl font-bold text-slate-700 mb-2">Restaurant Not Found</h2>
-        <p className="text-slate-500 text-sm max-w-sm mb-6">{error || 'This restaurant does not exist or has not been configured.'}</p>
-        <button onClick={() => navigate('/admin/login')} className="px-5 py-2.5 bg-[#3A7D7C] text-white rounded-xl text-xs font-bold shadow-2xs">
-          Go to Admin Portal
-        </button>
+        <p className="text-slate-500 text-sm max-w-sm mb-6">{error || 'This restaurant is currently unavailable or does not exist.'}</p>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-[#3A7D7C] hover:bg-[#2e6463] text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer">
+            Browse Restaurants
+          </button>
+          <button onClick={() => window.location.reload()} className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold shadow-2xs cursor-pointer">
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }

@@ -51,24 +51,8 @@ const allowedOrigins = rawOrigins
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow non-browser requests (e.g. mobile apps, postman, health checks)
-    if (!origin) return callback(null, true);
-
-    // Development local network / localhost access
-    if (
-      !isProduction ||
-      origin.startsWith('http://localhost') ||
-      origin.startsWith('http://127.0.0.1') ||
-      origin.endsWith('.vercel.app') ||
-      origin.includes('vercel.app') ||
-      allowedOrigins.includes(origin) ||
-      allowedOrigins.some(ao => origin.endsWith(ao.replace(/^https?:\/\//, '')))
-    ) {
-      return callback(null, true);
-    }
-
-    console.warn(`[CORS Blocked] Origin "${origin}" not in allowed list:`, allowedOrigins);
-    return callback(null, false);
+    // Allow all browser and non-browser origins to prevent any customer blockage
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
@@ -111,6 +95,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ──────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: corsOptions,
+  transports: ['polling', 'websocket'],
   pingTimeout: 30000,
   pingInterval: 25000
 });

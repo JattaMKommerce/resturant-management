@@ -24,7 +24,7 @@ export const SocketProvider = ({ children }) => {
     const token = localStorage.getItem('hotel_token') || localStorage.getItem('hms_token');
 
     const socketInstance = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
       auth: token ? { token } : undefined,
       reconnectionAttempts: 5,
