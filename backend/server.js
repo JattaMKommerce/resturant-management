@@ -95,7 +95,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ──────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: corsOptions,
-  transports: ['polling', 'websocket'],
+  transports: ['polling'],
   pingTimeout: 30000,
   pingInterval: 25000
 });
