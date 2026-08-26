@@ -92,16 +92,6 @@ async function initDatabase(options = {}) {
         // Ensure default SaaS Subscription Plans exist (without auto-assigning to hotels)
         await ensureSubscriptionPlans(connection);
 
-        // Seed / Ensure menu for all restaurants in database
-        const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
-        if (allRestaurants.length === 0) {
-          await ensureRestaurantMenu(connection, 1);
-        } else {
-          for (const r of allRestaurants) {
-            await ensureRestaurantMenu(connection, r.id);
-          }
-        }
-
         if (userRows[0].count <= 1 || menuRows[0].count === 0 || (forceReset && process.env.NODE_ENV !== 'production')) {
           console.log('🌱 Seeding initial data...');
           await seedData(connection);
@@ -111,6 +101,12 @@ async function initDatabase(options = {}) {
           await ensureRestaurantAdmins(connection);
           await ensureEssentialStaffUsers(connection);
           await seedKOTData(connection);
+        }
+
+        // Seed / Ensure menu for all restaurants in database
+        const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
+        for (const r of allRestaurants) {
+          await ensureRestaurantMenu(connection, r.id);
         }
 
       } catch (err) {
@@ -594,6 +590,8 @@ async function initDatabase(options = {}) {
     }
 
     async function ensureRestaurantMenu(conn, restaurantId = 1) {
+      const [restExists] = await conn.query('SELECT id FROM restaurants WHERE id = ?', [restaurantId]);
+      if (restExists.length === 0) return;
       console.log('🍕 Ensuring categories and menu items exist for restaurant', restaurantId);
       const categoriesData = [
         { name: 'Starters', description: 'Delicious appetizers and tandoori sizzlers', display_order: 1, image_url: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=400&q=80' },
