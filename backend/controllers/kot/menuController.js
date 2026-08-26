@@ -528,7 +528,7 @@ async function getPublicMenu(req, res, next) {
               m.is_veg, m.prep_time_minutes, m.batch_capacity, m.is_available, m.is_available_online, k.name as kitchen_department_name
        FROM menu_items m
        LEFT JOIN kitchen_departments k ON m.kitchen_department_id = k.id
-       WHERE (m.is_active IS NULL OR m.is_active = TRUE) AND m.is_available = TRUE
+       WHERE m.is_available = TRUE
        ORDER BY m.display_order ASC, m.name ASC`
     );
 

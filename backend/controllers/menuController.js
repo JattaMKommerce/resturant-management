@@ -19,7 +19,6 @@ async function getMenuBySlug(req, res) {
       LEFT JOIN categories c ON mi.category_id = c.id
       LEFT JOIN menu_categories mc ON mi.category_id = mc.id
       WHERE (mi.restaurant_id = ? OR (mi.restaurant_id = 1 AND ? = 1))
-        AND (mi.is_active IS NULL OR mi.is_active = 1)
         AND mi.is_available = 1
         AND (mi.is_available_online IS NULL OR mi.is_available_online = 1)
     `;
