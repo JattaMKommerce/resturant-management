@@ -373,8 +373,11 @@ if (frontendDist) {
   console.log(`📦 Serving frontend SPA from: ${frontendDist}`);
   app.use('/assets', express.static(path.join(frontendDist, 'assets')));
   app.use('/hotel/assets', express.static(path.join(frontendDist, 'assets')));
-  app.use('/hotel/admin/assets', express.static(path.join(frontendDist, 'assets')));
-  app.use('/hotel/restaurant/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/admin/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/restaurant/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/waiter/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/driver/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/kds/assets', express.static(path.join(frontendDist, 'assets')));
   app.use('/hotel', express.static(frontendDist));
   app.use(express.static(frontendDist));
 
