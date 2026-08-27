@@ -50,7 +50,7 @@ async function getOrderById(req, res) {
     const history = await query(
       `SELECT h.*, u.name as changed_by_name
        FROM order_status_history h
-       LEFT JOIN users u ON h.changed_by = u.id
+       LEFT JOIN users u ON h.changed_by_user_id = u.id
        WHERE h.order_id = ?
        ORDER BY h.created_at ASC`,
       [order.id]
