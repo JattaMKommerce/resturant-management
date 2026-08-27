@@ -361,21 +361,45 @@ app.use('/api/v1', apiRoutes);
 // 6. SPA STATIC SERVING & ROOT HANDLER
 // ──────────────────────────────────────────────────────────
 const distCandidates = [
-  path.join(__dirname, '../dist'),
+  path.join(__dirname, 'public'),
+  path.join(__dirname, '../../public_html/hotel'),
+  path.join(__dirname, '../../public_html'),
   path.join(__dirname, '../frontend/dist'),
-  path.join(__dirname, 'dist')
+  path.join(__dirname, '../dist')
 ];
-const frontendDist = distCandidates.find(p => fs.existsSync(p));
+const frontendDist = distCandidates.find(p => fs.existsSync(path.join(p, 'index.html')));
 
 if (frontendDist) {
+  console.log(`📦 Serving frontend SPA from: ${frontendDist}`);
+  app.use('/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/hotel/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/hotel/admin/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/hotel/restaurant/assets', express.static(path.join(frontendDist, 'assets')));
+  app.use('/hotel', express.static(frontendDist));
   app.use(express.static(frontendDist));
+
+  // Serve SPA index.html for all page navigation routes
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/health')) {
+    // If request is for an API, health check, upload, socket, or missing asset, pass through or 404
+    if (
+      req.path.startsWith('/api') || 
+      req.path.startsWith('/uploads') || 
+      req.path.startsWith('/health') || 
+      req.path.startsWith('/socket.io')
+    ) {
       return next();
     }
+
+    // Do NOT return index.html for missing static assets (.js, .css, .png, etc.)
+    if (/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|map)$/i.test(req.path)) {
+      return res.status(404).send('Asset not found');
+    }
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
+  // Fallback API root status
   app.get('/', (req, res) => {
     res.json({
       status: 'ONLINE',
@@ -385,11 +409,6 @@ if (frontendDist) {
     });
   });
 }
-
-// Redirect direct storefront / admin URLs to /hotel subfolder
-app.get(['/restaurant*', '/admin*', '/waiter*', '/kitchen*', '/rider*', '/driver*', '/order*'], (req, res) => {
-  res.redirect(`/hotel${req.originalUrl}`);
-});
 
 // ──────────────────────────────────────────────────────────
 // 7. CENTRALIZED ERROR HANDLER
