@@ -185,7 +185,12 @@ async function updateKOTStatus(kotId, newStatus, userId = null, reason = '') {
     // Sync online order status if this is an online order
     if (kot.order_id) {
       try {
-        if (newStatus === 'PREPARING') {
+        if (newStatus === 'ACCEPTED') {
+          await connection.query(
+            `UPDATE orders SET order_status = 'ACCEPTED' WHERE id = ? AND order_status IN ('PENDING', 'NEW')`,
+            [kot.order_id]
+          );
+        } else if (newStatus === 'PREPARING') {
           await connection.query(
             `UPDATE orders SET order_status = 'PREPARING' WHERE id = ? AND order_status IN ('PENDING', 'ACCEPTED', 'SENT_TO_KITCHEN')`,
             [kot.order_id]

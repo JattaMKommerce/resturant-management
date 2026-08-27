@@ -396,17 +396,12 @@ async function initDatabase(options = {}) {
         try { await conn.query(sql); } catch (e) { }
       }
 
-      // Tenant Query Optimization Indexes
-      console.log('🔄 Ensuring tenant query indexes exist...');
-      await addIndexIfNotExists(conn, 'orders', 'idx_orders_tenant_status', '`restaurant_id`, `order_status`, `created_at`');
-      await addIndexIfNotExists(conn, 'orders', 'idx_orders_customer_id', '`customer_identity_id`');
-      await addIndexIfNotExists(conn, 'orders', 'idx_orders_driver_id', '`driver_id`');
-      await addIndexIfNotExists(conn, 'restaurant_orders', 'idx_rest_orders_tenant_status', '`restaurant_id`, `order_status`, `created_at`');
-      await addIndexIfNotExists(conn, 'restaurant_tables', 'idx_tables_tenant_status', '`restaurant_id`, `status`');
-      await addIndexIfNotExists(conn, 'kots', 'idx_kots_tenant_status', '`restaurant_id`, `status`');
-      await addIndexIfNotExists(conn, 'menu_items', 'idx_menu_tenant_active', '`restaurant_id`, `is_active`');
-      await addIndexIfNotExists(conn, 'categories', 'idx_cat_tenant_active', '`restaurant_id`, `is_active`');
-      await addIndexIfNotExists(conn, 'rider_applications', 'idx_rider_app_tenant_status', '`restaurant_id`, `application_status`');
+      // Status column widenings to prevent ENUM truncation
+      console.log('🔄 Ensuring status columns are VARCHAR(30)...');
+      try { await conn.query("ALTER TABLE order_items MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
+      try { await conn.query("ALTER TABLE kot_items MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
+      try { await conn.query("ALTER TABLE kots MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
+      try { await conn.query("ALTER TABLE restaurant_orders MODIFY COLUMN order_status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
 
       console.log('✅ Phase 1 + Phase 2 migrations applied.');
     }
