@@ -386,6 +386,11 @@ if (frontendDist) {
   });
 }
 
+// Redirect direct storefront / admin URLs to /hotel subfolder
+app.get(['/restaurant*', '/admin*', '/waiter*', '/kitchen*', '/rider*', '/driver*', '/order*'], (req, res) => {
+  res.redirect(`/hotel${req.originalUrl}`);
+});
+
 // ──────────────────────────────────────────────────────────
 // 7. CENTRALIZED ERROR HANDLER
 // ──────────────────────────────────────────────────────────
