@@ -524,7 +524,8 @@ async function getPublicMenu(req, res, next) {
     );
 
     const [items] = await pool.query(
-      `SELECT m.id, m.category_id, m.name, m.description, m.image_url, m.price, m.tax_percentage, 
+      `SELECT m.id, m.category_id, m.name, m.description, m.image_url, m.price, 
+              5.00 as tax_percentage, 
               m.is_veg, m.prep_time_minutes, m.batch_capacity, m.is_available, m.is_available_online, k.name as kitchen_department_name
        FROM menu_items m
        LEFT JOIN kitchen_departments k ON m.kitchen_department_id = k.id

@@ -396,12 +396,15 @@ async function initDatabase(options = {}) {
         try { await conn.query(sql); } catch (e) { }
       }
 
-      // Status column widenings to prevent ENUM truncation
-      console.log('🔄 Ensuring status columns are VARCHAR(30)...');
+      // Status column widenings to prevent ENUM truncation & schema updates
+      console.log('🔄 Ensuring status columns and schema updates are applied...');
       try { await conn.query("ALTER TABLE order_items MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE kot_items MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE kots MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE restaurant_orders MODIFY COLUMN order_status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
+      try { await conn.query("ALTER TABLE menu_items ADD COLUMN tax_percentage DECIMAL(5,2) DEFAULT 5.00"); } catch (e) { }
+      try { await conn.query("ALTER TABLE restaurant_tables DROP INDEX table_number"); } catch (e) { }
+      try { await conn.query("ALTER TABLE restaurant_tables DROP INDEX table_number_2"); } catch (e) { }
 
       console.log('✅ Phase 1 + Phase 2 migrations applied.');
     }

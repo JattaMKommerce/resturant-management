@@ -33,7 +33,11 @@ function calculateNextTableNumber(tables) {
 
 async function getNextTableNumberHandler(req, res, next) {
   try {
-    const [rows] = await pool.query(`SELECT table_number, table_name FROM restaurant_tables`);
+    const restaurantId = req.user?.restaurant_id || 1;
+    const [rows] = await pool.query(
+      `SELECT table_number, table_name FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1`,
+      [restaurantId]
+    );
     const nextTable = calculateNextTableNumber(rows);
     return sendSuccess(res, nextTable, 'Next available table number calculated');
   } catch (err) {
@@ -44,7 +48,7 @@ async function getNextTableNumberHandler(req, res, next) {
 async function autoSeedTablesIfEmpty(restaurantId = 1) {
   try {
     const [tCheck] = await pool.query(
-      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL)',
+      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1',
       [restaurantId]
     );
     if (tCheck[0].count === 0) {
@@ -83,7 +87,7 @@ async function getTables(req, res, next) {
       SELECT t.*, 
         (SELECT COUNT(*) FROM restaurant_orders o WHERE o.table_id = t.id AND o.order_status NOT IN ('COMPLETED', 'CANCELLED')) as active_orders_count
       FROM restaurant_tables t
-      WHERE (t.restaurant_id = ? OR t.restaurant_id IS NULL)
+      WHERE (t.restaurant_id = ? OR t.restaurant_id IS NULL) AND (t.is_active = 1 OR t.is_active IS NULL)
     `;
     const params = [restaurantId];
 
@@ -129,8 +133,11 @@ async function createTable(req, res, next) {
     table_name = body.table_name;
     const { floor, section, capacity, table_type } = body;
 
-    // Auto-generate if not provided or empty (check all tables globally)
-    const [allTables] = await connection.query(`SELECT table_number, table_name FROM restaurant_tables`);
+    // Auto-generate if not provided or empty (check tables for this restaurant)
+    const [allTables] = await connection.query(
+      `SELECT table_number, table_name FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1`,
+      [restaurantId]
+    );
     const autoGen = calculateNextTableNumber(allTables);
 
     if (!table_number || String(table_number).trim() === '') {
@@ -143,10 +150,10 @@ async function createTable(req, res, next) {
     table_number = String(table_number).trim();
     table_name = String(table_name).trim();
 
-    // Check duplicate across entire restaurant_tables since table_number is UNIQUE in schema
+    // Check duplicate per restaurant
     const [existing] = await connection.query(
-      `SELECT id, table_number, table_name FROM restaurant_tables WHERE table_number = ? OR table_name = ?`,
-      [table_number, table_name]
+      `SELECT id, table_number, table_name FROM restaurant_tables WHERE (table_number = ? OR table_name = ?) AND (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1`,
+      [table_number, table_name, restaurantId]
     );
     if (existing.length > 0) {
       const isNumMatch = existing.some(e => String(e.table_number).toLowerCase() === table_number.toLowerCase());
