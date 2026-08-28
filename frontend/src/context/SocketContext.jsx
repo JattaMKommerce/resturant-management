@@ -69,6 +69,15 @@ export const SocketProvider = ({ children }) => {
       }, 5000);
     });
 
+    socketInstance.on('call_waiter', (data) => {
+      showToast({
+        title: `🛎️ Waiter Called: Table ${data.table_number || 'T01'}!`,
+        message: `Guests at Table ${data.table_number || ''} (${data.floor || 'Dining Area'}) called for waiter assistance. Click to open.`,
+        link: '/waiter',
+        type: 'CALL_WAITER'
+      }, 5000);
+    });
+
     socketInstance.on('order_status_updated', (data) => {
       showToast({
         title: `🔔 Order Status Updated`,

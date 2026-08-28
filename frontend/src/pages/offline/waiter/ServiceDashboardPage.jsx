@@ -37,18 +37,14 @@ export default function ServiceDashboardPage() {
     joinRoom('waiter');
 
     if (socket) {
-      socket.on('order_ready', () => {
-        fetchServiceData();
-      });
-      socket.on('new_order', () => {
-        fetchServiceData();
-      });
-      socket.on('kot_updated', () => {
-        fetchServiceData();
-      });
-      socket.on('table_status_changed', () => {
-        fetchServiceData();
-      });
+      const handleServiceUpdate = () => fetchServiceData();
+
+      socket.on('order_ready', handleServiceUpdate);
+      socket.on('new_order', handleServiceUpdate);
+      socket.on('kot_updated', handleServiceUpdate);
+      socket.on('table_status_changed', handleServiceUpdate);
+      socket.on('call_waiter', handleServiceUpdate);
+      socket.on('bill_requested', handleServiceUpdate);
     }
 
     return () => {
@@ -58,6 +54,8 @@ export default function ServiceDashboardPage() {
         socket.off('new_order');
         socket.off('kot_updated');
         socket.off('table_status_changed');
+        socket.off('call_waiter');
+        socket.off('bill_requested');
       }
     };
   }, [socket]);

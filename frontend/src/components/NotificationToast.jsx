@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ShoppingBag, Receipt, Bike, ExternalLink, X } from 'lucide-react';
+import { Bell, ShoppingBag, Receipt, Bike, ConciergeBell, ExternalLink, X } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 
 export default function NotificationToast() {
@@ -16,7 +16,9 @@ export default function NotificationToast() {
       const titleLower = String(toast.title || '').toLowerCase();
       const typeLower = String(toast.type || '').toLowerCase();
 
-      if (typeLower.includes('order') || titleLower.includes('order')) {
+      if (typeLower.includes('call') || titleLower.includes('waiter')) {
+        targetLink = '/waiter';
+      } else if (typeLower.includes('order') || titleLower.includes('order')) {
         targetLink = '/hotel/admin/orders';
       } else if (typeLower.includes('bill') || titleLower.includes('bill')) {
         targetLink = '/hotel/admin/offline/billing';
@@ -37,6 +39,13 @@ export default function NotificationToast() {
     const typeLower = String(toast.type || '').toLowerCase();
     const titleLower = String(toast.title || '').toLowerCase();
 
+    if (typeLower.includes('call') || titleLower.includes('waiter')) {
+      return (
+        <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200">
+          <ConciergeBell className="w-5 h-5 stroke-[2.2]" />
+        </div>
+      );
+    }
     if (typeLower.includes('order') || titleLower.includes('order')) {
       return (
         <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
