@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, ShieldCheck, Eye, EyeOff, Building2, UtensilsCrossed } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import Navbar from '../../components/Navbar';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -49,19 +48,29 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased">
-      <Navbar />
-
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 border border-[#D7E5E8] shadow-xl space-y-6">
-          
-          <div className="text-center space-y-2">
+    <div className="min-h-screen bg-gradient-to-br from-[#EAF4F7] via-slate-50 to-[#D7E5E8] text-[#1F2937] flex flex-col items-center justify-center p-4 sm:p-6 font-sans antialiased selection:bg-[#006C70] selection:text-white">
+      <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 border border-[#D7E5E8] shadow-xl space-y-6">
+        
+        <div className="text-center space-y-2">
             <div className="w-14 h-14 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold mx-auto shadow-md shadow-[#3A7D7C]/20">
               <ShieldCheck className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-extrabold text-[#1F2937] tracking-tight mt-3">Admin Sign In</h2>
+            
+            {/* Active Selected Product Mode Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-[#D7E5E8] text-[11px] font-bold text-slate-700 mx-auto">
+              <span>
+                {localStorage.getItem('hotel_product_mode') === 'RESTAURANT_ONLY'
+                  ? '🍽️ Suite: Restaurant Only'
+                  : '🍽️🏨 Suite: Restaurant + Accommodation'}
+              </span>
+              <Link to="/" className="text-[#3A7D7C] hover:underline font-extrabold text-[10px]">
+                Change
+              </Link>
+            </div>
+
             <p className="text-xs text-[#64748B]">
-              Sign in to access your Restaurant Admin Console and manage operations
+              Sign in with your colleague-created credentials to load your workspace
             </p>
           </div>
 
@@ -136,6 +145,5 @@ export default function LoginPage() {
 
         </div>
       </div>
-    </div>
   );
 }

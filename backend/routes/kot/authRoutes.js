@@ -5,5 +5,6 @@ const { authenticateToken } = require('../../middleware/kotAuth');
 
 router.post('/login', authController.login);
 router.get('/me', authenticateToken, authController.getMe);
+router.put('/suite-mode', authenticateToken, authController.updateSuiteMode);
 
 module.exports = router;

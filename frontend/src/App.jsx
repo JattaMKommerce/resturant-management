@@ -46,6 +46,7 @@ import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
 // Offline Restaurant & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
 import OperationsCenterPage from './pages/offline/operations/OperationsCenterPage';
+import AccommodationPage from './pages/offline/accommodation/AccommodationPage';
 import TableManagementPage from './pages/offline/tables/TableManagementPage';
 import OfflineMenuPage from './pages/offline/menu/MenuManagementPage';
 import ServiceDashboardPage from './pages/offline/waiter/ServiceDashboardPage';
@@ -67,9 +68,9 @@ import SuperAdminPage from './pages/superadmin/SuperAdminPage';
 import AdminLayout from './components/AdminLayout';
 import NotificationToast from './components/NotificationToast';
 
-// Role Guard Component
-const ProtectedRoute = ({ children, allowedRoles, loginPath = '/admin/login' }) => {
-  const { user, loading } = useAuth();
+// Role & Suite Guard Component
+const ProtectedRoute = ({ children, allowedRoles = [], requiredSuite = null, loginPath = '/admin/login' }) => {
+  const { user, loading, restaurant } = useAuth();
 
   if (loading) {
     return (
@@ -79,6 +80,7 @@ const ProtectedRoute = ({ children, allowedRoles, loginPath = '/admin/login' }) 
     );
   }
 
+  // 1. Unauthenticated users must always be redirected to login
   if (!user) {
     return <Navigate to={loginPath} replace />;
   }
@@ -87,12 +89,20 @@ const ProtectedRoute = ({ children, allowedRoles, loginPath = '/admin/login' }) 
   const mappedAllowed = allowedRoles.map(r => r === 'ADMIN' ? 'RESTAURANT_ADMIN' : r);
 
   // SUPER_ADMIN has platform-wide access across all portals
-  if (effectiveRole === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-    return children;
+  const isSuperAdmin = effectiveRole === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN';
+
+  if (!isSuperAdmin && mappedAllowed.length > 0 && !mappedAllowed.includes(effectiveRole) && !mappedAllowed.includes(user.role)) {
+    return <Navigate to={loginPath} replace />;
   }
 
-  if (mappedAllowed.length > 0 && !mappedAllowed.includes(effectiveRole) && !mappedAllowed.includes(user.role)) {
-    return <Navigate to={loginPath} replace />;
+  // 2. Suite-level authorization guard
+  // If route requires RESTAURANT_ACCOMMODATION and user's suite is RESTAURANT_ONLY, block & redirect
+  if (requiredSuite) {
+    const activeSuite = user.suite_mode || localStorage.getItem('hotel_product_mode') || 'RESTAURANT_ACCOMMODATION';
+    if (requiredSuite === 'RESTAURANT_ACCOMMODATION' && activeSuite === 'RESTAURANT_ONLY') {
+      const activeSlug = restaurant?.slug || user?.restaurant_slug || 'grand-palace';
+      return <Navigate to={`/admin/${activeSlug}`} replace />;
+    }
   }
 
   return children;
@@ -197,6 +207,8 @@ const HomeRedirect = () => {
   );
 };
 
+import ProductSelectionPage from './pages/product/ProductSelectionPage';
+
 export default function App() {
   const adminRoles = ['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'WAITER', 'KITCHEN', 'CASHIER', 'INVENTORY_MANAGER', 'SUPER_ADMIN'];
 
@@ -204,8 +216,10 @@ export default function App() {
     <>
       <NotificationToast />
       <Routes>
-        {/* Home */}
-        <Route path="/" element={<HomeRedirect />} />
+        {/* Product Selection Suite (Shown before Authentication) */}
+        <Route path="/" element={<ProductSelectionPage />} />
+        <Route path="/select-product" element={<ProductSelectionPage />} />
+        <Route path="/product-selection" element={<ProductSelectionPage />} />
 
         {/* Public Customer Online Website */}
         <Route path="/restaurant/:slug" element={<RestaurantMenuPage />} />
@@ -382,6 +396,29 @@ export default function App() {
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
             <AdminLayout>
               <OperationsCenterPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Accommodation & Hotel Room Management */}
+        <Route path="/admin/offline/accommodation" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']} requiredSuite="RESTAURANT_ACCOMMODATION">
+            <AdminLayout>
+              <AccommodationPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/accommodation" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']} requiredSuite="RESTAURANT_ACCOMMODATION">
+            <AdminLayout>
+              <AccommodationPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/accommodation/:subTab" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']} requiredSuite="RESTAURANT_ACCOMMODATION">
+            <AdminLayout>
+              <AccommodationPage />
             </AdminLayout>
           </ProtectedRoute>
         } />

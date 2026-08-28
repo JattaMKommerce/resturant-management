@@ -309,6 +309,8 @@ const kotReportRoutes = require('./routes/kot/reportRoutes');
 const kotAuditRoutes = require('./routes/kot/auditRoutes');
 const kotPublicRoutes = require('./routes/kot/publicRoutes');
 const kotOperationsRoutes = require('./routes/kot/operationsRoutes');
+const kotAccommodationRoutes = require('./routes/kot/accommodationRoutes');
+const kotHotelRoutes = require('./routes/kot/hotelRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 // Apply stricter rate limiting to auth routes
@@ -322,6 +324,10 @@ app.use('/api/v1', subscriptionRoutes);
 const kotRouteMap = [
   ['/api/tables', kotTableRoutes],
   ['/api/restaurant/tables', kotTableRoutes],
+  ['/api/hotels', kotHotelRoutes],
+  ['/api/restaurant/hotels', kotHotelRoutes],
+  ['/api/rooms', kotAccommodationRoutes],
+  ['/api/restaurant/rooms', kotAccommodationRoutes],
   ['/api/menu', kotMenuRoutes],
   ['/api/restaurant/menu', kotMenuRoutes],
   ['/api/orders', kotOrderRoutes],

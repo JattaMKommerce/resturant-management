@@ -243,6 +243,13 @@ async function login(req, res) {
     // Determine effective role for frontend
     const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;
 
+    // If client supplied pre-login suite_mode selection, persist it to user record
+    let finalSuiteMode = user.suite_mode || 'RESTAURANT_ACCOMMODATION';
+    if (req.body.suite_mode && ['RESTAURANT_ONLY', 'RESTAURANT_ACCOMMODATION'].includes(req.body.suite_mode)) {
+      finalSuiteMode = req.body.suite_mode;
+      await query('UPDATE users SET suite_mode = ? WHERE id = ?', [finalSuiteMode, user.id]);
+    }
+
     res.json({
       success: true,
       token,
@@ -251,7 +258,8 @@ async function login(req, res) {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: effectiveRole
+        role: effectiveRole,
+        suite_mode: finalSuiteMode
       },
       restaurant,
       restaurants
@@ -263,9 +271,29 @@ async function login(req, res) {
   }
 }
 
+async function updateSuiteMode(req, res) {
+  try {
+    const { suite_mode } = req.body;
+    if (!['RESTAURANT_ONLY', 'RESTAURANT_ACCOMMODATION'].includes(suite_mode)) {
+      return res.status(400).json({ success: false, message: 'Invalid suite mode. Must be RESTAURANT_ONLY or RESTAURANT_ACCOMMODATION.' });
+    }
+
+    await query('UPDATE users SET suite_mode = ? WHERE id = ?', [suite_mode, req.user.id]);
+
+    return res.json({
+      success: true,
+      suite_mode,
+      message: `Workspace suite updated to ${suite_mode === 'RESTAURANT_ONLY' ? 'Restaurant Only' : 'Restaurant + Accommodation'}`
+    });
+  } catch (err) {
+    console.error('Update Suite Mode Error:', err);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+}
+
 async function getMe(req, res) {
   try {
-    const users = await query('SELECT id, name, email, phone, role, status, created_at FROM users WHERE id = ?', [req.user.id]);
+    const users = await query('SELECT id, name, email, phone, role, status, suite_mode, created_at FROM users WHERE id = ?', [req.user.id]);
     if (users.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
@@ -292,11 +320,16 @@ async function getMe(req, res) {
 
     res.json({
       success: true,
-      user: { ...user, role: effectiveRole },
+      user: { 
+        ...user, 
+        role: effectiveRole,
+        suite_mode: user.suite_mode || 'RESTAURANT_ACCOMMODATION'
+      },
       restaurant,
       restaurants
     });
   } catch (err) {
+    console.error('getMe error:', err);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 }
@@ -305,5 +338,6 @@ module.exports = {
   register,
   registerRestaurant,
   login,
-  getMe
+  getMe,
+  updateSuiteMode
 };

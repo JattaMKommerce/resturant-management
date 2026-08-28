@@ -33,8 +33,14 @@ export const AuthProvider = ({ children }) => {
       api.get('/auth/me')
         .then((res) => {
           if (res.data.success) {
-            setUser(res.data.user);
-            localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
+            const fetchedUser = res.data.user || res.data.data || res.data;
+            setUser(fetchedUser);
+            localStorage.setItem('hotel_user', JSON.stringify(fetchedUser));
+            
+            // Sync persistent suite mode from backend user profile
+            const userSuiteMode = fetchedUser.suite_mode || localStorage.getItem('hotel_product_mode') || 'RESTAURANT_ACCOMMODATION';
+            localStorage.setItem('hotel_product_mode', userSuiteMode);
+
             if (res.data.restaurant) {
               setRestaurant(res.data.restaurant);
               localStorage.setItem('hotel_admin_restaurant', JSON.stringify(res.data.restaurant));
@@ -58,11 +64,22 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
+    const currentIntentMode = localStorage.getItem('hotel_product_mode') || 'RESTAURANT_ACCOMMODATION';
+    const res = await api.post('/auth/login', { 
+      email, 
+      password,
+      suite_mode: currentIntentMode
+    });
+
     if (res.data.success) {
       localStorage.setItem('hotel_token', res.data.token);
       localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
       setUser(res.data.user);
+
+      // Persist the user's suite mode
+      const activeSuiteMode = res.data.user?.suite_mode || currentIntentMode;
+      localStorage.setItem('hotel_product_mode', activeSuiteMode);
+
       if (res.data.restaurant) {
         setRestaurant(res.data.restaurant);
         localStorage.setItem('hotel_admin_restaurant', JSON.stringify(res.data.restaurant));
@@ -72,6 +89,30 @@ export const AuthProvider = ({ children }) => {
       }
     }
     return res.data;
+  };
+
+  const updateSuiteMode = async (newMode) => {
+    if (!['RESTAURANT_ONLY', 'RESTAURANT_ACCOMMODATION'].includes(newMode)) return;
+
+    try {
+      const res = await api.put('/auth/suite-mode', { suite_mode: newMode });
+      if (res.data.success) {
+        localStorage.setItem('hotel_product_mode', newMode);
+        setUser(prev => {
+          const updated = { ...(prev || {}), suite_mode: newMode };
+          localStorage.setItem('hotel_user', JSON.stringify(updated));
+          return updated;
+        });
+        window.dispatchEvent(new CustomEvent('suite_mode_changed', { detail: newMode }));
+        return res.data;
+      }
+    } catch (err) {
+      console.warn('Backend suite mode update notice:', err);
+      // Fallback local update
+      localStorage.setItem('hotel_product_mode', newMode);
+      setUser(prev => ({ ...(prev || {}), suite_mode: newMode }));
+      window.dispatchEvent(new CustomEvent('suite_mode_changed', { detail: newMode }));
+    }
   };
 
   const register = async (name, email, password, phone, role = 'CUSTOMER') => {
@@ -122,7 +163,8 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user, restaurant, restaurants, guestInfo,
       setRestaurant, updateRestaurant, loading,
-      login, register, registerRestaurant, logout
+      login, register, registerRestaurant, logout,
+      updateSuiteMode
     }}>
       {children}
     </AuthContext.Provider>

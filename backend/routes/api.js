@@ -41,6 +41,7 @@ router.post('/auth/register', authController.register);
 router.post('/auth/register-restaurant', authController.registerRestaurant);
 router.post('/auth/login', authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
+router.put('/auth/suite-mode', authenticateToken, authController.updateSuiteMode);
 
 // ═══════════════════════════════════════════════
 // 2. GUEST IDENTITY ROUTES
