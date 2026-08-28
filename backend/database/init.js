@@ -405,8 +405,12 @@ async function initDatabase(options = {}) {
       try { await conn.query("ALTER TABLE menu_items ADD COLUMN tax_percentage DECIMAL(5,2) DEFAULT 5.00"); } catch (e) { }
       try { await conn.query("ALTER TABLE menu_items ADD COLUMN kitchen_department_id INT DEFAULT NULL"); } catch (e) { }
       try { await conn.query("ALTER TABLE order_items ADD COLUMN kitchen_department_id INT DEFAULT NULL"); } catch (e) { }
-      try { await conn.query("ALTER TABLE restaurant_tables DROP INDEX table_number"); } catch (e) { }
-      try { await conn.query("ALTER TABLE restaurant_tables DROP INDEX table_number_2"); } catch (e) { }
+      
+      // Drop all legacy global unique indexes on table_number so each tenant has their own T01, T02, etc.
+      const indexesToDrop = ['table_number', 'table_number_2', 'table_number_3', 'table_number_4', 'idx_table_number', 'idx_restaurant_tables_table_number'];
+      for (const idx of indexesToDrop) {
+        try { await conn.query(`ALTER TABLE restaurant_tables DROP INDEX ${idx}`); } catch (e) { }
+      }
 
       console.log('✅ Phase 1 + Phase 2 migrations applied.');
     }

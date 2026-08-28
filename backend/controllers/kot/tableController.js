@@ -47,31 +47,54 @@ async function getNextTableNumberHandler(req, res, next) {
 
 async function autoSeedTablesIfEmpty(restaurantId = 1) {
   try {
+    const tablesData = [
+      ['T01', 'Table 1', 'Main Dining', 'Section A', 2, 'STANDARD'],
+      ['T02', 'Table 2', 'Main Dining', 'Section A', 4, 'STANDARD'],
+      ['T03', 'Table 3', 'Main Dining', 'Section B', 4, 'BOOTH'],
+      ['T04', 'Table 4', 'Terrace Floor', 'Outdoor', 6, 'OUTDOOR'],
+      ['T05', 'Table 5 (VIP)', 'VIP Lounge', 'VIP Area', 8, 'VIP'],
+      ['T06', 'Table 6', 'Main Dining', 'Section B', 4, 'STANDARD'],
+      ['T07', 'Table 7', 'Terrace Floor', 'Outdoor', 4, 'OUTDOOR'],
+      ['T08', 'Table 8', 'Main Dining', 'Section A', 2, 'STANDARD']
+    ];
+
     const [tCheck] = await pool.query(
-      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1',
+      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND (is_active = 1 OR is_active IS NULL)',
       [restaurantId]
     );
+
     if (tCheck[0].count === 0) {
       console.log('🔄 Auto-seeding default restaurant tables for restaurant:', restaurantId);
-      const tablesData = [
-        ['T01', 'Table 1', 'Main Dining', 'Section A', 2, 'STANDARD'],
-        ['T02', 'Table 2', 'Main Dining', 'Section A', 4, 'STANDARD'],
-        ['T03', 'Table 3', 'Main Dining', 'Section B', 4, 'BOOTH'],
-        ['T04', 'Table 4', 'Terrace Floor', 'Outdoor', 6, 'OUTDOOR'],
-        ['T05', 'Table 5 (VIP)', 'VIP Lounge', 'VIP Area', 8, 'VIP'],
-        ['T06', 'Table 6', 'Main Dining', 'Section B', 4, 'STANDARD'],
-        ['T07', 'Table 7', 'Terrace Floor', 'Outdoor', 4, 'OUTDOOR'],
-        ['T08', 'Table 8', 'Main Dining', 'Section A', 2, 'STANDARD']
-      ];
       for (const [tNum, tName, floor, section, capacity, type] of tablesData) {
         const qrToken = crypto.randomBytes(32).toString('hex');
-        await pool.query(
-          `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
-          [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
-        );
+        try {
+          await pool.query(
+            `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
+            [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
+          );
+        } catch (e) {
+          console.warn(`[TABLE SEED WARN] ${tNum}: ${e.message}`);
+        }
       }
-      console.log('✅ Default restaurant tables seeded successfully!');
+    } else {
+      // Ensure missing T01 or T02 default slots get seeded if missing for this restaurant
+      for (const [tNum, tName, floor, section, capacity, type] of tablesData.slice(0, 2)) {
+        const [existing] = await pool.query(
+          'SELECT id FROM restaurant_tables WHERE restaurant_id = ? AND table_number = ? AND (is_active = 1 OR is_active IS NULL)',
+          [restaurantId, tNum]
+        );
+        if (existing.length === 0) {
+          const qrToken = crypto.randomBytes(32).toString('hex');
+          try {
+            await pool.query(
+              `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
+              [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
+            );
+          } catch (e) { }
+        }
+      }
     }
   } catch (err) {
     console.warn('Table auto-seed check warning:', err.message);
