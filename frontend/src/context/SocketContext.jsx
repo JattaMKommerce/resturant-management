@@ -46,17 +46,14 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('notification', (data) => {
-      playServiceChime('call_waiter');
       showToast(data, 5000);
     });
 
     socketInstance.on('admin_notification', (data) => {
-      playServiceChime('call_waiter');
       showToast(data, 5000);
     });
 
     socketInstance.on('new_order', (data) => {
-      playServiceChime('new_order');
       showToast({
         title: `🛒 New Order #${data.order_number || data.orderId || ''}!`,
         message: `New order received from ${data.customer_name || 'Customer'}. Click to view pipeline.`,
@@ -66,7 +63,6 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('bill_requested', (data) => {
-      playServiceChime('call_waiter');
       showToast({
         title: `🧾 Bill Requested: Table ${data.table_number || 'Dine-In'}`,
         message: `Guests at Table ${data.table_number || ''} requested their bill. Click to view POS.`,
@@ -76,7 +72,6 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('call_waiter', (data) => {
-      playServiceChime('call_waiter');
       showToast({
         title: `🛎️ Waiter Called: Table ${data.table_number || 'T01'}!`,
         message: `Guests at Table ${data.table_number || ''} (${data.floor || 'Dining Area'}) called for waiter assistance. Click to open.`,

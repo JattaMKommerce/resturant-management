@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
 import { useSocket } from '../../../context/SocketContext';
 import { useAuth } from '../../../context/AuthContext';
-import { playServiceChime } from '../../../utils/audio';
+import { playServiceChime, unlockAudio } from '../../../utils/audio';
 import KOTCard from '../../../components/kds/KOTCard';
 import KOTPrintModal from '../../../components/kds/KOTPrintModal';
 import { ChefHat, RefreshCw, AlertTriangle, CheckCircle, Clock, Globe, Utensils, Columns, LayoutGrid, LogOut, Volume2 } from 'lucide-react';
@@ -33,11 +33,22 @@ export default function KitchenDisplayPage() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
+    // Unlock browser audio on first user touch/click anywhere on the KDS page
+    const handleUserInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
     const timer = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
   }, []);
 
   const fetchKOTs = async () => {

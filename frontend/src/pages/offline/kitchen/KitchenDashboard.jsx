@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../../services/api';
 import { useSocket } from '../../../context/SocketContext';
-import { playServiceChime } from '../../../utils/audio';
+import { playServiceChime, unlockAudio } from '../../../utils/audio';
 import KOTCard from '../../../components/kds/KOTCard';
 import KOTPrintModal from '../../../components/kds/KOTPrintModal';
 import KitchenInventoryView from './KitchenInventoryView';
@@ -25,10 +25,20 @@ export default function KitchenDashboard() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
+    const handleUserInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
     const timer = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
   }, []);
 
   const fetchKOTs = async () => {

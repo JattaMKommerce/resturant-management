@@ -22,6 +22,7 @@ import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
 import OrderMap from '../../components/OrderMap';
 import { useSocket } from '../../context/SocketContext';
+import { playServiceChime, unlockAudio } from '../../utils/audio';
 
 export default function AdminOrdersPage() {
   const [searchParams] = useSearchParams();
@@ -42,6 +43,19 @@ export default function AdminOrdersPage() {
 
   const [refreshCountdown, setRefreshCountdown] = useState(15);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     fetchOrdersAndDrivers();
@@ -71,16 +85,22 @@ export default function AdminOrdersPage() {
       setRefreshCountdown(15);
     };
 
+    const handleNewOrder = () => {
+      fetchOrdersAndDrivers(false);
+      setRefreshCountdown(15);
+      playServiceChime('new_order');
+    };
+
     socket.on('order_update', handleLiveOrderUpdate);
     socket.on('admin_notification', handleLiveOrderUpdate);
     socket.on('order_status_updated', handleLiveOrderUpdate);
-    socket.on('new_order', handleLiveOrderUpdate);
+    socket.on('new_order', handleNewOrder);
 
     return () => {
       socket.off('order_update', handleLiveOrderUpdate);
       socket.off('admin_notification', handleLiveOrderUpdate);
       socket.off('order_status_updated', handleLiveOrderUpdate);
-      socket.off('new_order', handleLiveOrderUpdate);
+      socket.off('new_order', handleNewOrder);
     };
   }, [socket, statusFilter]);
 
