@@ -403,6 +403,8 @@ async function initDatabase(options = {}) {
       try { await conn.query("ALTER TABLE kots MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE restaurant_orders MODIFY COLUMN order_status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE menu_items ADD COLUMN tax_percentage DECIMAL(5,2) DEFAULT 5.00"); } catch (e) { }
+      try { await conn.query("ALTER TABLE menu_items ADD COLUMN kitchen_department_id INT DEFAULT NULL"); } catch (e) { }
+      try { await conn.query("ALTER TABLE order_items ADD COLUMN kitchen_department_id INT DEFAULT NULL"); } catch (e) { }
       try { await conn.query("ALTER TABLE restaurant_tables DROP INDEX table_number"); } catch (e) { }
       try { await conn.query("ALTER TABLE restaurant_tables DROP INDEX table_number_2"); } catch (e) { }
 
