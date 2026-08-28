@@ -56,9 +56,18 @@ export function isCustomerRoute() {
 
 export function playServiceChime(type = 'call_waiter') {
   try {
-    // NEVER play audio chime on customer ordering/tracking pages
+    if (typeof window === 'undefined') return;
+
+    // RULE 1: If on ANY customer route, ZERO sound
     if (isCustomerRoute()) {
-      return; // Absolutely 100% silent on customer screens
+      return;
+    }
+
+    // RULE 2: Staff authentication check (Customers never have hotel_token in localStorage)
+    const token = localStorage.getItem('hotel_token') || localStorage.getItem('hms_token');
+    const userStr = localStorage.getItem('hotel_user') || localStorage.getItem('user');
+    if (!token && !userStr && !isStaffRoute()) {
+      return;
     }
 
     const ctx = getAudioContext();

@@ -268,7 +268,7 @@ async function initDatabase(options = {}) {
           WHERE TABLE_SCHEMA = DATABASE() 
             AND TABLE_NAME = 'order_items' 
             AND COLUMN_NAME = 'order_id' 
-            AND REFERENCED_TABLE_NAME = 'orders'
+            AND REFERENCED_TABLE_NAME IS NOT NULL
         `);
         for (const fk of fks) {
           await conn.query(`ALTER TABLE order_items DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
@@ -279,6 +279,23 @@ async function initDatabase(options = {}) {
       }
       await addIndexIfNotExists(conn, 'order_items', 'idx_order_items_order_id', '`order_id`');
 
+      // Auto-correct any corrupt is_veg flags in database for meat/non-veg dishes
+      try {
+        await conn.query(`
+          UPDATE menu_items 
+          SET is_veg = 0 
+          WHERE LOWER(name) LIKE '%chicken%' 
+             OR LOWER(name) LIKE '%mutton%' 
+             OR LOWER(name) LIKE '%fish%' 
+             OR LOWER(name) LIKE '%prawn%' 
+             OR LOWER(name) LIKE '%egg%' 
+             OR LOWER(name) LIKE '%meat%' 
+             OR LOWER(name) LIKE '%pork%' 
+             OR LOWER(name) LIKE '%beef%'
+             OR LOWER(name) LIKE '%non-veg%'
+             OR LOWER(name) LIKE '%non veg%'
+        `);
+      } catch (e) { }
 
       // Payments columns
       await addColumnIfNotExists(conn, 'payments', 'bill_id', "INT DEFAULT NULL");
