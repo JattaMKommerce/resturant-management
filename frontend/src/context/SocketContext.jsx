@@ -5,15 +5,23 @@ const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
-  const [toast, setToast] = useState(null);
+  const timerRef = React.useRef(null);
+
+  const showToast = (data, durationMs = 5000) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    setToast(data);
+    timerRef.current = setTimeout(() => {
+      setToast(null);
+    }, durationMs);
+  };
 
   useEffect(() => {
     let SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
     
     if (!SOCKET_URL && typeof window !== 'undefined') {
       const host = window.location.hostname;
-      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-      
       if (host === 'localhost' || host === '127.0.0.1') {
         SOCKET_URL = 'http://localhost:5000';
       } else {
@@ -35,32 +43,45 @@ export const SocketProvider = ({ children }) => {
       console.log('⚡ Connected to Socket.IO Server');
     });
 
-    socketInstance.on('connect_error', (err) => {
-      // Suppress spamming on deployed environments without active socket backend
-    });
-
     socketInstance.on('notification', (data) => {
-      setToast(data);
-      setTimeout(() => setToast(null), 5000);
+      showToast(data, 5000);
     });
 
     socketInstance.on('admin_notification', (data) => {
-      setToast(data);
-      setTimeout(() => setToast(null), 6000);
+      showToast(data, 5000);
+    });
+
+    socketInstance.on('new_order', (data) => {
+      showToast({
+        title: `🛒 New Order #${data.order_number || data.orderId || ''}!`,
+        message: `New order received from ${data.customer_name || 'Customer'}. Click to view pipeline.`,
+        link: '/hotel/admin/orders',
+        type: 'NEW_ORDER'
+      }, 5000);
     });
 
     socketInstance.on('bill_requested', (data) => {
-      setToast({
+      showToast({
         title: `🧾 Bill Requested: Table ${data.table_number || 'Dine-In'}`,
-        message: `Guests at Table ${data.table_number || ''} (${data.floor || 'Floor'}) requested their bill.`,
-        link: '/admin/offline/billing'
-      });
-      setTimeout(() => setToast(null), 8000);
+        message: `Guests at Table ${data.table_number || ''} requested their bill. Click to view POS.`,
+        link: '/hotel/admin/offline/billing',
+        type: 'BILL_REQUEST'
+      }, 5000);
+    });
+
+    socketInstance.on('order_status_updated', (data) => {
+      showToast({
+        title: `🔔 Order Status Updated`,
+        message: `Order #${data.orderNumber || data.orderId || ''} updated to ${data.status || 'new status'}.`,
+        link: '/hotel/admin/orders',
+        type: 'ORDER_STATUS'
+      }, 5000);
     });
 
     setSocket(socketInstance);
 
     return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
       socketInstance.disconnect();
     };
   }, []);

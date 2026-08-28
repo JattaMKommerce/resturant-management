@@ -40,8 +40,26 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [assigningDriverId, setAssigningDriverId] = useState('');
 
+  const [refreshCountdown, setRefreshCountdown] = useState(15);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   useEffect(() => {
     fetchOrdersAndDrivers();
+  }, [statusFilter]);
+
+  // 15-Second Auto-Refresh Countdown Ticker
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      setRefreshCountdown((prev) => {
+        if (prev <= 1) {
+          fetchOrdersAndDrivers(false);
+          return 15;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(ticker);
   }, [statusFilter]);
 
   // Live Socket Listener for Order Delivery & Status Updates
@@ -50,6 +68,7 @@ export default function AdminOrdersPage() {
 
     const handleLiveOrderUpdate = () => {
       fetchOrdersAndDrivers(false);
+      setRefreshCountdown(15);
     };
 
     socket.on('order_update', handleLiveOrderUpdate);
@@ -57,21 +76,17 @@ export default function AdminOrdersPage() {
     socket.on('order_status_updated', handleLiveOrderUpdate);
     socket.on('new_order', handleLiveOrderUpdate);
 
-    // Fallback polling every 10 seconds to ensure consistency
-    const pollInterval = setInterval(() => {
-      fetchOrdersAndDrivers(false);
-    }, 10000);
-
     return () => {
       socket.off('order_update', handleLiveOrderUpdate);
       socket.off('admin_notification', handleLiveOrderUpdate);
       socket.off('order_status_updated', handleLiveOrderUpdate);
       socket.off('new_order', handleLiveOrderUpdate);
-      clearInterval(pollInterval);
     };
   }, [socket, statusFilter]);
 
   const fetchOrdersAndDrivers = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    setIsRefreshing(true);
     try {
       if (showLoading) setLoading(true);
       let url = '/admin/orders';
@@ -101,6 +116,7 @@ export default function AdminOrdersPage() {
       console.error('Error fetching orders:', err);
     } finally {
       if (showLoading) setLoading(false);
+      setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -195,11 +211,15 @@ export default function AdminOrdersPage() {
           </div>
 
           <button
-            onClick={() => fetchOrdersAndDrivers(true)}
-            className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] transition-colors self-start sm:self-auto flex items-center gap-1.5 text-xs font-bold shadow-2xs"
+            onClick={() => {
+              setRefreshCountdown(15);
+              fetchOrdersAndDrivers(true);
+            }}
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] transition-colors self-start sm:self-auto flex items-center gap-1.5 text-xs font-bold shadow-2xs cursor-pointer"
+            title="Click to manually refresh pipeline"
           >
-            <RefreshCw className="w-4 h-4 text-[#3A7D7C]" />
-            <span>Refresh</span>
+            <RefreshCw className={`w-4 h-4 text-[#3A7D7C] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh ({refreshCountdown}s)</span>
           </button>
         </div>
 
