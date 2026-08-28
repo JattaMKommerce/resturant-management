@@ -24,16 +24,40 @@ export function unlockAudio() {
   } catch (e) {}
 }
 
+// Helper to check if current window is on a Staff/Management route
+export function isStaffRoute() {
+  if (typeof window === 'undefined') return false;
+  const p = window.location.pathname.toLowerCase();
+  return (
+    p.includes('/admin') ||
+    p.includes('/kitchen') ||
+    p.includes('/kds') ||
+    p.includes('/waiter') ||
+    p.includes('/driver') ||
+    p.includes('/rider') ||
+    p.includes('/offline')
+  );
+}
+
+// Helper to check if current window is on a Public Customer route
+export function isCustomerRoute() {
+  if (typeof window === 'undefined') return false;
+  if (isStaffRoute()) return false; // Staff/Admin routes are NEVER customer routes!
+  const p = window.location.pathname.toLowerCase();
+  return (
+    p.includes('/table/') ||
+    p.includes('/track') ||
+    p.includes('/checkout') ||
+    p.includes('/restaurant/') ||
+    p.includes('/order/table') ||
+    p.includes('/hotel/order/')
+  );
+}
+
 export function playServiceChime(type = 'call_waiter') {
   try {
-    // NEVER play audio chime on customer ordering/tracking pages (/order/*, /restaurant/*, /hotel/order/*, etc.)
-    const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
-    const isCustomerPage = 
-      pathname.includes('/order') || 
-      pathname.includes('/restaurant') || 
-      pathname.includes('/checkout');
-    
-    if (isCustomerPage) {
+    // NEVER play audio chime on customer ordering/tracking pages
+    if (isCustomerRoute()) {
       return; // Absolutely 100% silent on customer screens
     }
 

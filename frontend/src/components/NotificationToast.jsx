@@ -3,18 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, ShoppingBag, Receipt, Bike, ConciergeBell, ExternalLink, X } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import { isCustomerRoute } from '../utils/audio';
 
 export default function NotificationToast() {
   const { toast, setToast } = useSocket();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Check if current URL is a customer page (/order/* or /restaurant/*)
-  const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
-  const isCustomerPage = pathname.startsWith('/order') || pathname.startsWith('/restaurant');
-
   // NEVER render staff/admin toast popups on customer pages or for non-staff users
-  if (isCustomerPage || !user || !toast) return null;
+  if (isCustomerRoute() || !user || !toast) return null;
 
   const handleToastClick = () => {
     let targetLink = toast.link;
