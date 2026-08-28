@@ -1,6 +1,14 @@
 // Web Audio API Synthesizer for smooth hotel bell and notification chimes
 export function playServiceChime(type = 'call_waiter') {
   try {
+    // ONLY play audio chime for logged-in staff/admin users (NOT for public customers scanning QR menu)
+    const token = localStorage.getItem('hotel_token') || localStorage.getItem('hms_token');
+    const userStr = localStorage.getItem('hotel_user') || localStorage.getItem('user');
+    
+    if (!token && !userStr) {
+      return; // Silent for public customers
+    }
+
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
 
