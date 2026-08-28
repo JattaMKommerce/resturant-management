@@ -9,8 +9,12 @@ export default function NotificationToast() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // ONLY render staff/admin toast popups for logged-in management & staff users
-  if (!user || !toast) return null;
+  // Check if current URL is a customer page (/order/* or /restaurant/*)
+  const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
+  const isCustomerPage = pathname.startsWith('/order') || pathname.startsWith('/restaurant');
+
+  // NEVER render staff/admin toast popups on customer pages or for non-staff users
+  if (isCustomerPage || !user || !toast) return null;
 
   const handleToastClick = () => {
     let targetLink = toast.link;
