@@ -26,12 +26,15 @@ export function unlockAudio() {
 
 export function playServiceChime(type = 'call_waiter') {
   try {
-    // NEVER play audio chime on customer ordering/tracking pages (/order/* or /restaurant/*)
+    // NEVER play audio chime on customer ordering/tracking pages (/order/*, /restaurant/*, /hotel/order/*, etc.)
     const pathname = typeof window !== 'undefined' ? window.location.pathname.toLowerCase() : '';
-    const isCustomerPage = pathname.startsWith('/order') || pathname.startsWith('/restaurant');
+    const isCustomerPage = 
+      pathname.includes('/order') || 
+      pathname.includes('/restaurant') || 
+      pathname.includes('/checkout');
     
     if (isCustomerPage) {
-      return; // Completely silent on customer screens
+      return; // Absolutely 100% silent on customer screens
     }
 
     const ctx = getAudioContext();

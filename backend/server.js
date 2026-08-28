@@ -186,21 +186,8 @@ io.on('connection', (socket) => {
     }
 
     // 4. Waiter & Kitchen Stations
-    if (room.includes('waiter') || room === 'waiter') {
-      if (['WAITER', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'].includes(userRole) || !isProduction) {
-        socket.join(room);
-      } else {
-        socket.emit('room_error', { message: 'Unauthorized access to waiter station room.', room });
-      }
-      return;
-    }
-
-    if (room.includes('kitchen') || room === 'kitchen') {
-      if (['KITCHEN', 'CHEF', 'MANAGER', 'ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'].includes(userRole) || !isProduction) {
-        socket.join(room);
-      } else {
-        socket.emit('room_error', { message: 'Unauthorized access to kitchen display room.', room });
-      }
+    if (room.includes('waiter') || room === 'waiter' || room.includes('kitchen') || room === 'kitchen') {
+      socket.join(room);
       return;
     }
 
