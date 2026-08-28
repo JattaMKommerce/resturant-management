@@ -2,12 +2,15 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ShoppingBag, Receipt, Bike, ConciergeBell, ExternalLink, X } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function NotificationToast() {
   const { toast, setToast } = useSocket();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  if (!toast) return null;
+  // ONLY render staff/admin toast popups for logged-in management & staff users
+  if (!user || !toast) return null;
 
   const handleToastClick = () => {
     let targetLink = toast.link;
