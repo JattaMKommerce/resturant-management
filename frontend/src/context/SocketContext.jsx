@@ -5,6 +5,7 @@ const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
+  const [toast, setToast] = useState(null);
   const timerRef = React.useRef(null);
 
   const showToast = (data, durationMs = 5000) => {
