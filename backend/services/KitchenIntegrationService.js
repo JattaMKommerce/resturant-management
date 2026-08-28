@@ -113,22 +113,18 @@ async function notifyKitchen(orderData) {
 
     // Broadcast new_kot to kitchen via socket
     try {
-      emitToRoom('kitchen', 'new_kot', {
+      const payload = {
         kot_id: kotId,
         kot_number: kotNumber,
         order_id: orderId,
         order_number: orderData.order_number,
         order_type: 'ONLINE',
+        is_online: true,
+        channel: 'ONLINE',
         last5
-      });
-      broadcastEvent('new_kot', {
-        kot_id: kotId,
-        kot_number: kotNumber,
-        order_id: orderId,
-        order_number: orderData.order_number,
-        order_type: 'ONLINE',
-        last5
-      });
+      };
+      emitToRoom('kitchen', 'new_kot', payload);
+      broadcastEvent('new_kot', payload);
     } catch (e) {
       console.error('Socket broadcast error on new_kot:', e);
     }
