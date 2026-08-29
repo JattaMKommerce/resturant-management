@@ -572,7 +572,7 @@ export default function RestaurantOnboarding() {
                   <p className="text-[#64748B] text-xs mt-0.5">Review your uploaded cover image, logo, and digital menu dishes before publishing live.</p>
                 </div>
                 <a
-                  href={`/restaurant/${restaurant?.slug}`}
+                  href={`${typeof window !== 'undefined' && window.location.pathname.startsWith('/hotel') ? '/hotel' : ''}/restaurant/${restaurant?.slug || 'grand-palace'}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-[#3A7D7C] font-bold rounded-xl border border-[#D7E5E8] text-xs shadow-2xs transition-colors shrink-0"

@@ -81,7 +81,8 @@ export default function AdminWebsitePage() {
   }
 
   const isPublished = restaurant?.website_status === 'PUBLISHED';
-  const publicUrl = `${window.location.origin}/restaurant/${restaurant?.slug}`;
+  const effectiveSlug = restaurant?.slug || slug || 'grand-palace';
+  const publicUrl = `${window.location.origin}/restaurant/${effectiveSlug}`;
 
   return (
     <AdminLayout>
@@ -97,7 +98,7 @@ export default function AdminWebsitePage() {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-[#1F2937]">Website Publishing State</h2>
                 <span className={`px-3 py-0.5 rounded-full text-xs font-bold border ${isPublished ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-[#64748B] border-[#D7E5E8]'}`}>
-                  {restaurant?.website_status}
+                  {restaurant?.website_status || 'DRAFT'}
                 </span>
               </div>
               <p className="text-xs text-[#64748B] mt-1 font-medium">
@@ -116,7 +117,7 @@ export default function AdminWebsitePage() {
                 Publish Website Live 🚀
               </button>
             )}
-            <a href={`/restaurant/${restaurant?.slug}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1F2937] text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors border border-[#D7E5E8]">
+            <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1F2937] text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors border border-[#D7E5E8]">
               <Eye className="w-4 h-4 text-[#3A7D7C]" /> Live Website ↗
             </a>
           </div>

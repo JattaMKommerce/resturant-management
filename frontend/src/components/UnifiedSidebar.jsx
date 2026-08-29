@@ -24,7 +24,11 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles
+  Sparkles,
+  BedDouble,
+  UserPlus,
+  Hotel,
+  Wrench
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -36,43 +40,59 @@ export default function UnifiedSidebar({
   isMobileOpen = false,
   onCloseMobile
 }) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateSuiteMode } = useAuth();
   const navigate = useNavigate();
+
+  const activeSlug = currentSlug || restaurant?.slug || user?.restaurant_slug || 'grand-palace';
+
+  const productMode = user?.suite_mode || localStorage.getItem('hotel_product_mode') || 'RESTAURANT_ACCOMMODATION';
+
+  const toggleProductMode = async () => {
+    const nextMode = productMode === 'RESTAURANT_ONLY' ? 'RESTAURANT_ACCOMMODATION' : 'RESTAURANT_ONLY';
+    if (updateSuiteMode) {
+      await updateSuiteMode(nextMode);
+    } else {
+      localStorage.setItem('hotel_product_mode', nextMode);
+    }
+  };
+
   const [onlineOpen, setOnlineOpen] = useState(true);
   const [offlineOpen, setOfflineOpen] = useState(true);
+  const [accommodationOpen, setAccommodationOpen] = useState(true);
 
-  // Dynamically resolve base slug path
-  const activeSlug = currentSlug || restaurant?.slug || user?.restaurant_slug || 'grand-palace';
-  const basePath = `/admin/${activeSlug}`;
-
-  // 1. ONLINE HOTEL & STORE MANAGEMENT SECTION
+  // 1. ONLINE STORE SECTION
   const onlineNavItems = [
-    { name: 'Online Dashboard', path: basePath, icon: LayoutDashboard, exact: true },
-    { name: 'Orders Pipeline', path: `${basePath}/orders`, icon: ShoppingBag },
-    { name: 'Order History & Archive', path: `${basePath}/history`, icon: History },
-    { name: 'Staff Management', path: `${basePath}/staff`, icon: Users },
-    { name: 'Delivery Riders', path: `${basePath}/riders`, icon: UtensilsCrossed },
-    { name: 'Active Fleet Monitor', path: `${basePath}/deliveries`, icon: Globe },
-    { name: 'Menu Items', path: `${basePath}/menu`, icon: Utensils },
-    { name: 'Categories', path: `${basePath}/categories`, icon: Layers },
-    { name: 'Website & Setup', path: `${basePath}/website`, icon: Globe },
-    { name: 'Store Settings', path: `${basePath}/settings`, icon: Settings },
+    { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true },
+    { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History },
+    { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users },
+    { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
+    { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
+    { name: 'Store Website Settings', path: `/admin/${activeSlug}/settings`, icon: Settings },
   ];
 
   // 2. OFFLINE RESTAURANT & KOT SECTION
   const offlineNavItems = [
-    { name: 'Dashboard', path: '/admin/offline/dashboard', icon: LayoutDashboard },
-    { name: 'Live Operation', path: '/admin/offline/operations', icon: Activity },
-    { name: 'Staff & Access', path: '/admin/offline/staff', icon: Users },
+    { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity },
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2 },
-    { name: 'Menu Management', path: '/admin/offline/menu', icon: UtensilsCrossed },
-    { name: 'Orders', path: '/admin/offline/orders', icon: ShoppingBag },
-    { name: 'Order History', path: '/admin/offline/history', icon: History },
-    { name: 'Kitchen Display', path: '/admin/offline/kds', icon: ChefHat },
+    { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
+    { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat },
     { name: 'Kitchen Display System (Accept/Reject)', path: '/admin/offline/kot-status', icon: CheckSquare2 },
     { name: 'Billing & Folio', path: '/admin/offline/billing', icon: Receipt },
     { name: 'Receipts & Stocks', path: '/admin/offline/inventory', icon: Boxes },
     { name: 'Reports', path: '/admin/offline/reports', icon: BarChart3 },
+  ];
+
+  // 3. HOTEL ACCOMMODATION SECTION
+  const accommodationNavItems = [
+    { name: '20 Hotels Catalog', path: '/admin/accommodation/hotels', icon: Hotel },
+    { name: 'Dashboard', path: '/admin/accommodation/dashboard', icon: LayoutDashboard },
+    { name: 'Rooms Grid', path: '/admin/accommodation/rooms', icon: BedDouble },
+    { name: 'Guest Directory', path: '/admin/accommodation/guests', icon: Users },
+    { name: 'Check-In Desk', path: '/admin/accommodation/checkin', icon: UserPlus },
+    { name: 'Check-Out Desk', path: '/admin/accommodation/checkout', icon: LogOut },
+    { name: 'Room Folios', path: '/admin/accommodation/folios', icon: Receipt },
+    { name: 'Housekeeping', path: '/admin/accommodation/housekeeping', icon: Sparkles },
+    { name: 'Maintenance', path: '/admin/accommodation/maintenance', icon: Wrench },
   ];
 
   const handleLinkClick = () => {
@@ -148,6 +168,31 @@ export default function UnifiedSidebar({
       {/* Navigation Scrollable Body */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
         
+        {/* SUITE MODE BADGE / SWITCHER */}
+        <div className={`p-2.5 rounded-2xl border transition-all ${
+          productMode === 'RESTAURANT_ACCOMMODATION'
+            ? 'bg-[#E8F1F2]/80 border-[#D7E5E8] text-[#3A7D7C]'
+            : 'bg-amber-50/80 border-amber-200 text-amber-900'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[11px] font-black">
+              <span>{productMode === 'RESTAURANT_ACCOMMODATION' ? '🍽️🏨 Full Suite' : '🍽️ Restaurant'}</span>
+            </div>
+            <button
+              onClick={toggleProductMode}
+              className="text-[10px] font-bold underline hover:opacity-80 transition-opacity"
+              title="Toggle Product Mode"
+            >
+              Switch Mode
+            </button>
+          </div>
+          <p className="text-[10px] opacity-75 mt-0.5 font-medium leading-tight">
+            {productMode === 'RESTAURANT_ACCOMMODATION'
+              ? 'Restaurant + Accommodation Active'
+              : 'Restaurant Only Active (Hotel Hidden)'}
+          </p>
+        </div>
+
         {/* SECTION 1: ONLINE HOTEL & STORE MANAGEMENT */}
         <div className="space-y-1">
           <button
@@ -243,7 +288,56 @@ export default function UnifiedSidebar({
           )}
         </div>
 
-        {/* SECTION 3: ACCOUNT & SETTINGS */}
+        {/* SECTION 3: HOTEL ACCOMMODATION (Shown only in RESTAURANT_ACCOMMODATION mode) */}
+        {productMode === 'RESTAURANT_ACCOMMODATION' && (
+          <div className="space-y-1 pt-2 border-t border-[#D7E5E8] animate-in fade-in duration-200">
+            <button
+              onClick={() => setAccommodationOpen(!accommodationOpen)}
+              className={`w-full flex items-center ${
+                isCollapsed ? 'lg:justify-center' : 'justify-between'
+              } px-2 py-1 text-[10px] font-bold text-[#3A7D7C] uppercase tracking-wider hover:text-[#2F6665] transition-colors`}
+            >
+              <span className={isCollapsed ? 'lg:hidden' : 'inline'}>3. 🏨 Accommodation</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${accommodationOpen ? '' : '-rotate-90'} ${isCollapsed ? 'lg:hidden' : 'inline'}`} />
+            </button>
+
+            {accommodationOpen && (
+              <div className="space-y-0.5 pt-0.5">
+                {accommodationNavItems.map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={idx}
+                      to={item.path}
+                      onClick={handleLinkClick}
+                      className={({ isActive }) =>
+                        `flex items-center ${
+                          isCollapsed ? 'lg:justify-center lg:w-10 lg:h-10 lg:p-0 lg:mx-auto group relative' : 'justify-start gap-2.5'
+                        } px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
+                          isActive
+                            ? 'bg-[#3A7D7C] text-white shadow-2xs font-bold'
+                            : 'text-[#1F2937] hover:text-[#3A7D7C] hover:bg-[#EAF4F7]'
+                        }`
+                      }
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'inline'}`}>{item.name}</span>
+
+                      {/* Collapsed Tooltip */}
+                      {isCollapsed && (
+                        <div className="fixed left-20 ml-2 px-2.5 py-1 bg-white border border-[#D7E5E8] text-[#1F2937] text-xs font-bold rounded-lg shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap hidden lg:block">
+                          {item.name}
+                        </div>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SECTION 4: ACCOUNT & SETTINGS */}
         <div className="space-y-1 pt-2 border-t border-[#D7E5E8]">
           <div
             className={`px-2 py-1 text-[10px] font-bold text-[#64748B] uppercase tracking-wider ${

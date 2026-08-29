@@ -43,9 +43,10 @@ import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
 
-// Offline Restaurant & KOT Pages
+// Offline Restaurant, Hotel Accommodation & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
 import OperationsCenterPage from './pages/offline/operations/OperationsCenterPage';
+import AccommodationPage from './pages/offline/accommodation/AccommodationPage';
 import TableManagementPage from './pages/offline/tables/TableManagementPage';
 import OfflineMenuPage from './pages/offline/menu/MenuManagementPage';
 import ServiceDashboardPage from './pages/offline/waiter/ServiceDashboardPage';
@@ -387,6 +388,29 @@ export default function App() {
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
             <AdminLayout>
               <OperationsCenterPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Accommodation & Hotel Room Management */}
+        <Route path="/admin/offline/accommodation" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AccommodationPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/accommodation" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AccommodationPage />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/accommodation/:subTab" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <AdminLayout>
+              <AccommodationPage />
             </AdminLayout>
           </ProtectedRoute>
         } />

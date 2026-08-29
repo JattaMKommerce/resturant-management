@@ -143,7 +143,7 @@ export default function MenuManagementPage() {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <a
-            href={`/restaurant/${liveSlug}`}
+            href={`${typeof window !== 'undefined' && window.location.pathname.startsWith('/hotel') ? '/hotel' : ''}/restaurant/${liveSlug || 'grand-palace'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="py-2.5 px-3.5 rounded-xl bg-white border border-[#D7E5E8] text-[#3A7D7C] font-bold hover:bg-[#EAF4F7] transition-colors text-xs flex items-center gap-1.5 shadow-2xs"
