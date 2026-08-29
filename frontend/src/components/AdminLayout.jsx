@@ -8,9 +8,11 @@ import SubscriptionCountdownBadge from './subscription/SubscriptionCountdownBadg
 import PlanSelectorModal from './subscription/PlanSelectorModal';
 import SubscriptionPaywallModal from './subscription/SubscriptionPaywallModal';
 import NotificationBellDropdown from './notifications/NotificationBellDropdown';
+import { useSocket } from '../context/SocketContext';
 
 export default function AdminLayout({ children }) {
   const { user, restaurant, updateRestaurant } = useAuth();
+  const { joinRoom, leaveRoom } = useSocket();
   const location = useLocation();
   const [loadingToggle, setLoadingToggle] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -27,6 +29,16 @@ export default function AdminLayout({ children }) {
   useEffect(() => {
     fetchSubscription();
   }, [location.pathname]);
+
+  // Subscribe Admin socket to real-time notification rooms
+  useEffect(() => {
+    joinRoom('admin_room');
+    joinRoom('admin');
+    const restId = restaurant?.id || user?.restaurant_id;
+    if (restId) {
+      joinRoom(`restaurant_admin_${restId}`);
+    }
+  }, [restaurant?.id, user?.restaurant_id, joinRoom]);
 
   const fetchSubscription = async () => {
     try {
