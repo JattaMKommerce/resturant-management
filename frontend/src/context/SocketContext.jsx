@@ -46,20 +46,22 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('notification', (data) => {
-      showToast(data, 5000);
+      showToast(data, 10000);
     });
 
     socketInstance.on('admin_notification', (data) => {
-      showToast(data, 5000);
+      playServiceChime('new_order');
+      showToast(data, 10000);
     });
 
     socketInstance.on('new_order', (data) => {
+      playServiceChime('new_order');
       showToast({
         title: `🛒 New Order #${data.order_number || data.orderId || ''}!`,
-        message: `New order received from ${data.customer_name || 'Customer'}. Click to view pipeline.`,
+        message: `New order received from ${data.customer_name || 'Customer'}. Click to view live pipeline.`,
         link: '/hotel/admin/orders',
         type: 'NEW_ORDER'
-      }, 5000);
+      }, 10000);
     });
 
     socketInstance.on('bill_requested', (data) => {
@@ -68,7 +70,7 @@ export const SocketProvider = ({ children }) => {
         message: `Guests at Table ${data.table_number || ''} requested their bill. Click to view POS.`,
         link: '/hotel/admin/offline/billing',
         type: 'BILL_REQUEST'
-      }, 5000);
+      }, 10000);
     });
 
     socketInstance.on('call_waiter', (data) => {
@@ -77,7 +79,7 @@ export const SocketProvider = ({ children }) => {
         message: `Guests at Table ${data.table_number || ''} (${data.floor || 'Dining Area'}) called for waiter assistance. Click to open.`,
         link: '/waiter',
         type: 'CALL_WAITER'
-      }, 5000);
+      }, 10000);
     });
 
     socketInstance.on('order_status_updated', (data) => {
@@ -86,7 +88,7 @@ export const SocketProvider = ({ children }) => {
         message: `Order #${data.orderNumber || data.orderId || ''} updated to ${data.status || 'new status'}.`,
         link: '/hotel/admin/orders',
         type: 'ORDER_STATUS'
-      }, 5000);
+      }, 10000);
     });
 
     setSocket(socketInstance);

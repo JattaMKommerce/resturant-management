@@ -767,3 +767,19 @@ CREATE TABLE IF NOT EXISTS subscription_history (
   FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- 35. Push Subscriptions Table for Web Push Notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT DEFAULT NULL,
+  customer_identity_id INT DEFAULT NULL,
+  user_id INT DEFAULT NULL,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent VARCHAR(255) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_push_order (order_id),
+  INDEX idx_push_customer (customer_identity_id)
+) ENGINE=InnoDB;
+
+

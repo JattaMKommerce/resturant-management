@@ -18,6 +18,7 @@ const riderAppController = require('../controllers/riderApplicationController');
 const notificationController = require('../controllers/notificationController');
 const superAdminController = require('../controllers/superAdminController');
 const staffController = require('../controllers/staffController');
+const pushRoutes = require('./pushRoutes');
 
 // Rate limiters
 const applicationLimiter = createRateLimiter(15 * 60 * 1000, 10); // 10 application requests per 15 min
@@ -41,6 +42,7 @@ router.post('/auth/register', authController.register);
 router.post('/auth/register-restaurant', authController.registerRestaurant);
 router.post('/auth/login', authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
+router.use('/push', pushRoutes);
 
 // ═══════════════════════════════════════════════
 // 2. GUEST IDENTITY ROUTES

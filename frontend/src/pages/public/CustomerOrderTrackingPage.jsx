@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
+import { registerWebPushSubscription } from '../../utils/pushSubscriber';
 import { 
   UtensilsCrossed, 
   CheckCircle2, 
@@ -11,14 +12,19 @@ import {
   CheckCheck, 
   ArrowLeft, 
   Sparkles,
-  RefreshCw 
+  RefreshCw,
+  Bike,
+  Phone,
+  AlertTriangle,
+  MapPin,
+  Volume2
 } from 'lucide-react';
 
 const statusSteps = [
   { key: 'CONFIRMED', label: 'Order Confirmed', desc: 'Order received & sent to kitchen', icon: CheckCircle2 },
   { key: 'IN_KITCHEN', label: 'Preparing', desc: 'Chefs are preparing your dishes', icon: ChefHat },
   { key: 'READY', label: 'Food Ready', desc: 'Service staff is picking up food', icon: Bell },
-  { key: 'SERVED', label: 'Served', desc: 'Served at your table. Enjoy your meal!', icon: CheckCheck }
+  { key: 'SERVED', label: 'Served', desc: 'Served at your table / Delivered. Enjoy!', icon: CheckCheck }
 ];
 
 export default function CustomerOrderTrackingPage() {
@@ -30,6 +36,19 @@ export default function CustomerOrderTrackingPage() {
   const [error, setError] = useState('');
   const [paying, setPaying] = useState(false);
   const [requestingCounter, setRequestingCounter] = useState(false);
+
+  // Background Countdown Ticker & Push Subscription state
+  const [remainingMinutes, setRemainingMinutes] = useState(45);
+  const [pushStatus, setPushStatus] = useState('default'); // 'default', 'granted', 'denied'
+
+  const enablePush = async () => {
+    const res = await registerWebPushSubscription(orderId);
+    if (res.success) {
+      setPushStatus('granted');
+    } else {
+      setPushStatus('denied');
+    }
+  };
 
   const handlePayAtCounter = async () => {
     if (!order || requestingCounter) return;
@@ -67,6 +86,16 @@ export default function CustomerOrderTrackingPage() {
   useEffect(() => {
     fetchOrderTracking();
 
+    // Auto-attempt silent Web Push registration
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setPushStatus('granted');
+        registerWebPushSubscription(orderId).catch(() => {});
+      } else {
+        setPushStatus(Notification.permission);
+      }
+    }
+
     if (orderId) {
       const room = `customer_${orderId}`;
       joinRoom(room);
@@ -100,6 +129,25 @@ export default function CustomerOrderTrackingPage() {
       };
     }
   }, [orderId, socket]);
+
+  // Calculate 45-minute countdown ticker in background
+  useEffect(() => {
+    if (!order) return;
+
+    const createdAtMs = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+    const targetEndMs = createdAtMs + (45 * 60 * 1000); // 45 mins fulfillment window
+
+    const updateCountdown = () => {
+      const diffMs = targetEndMs - Date.now();
+      const mins = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+      setRemainingMinutes(mins);
+    };
+
+    updateCountdown();
+    const ticker = setInterval(updateCountdown, 10000); // update every 10s
+
+    return () => clearInterval(ticker);
+  }, [order]);
 
   const handlePayOnline = async () => {
     if (!order || paying) return;
@@ -245,24 +293,98 @@ export default function CustomerOrderTrackingPage() {
         </button>
       </div>
 
-      {/* Live Status Banner */}
+      {/* Web Push Permission Prompt Banner */}
+      {pushStatus === 'default' && (
+        <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-[#3A7D7C] to-[#2C6362] text-white shadow-lg flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <Volume2 className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="text-xs font-black tracking-tight text-white">Live Push Notifications</h4>
+              <p className="text-[11px] text-white/90 truncate font-medium">Get alerts even when your screen is locked</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={enablePush}
+            className="px-3 py-1.5 rounded-xl bg-white text-[#3A7D7C] hover:bg-slate-100 font-extrabold text-xs shrink-0 shadow-sm transition-all cursor-pointer"
+          >
+            Enable Now
+          </button>
+        </div>
+      )}
+
+      {/* Live Status Banner & 45-Min Background Countdown Ticker */}
       <div className="bg-white border border-[#D7E5E8] rounded-3xl p-6 mb-6 text-center relative overflow-hidden shadow-sm">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-[#3A7D7C]" />
-          <span>Realtime Kitchen KOT Sync</span>
+        <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]">
+            <Sparkles className="w-3.5 h-3.5 text-[#3A7D7C]" />
+            <span>Realtime Kitchen KOT Sync</span>
+          </span>
+
+          {!['SERVED', 'DELIVERED', 'COMPLETED', 'CANCELLED'].includes(order.order_status) && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs animate-pulse">
+              <Clock className="w-3.5 h-3.5 text-emerald-700" />
+              <span>⏱️ ~{remainingMinutes} mins remaining</span>
+            </span>
+          )}
         </div>
 
         <h2 className="text-2xl font-black text-[#1F2937] uppercase tracking-wider mb-1">
           {statusSteps[activeStepIdx]?.label || order.order_status}
         </h2>
         <p className="text-xs text-[#64748B]">{statusSteps[activeStepIdx]?.desc}</p>
-        
+
         {order.table_number && (
           <div className="mt-4 pt-3 border-t border-[#D7E5E8] text-xs font-bold text-[#3A7D7C]">
             Delivering to Table {order.table_number}
           </div>
         )}
       </div>
+
+      {/* Automatic Delay Protection Apology Banner (<10 mins or Overdue) */}
+      {!['SERVED', 'DELIVERED', 'COMPLETED', 'CANCELLED'].includes(order.order_status) && (remainingMinutes <= 10) && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-900 mb-6 shadow-sm animate-pulse">
+          <div className="flex items-center gap-2 font-black text-sm mb-1 text-amber-800">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+            <span>Sincere Apologies for the Delay! ⏳</span>
+          </div>
+          <p className="text-xs font-semibold leading-relaxed text-amber-800/90">
+            Our team & delivery partner are rushing to deliver your food hot & fresh. It will reach your doorstep very soon!
+          </p>
+        </div>
+      )}
+
+      {/* Driver Profile & Contact Card (If Assigned) */}
+      {(order.assigned_driver_name || order.driver_name || order.driver_phone) && (
+        <div className="bg-white border-2 border-sky-200 rounded-3xl p-5 mb-6 shadow-md shadow-sky-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-500/30">
+              <Bike className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-extrabold text-sm text-[#1F2937] truncate">{order.assigned_driver_name || order.driver_name || 'Delivery Partner'}</h4>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800">Rider</span>
+              </div>
+              <p className="text-xs font-medium text-[#64748B] mt-0.5">
+                {order.driver_vehicle ? `Vehicle: ${order.driver_vehicle}` : 'Heading to your doorstep'}
+              </p>
+            </div>
+          </div>
+
+          {order.driver_phone && (
+            <a
+              href={`tel:${order.driver_phone}`}
+              className="p-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+              title="Call Delivery Partner"
+            >
+              <Phone className="w-4 h-4 fill-current" />
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Timeline Steps */}
       <div className="bg-white border border-[#D7E5E8] rounded-3xl p-6 mb-6 space-y-6 shadow-xs">

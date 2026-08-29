@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const pushNotificationService = require('./pushNotificationService');
 
 let ioInstance = null;
 
@@ -13,7 +14,7 @@ function getSocketIO() {
 /**
  * Send notification to user, order room, or restaurant admin room
  */
-async function sendNotification({ userId, restaurantId, orderId, customerIdentityId, title, message, type = 'ORDER_UPDATE' }) {
+async function sendNotification({ userId, restaurantId, orderId, customerIdentityId, title, message, type = 'ORDER_UPDATE', status, extraData = {} }) {
   try {
     const res = await query(
       `INSERT INTO notifications (user_id, restaurant_id, order_id, customer_identity_id, title, message, type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -23,7 +24,7 @@ async function sendNotification({ userId, restaurantId, orderId, customerIdentit
     const notificationData = {
       id: res.insertId,
       userId, restaurantId, orderId, customerIdentityId,
-      title, message, type,
+      title, message, type, status,
       is_read: 0,
       created_at: new Date()
     };
@@ -50,6 +51,14 @@ async function sendNotification({ userId, restaurantId, orderId, customerIdentit
       ioInstance.to('admin_room').emit('admin_notification', notificationData);
       ioInstance.to('admin_room').emit('order_update', notificationData);
       ioInstance.to('admin_room').emit('order_status_updated', notificationData);
+    }
+
+    // Trigger Web Push Notification for background & closed browser devices
+    if (orderId) {
+      const targetStatus = status || type;
+      pushNotificationService.sendPushForOrder(orderId, targetStatus, extraData).catch(err => {
+        console.warn('Web push notification dispatch notice:', err.message);
+      });
     }
 
     return notificationData;

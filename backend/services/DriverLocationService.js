@@ -152,6 +152,33 @@ async function processDriverLocationUpdate({ userId, latitude, longitude, orderI
     ioInstance.to(`driver_${driver.id}`).emit('driver_location_ack', payload);
   }
 
+  // Proximity Push Notification Check
+  try {
+    const pushService = require('./pushNotificationService');
+    for (const o of activeOrders) {
+      if (o.order_status === 'OUT_FOR_DELIVERY') {
+        const [ordDetails] = await query(
+          'SELECT delivery_latitude, delivery_longitude FROM orders WHERE id = ?',
+          [o.id]
+        );
+        if (ordDetails[0] && ordDetails[0].delivery_latitude && ordDetails[0].delivery_longitude) {
+          const distKm = pushService.calculateDistanceKm(
+            lat, lng,
+            parseFloat(ordDetails[0].delivery_latitude),
+            parseFloat(ordDetails[0].delivery_longitude)
+          );
+          if (distKm !== null && distKm < 0.5) {
+            // Driver within 500m - send NEARBY push alert
+            pushService.sendPushForOrder(o.id, 'NEARBY', {
+              driverName: driver.full_name || 'Delivery Partner',
+              distKm: distKm.toFixed(2)
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+  } catch (e) { }
+
   return {
     success: true,
     driverId: driver.id,
