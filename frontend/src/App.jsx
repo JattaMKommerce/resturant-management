@@ -197,6 +197,9 @@ const HomeRedirect = () => {
   );
 };
 
+// Product Selection & Pricing Page
+import ProductSelectionPage from './pages/product/ProductSelectionPage';
+
 export default function App() {
   const adminRoles = ['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'WAITER', 'KITCHEN', 'CASHIER', 'INVENTORY_MANAGER', 'SUPER_ADMIN'];
 
@@ -204,8 +207,10 @@ export default function App() {
     <>
       <NotificationToast />
       <Routes>
-        {/* Home */}
-        <Route path="/" element={<HomeRedirect />} />
+        {/* Workspace Selection & Pricing Home */}
+        <Route path="/" element={<ProductSelectionPage />} />
+        <Route path="/select-product" element={<ProductSelectionPage />} />
+        <Route path="/product-selection" element={<ProductSelectionPage />} />
 
         {/* Public Customer Online Website */}
         <Route path="/restaurant/:slug" element={<RestaurantMenuPage />} />
