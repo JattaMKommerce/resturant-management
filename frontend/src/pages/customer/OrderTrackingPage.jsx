@@ -2,19 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   CheckCircle2, Clock, ChefHat, PackageCheck, AlertCircle, MapPin, Phone, 
-  ShoppingBag, ArrowLeft, RefreshCw, Bike, Navigation
+  ShoppingBag, ArrowLeft, RefreshCw, Bike, Navigation, AlertTriangle, Sparkles, Volume2
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useSocket } from '../../context/SocketContext';
+import { registerWebPushSubscription } from '../../utils/pushSubscriber';
 import OrderMap from '../../components/OrderMap';
 
 export default function OrderTrackingPage() {
   const { slug, orderId } = useParams();
-  const { socket, joinRoom } = useSocket();
+  const { socket, joinRoom, leaveRoom } = useSocket();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [driverCoords, setDriverCoords] = useState(null);
+  const [pushStatus, setPushStatus] = useState('default');
+  const [remainingMinutes, setRemainingMinutes] = useState(45);
 
   const fetchOrderDetails = async () => {
     try {
@@ -35,21 +38,58 @@ export default function OrderTrackingPage() {
     }
   };
 
-  useEffect(() => {
-    fetchOrderDetails();
-  }, [orderId]);
+  const enablePush = async () => {
+    const res = await registerWebPushSubscription(orderId);
+    if (res.success) {
+      setPushStatus('granted');
+    } else {
+      setPushStatus('denied');
+    }
+  };
 
   useEffect(() => {
-    if (order && order.id) {
-      joinRoom(`order_${order.id}`);
+    fetchOrderDetails();
+
+    // Auto-attempt silent Web Push registration
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setPushStatus('granted');
+        registerWebPushSubscription(orderId).catch(() => {});
+      } else {
+        setPushStatus(Notification.permission);
+      }
     }
-  }, [order?.id]);
+
+    // 3-second auto-poll for 100% reliable real-time sync on all mobile/desktop devices
+    const pollInterval = setInterval(() => {
+      fetchOrderDetails();
+    }, 3000);
+
+    if (orderId) {
+      const roomOrder = `order_${orderId}`;
+      const roomCust = `customer_${orderId}`;
+      joinRoom(roomOrder);
+      joinRoom(roomCust);
+
+      return () => {
+        clearInterval(pollInterval);
+        leaveRoom(roomOrder);
+        leaveRoom(roomCust);
+      };
+    }
+
+    return () => clearInterval(pollInterval);
+  }, [orderId]);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('notification', () => fetchOrderDetails());
-    socket.on('order_update', () => fetchOrderDetails());
+    const handleUpdate = () => fetchOrderDetails();
+
+    socket.on('notification', handleUpdate);
+    socket.on('order_update', handleUpdate);
+    socket.on('order_updated', handleUpdate);
+    socket.on('order_status_updated', handleUpdate);
     
     // Phase 2 Live Driver Location Stream
     socket.on('driver_location_stream', (data) => {
@@ -62,11 +102,32 @@ export default function OrderTrackingPage() {
     });
 
     return () => {
-      socket.off('notification');
-      socket.off('order_update');
+      socket.off('notification', handleUpdate);
+      socket.off('order_update', handleUpdate);
+      socket.off('order_updated', handleUpdate);
+      socket.off('order_status_updated', handleUpdate);
       socket.off('driver_location_stream');
     };
   }, [socket]);
+
+  // Calculate 45-minute countdown ticker in background
+  useEffect(() => {
+    if (!order) return;
+
+    const createdAtMs = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+    const targetEndMs = createdAtMs + (45 * 60 * 1000); // 45 mins fulfillment window
+
+    const updateCountdown = () => {
+      const diffMs = targetEndMs - Date.now();
+      const mins = Math.max(0, Math.ceil(diffMs / (60 * 1000)));
+      setRemainingMinutes(mins);
+    };
+
+    updateCountdown();
+    const ticker = setInterval(updateCountdown, 10000); // update every 10s
+
+    return () => clearInterval(ticker);
+  }, [order]);
 
   if (loading) {
     return (
