@@ -130,16 +130,22 @@ export default function ProductSelectionPage() {
       </header>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* 2. MAIN HEADLINE                                       */}
+      {/* 2. MAIN HEADLINE & FREE TRIAL BANNER                  */}
       {/* ═══════════════════════════════════════════════════════ */}
       <main className="relative z-10 w-full max-w-5xl mx-auto my-auto space-y-8 py-2">
-        <div className="text-center space-y-2.5">
+        <div className="text-center space-y-3">
+          {/* 1 Month Free Trial Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-600 to-[#006C70] text-white text-xs font-black tracking-wide shadow-md shadow-amber-500/20 animate-bounce-short">
+            <Sparkles className="w-4 h-4 text-amber-200 fill-amber-200" />
+            <span>🎁 1 MONTH FREE TRIAL INCLUDED • NO CREDIT CARD REQUIRED</span>
+          </div>
+
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-[#0F172A] tracking-tight leading-tight">
             How would you like to manage <br className="hidden sm:inline" />
             <span className="text-[#006C70]">your business?</span>
           </h1>
           <p className="text-sm sm:text-[15px] font-medium text-slate-500 max-w-lg mx-auto">
-            Choose the workspace that fits your operation.
+            Choose the workspace that fits your operation. Get 30 days completely free!
           </p>
         </div>
 
@@ -149,7 +155,7 @@ export default function ProductSelectionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch pt-2">
 
           {/* ─────────────────────────────────────────────────── */}
-          {/* OPTION 1: RESTAURANT ONLY                           */}
+          {/* OPTION 1: RESTAURANT ONLY (₹2,999/mo)              */}
           {/* ─────────────────────────────────────────────────── */}
           <div
             onClick={() => handleSelectAndProceed('RESTAURANT_ONLY')}
@@ -159,8 +165,8 @@ export default function ProductSelectionPage() {
                 : 'border-slate-200/90 shadow-md shadow-slate-200/50'
             }`}
           >
-            <div className="space-y-6">
-              {/* Restaurant Illustration (Identical h-44 container) */}
+            <div className="space-y-5">
+              {/* Restaurant Illustration */}
               <div className="relative h-44 w-full rounded-2xl bg-gradient-to-b from-amber-50/70 via-orange-50/30 to-white flex items-center justify-center overflow-hidden border border-amber-100/40">
                 <div className="absolute w-32 h-32 rounded-full bg-amber-200/40 blur-xl" />
 
@@ -195,12 +201,25 @@ export default function ProductSelectionPage() {
                 </svg>
               </div>
 
-              {/* Title & Description */}
+              {/* Title, Pricing & Description */}
               <div className="text-center space-y-1.5">
                 <h3 className="text-xl font-black text-slate-900">
                   Restaurant Only
                 </h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium px-2 min-h-[32px] flex items-center justify-center">
+
+                {/* Price Display */}
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <span className="text-2xl font-black text-slate-900">₹2,999</span>
+                  <span className="text-xs font-bold text-slate-400 line-through">₹4,999</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    /month
+                  </span>
+                </div>
+                <p className="text-[11px] font-bold text-emerald-700">
+                  🎁 1 Month Free Trial Included
+                </p>
+
+                <p className="text-xs text-slate-500 leading-relaxed font-medium px-2 pt-1 min-h-[28px] flex items-center justify-center">
                   Everything you need to run your restaurant operations efficiently.
                 </p>
               </div>
@@ -233,16 +252,16 @@ export default function ProductSelectionPage() {
             <div className="pt-6 mt-6 border-t border-slate-100">
               <button
                 type="button"
-                className="w-full py-3 px-4 rounded-xl bg-[#006C70] hover:bg-[#00585C] text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#006C70] hover:bg-[#00585C] text-white text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
               >
-                <span>Continue to Sign In</span>
+                <span>Start 1-Month Free Trial (₹2,999/mo)</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
 
           {/* ─────────────────────────────────────────────────── */}
-          {/* OPTION 2: RESTAURANT + ACCOMMODATION               */}
+          {/* OPTION 2: RESTAURANT + ACCOMMODATION (₹3,999/mo)  */}
           {/* ─────────────────────────────────────────────────── */}
           <div
             onClick={() => handleSelectAndProceed('RESTAURANT_ACCOMMODATION')}
@@ -253,13 +272,13 @@ export default function ProductSelectionPage() {
             }`}
           >
             {/* Recommended Floating Badge */}
-            <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full bg-[#C69238] text-white text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1">
+            <div className="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full bg-[#C69238] text-white text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1">
               <span>★</span>
-              <span>RECOMMENDED</span>
+              <span>RECOMMENDED • BEST VALUE</span>
             </div>
 
-            <div className="space-y-6">
-              {/* Hotel Illustration (Identical h-44 container) */}
+            <div className="space-y-5">
+              {/* Hotel Illustration */}
               <div className="relative h-44 w-full rounded-2xl bg-gradient-to-b from-[#CCEBEB] via-[#E2F3F4] to-transparent flex items-center justify-center overflow-hidden border border-teal-200/50">
                 <div className="absolute w-40 h-40 rounded-full bg-white/80 blur-md top-2" />
 
@@ -305,12 +324,25 @@ export default function ProductSelectionPage() {
                 </svg>
               </div>
 
-              {/* Title & Description */}
+              {/* Title, Pricing & Description */}
               <div className="text-center space-y-1.5">
                 <h3 className="text-xl font-black text-slate-900">
                   Restaurant + Accommodation
                 </h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-medium px-2 min-h-[32px] flex items-center justify-center">
+
+                {/* Price Display */}
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <span className="text-2xl font-black text-[#006C70]">₹3,999</span>
+                  <span className="text-xs font-bold text-slate-400 line-through">₹6,999</span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#006C70]/10 text-[#006C70] border border-[#006C70]/30">
+                    /month
+                  </span>
+                </div>
+                <p className="text-[11px] font-bold text-[#006C70]">
+                  🎁 1 Month Free Trial Included
+                </p>
+
+                <p className="text-xs text-slate-600 leading-relaxed font-medium px-2 pt-1 min-h-[28px] flex items-center justify-center">
                   Manage your entire hospitality business from one powerful suite.
                 </p>
               </div>
@@ -363,9 +395,9 @@ export default function ProductSelectionPage() {
             <div className="pt-6 mt-6 border-t border-teal-200/40">
               <button
                 type="button"
-                className="w-full py-3 px-4 rounded-xl bg-[#006C70] hover:bg-[#00585C] text-white text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-[#006C70]/20 active:scale-[0.98]"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#006C70] hover:bg-[#00585C] text-white text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-[#006C70]/20 active:scale-[0.98]"
               >
-                <span>Enter Hospitality Suite</span>
+                <span>Enter Hospitality Suite (₹3,999/mo)</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
