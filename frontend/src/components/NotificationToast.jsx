@@ -16,22 +16,21 @@ export default function NotificationToast() {
   const handleToastClick = () => {
     let targetLink = toast.link;
 
-    if (!targetLink) {
+    if (!targetLink || targetLink.startsWith('/hotel/')) {
       const titleLower = String(toast.title || '').toLowerCase();
       const typeLower = String(toast.type || '').toLowerCase();
 
       if (typeLower.includes('call') || titleLower.includes('waiter')) {
         targetLink = '/waiter';
-      } else if (typeLower.includes('order') || titleLower.includes('order')) {
-        targetLink = '/hotel/admin/orders';
       } else if (typeLower.includes('bill') || titleLower.includes('bill')) {
-        targetLink = '/hotel/admin/offline/billing';
+        targetLink = '/admin/offline/billing';
       } else if (typeLower.includes('driver') || typeLower.includes('rider') || titleLower.includes('rider')) {
-        targetLink = '/hotel/admin/deliveries';
+        targetLink = '/admin/deliveries';
       } else if (typeLower.includes('kot') || titleLower.includes('kitchen')) {
-        targetLink = '/hotel/admin/offline/kds';
+        targetLink = '/admin/offline/kds';
       } else {
-        targetLink = '/hotel/admin/orders';
+        const slug = user?.restaurant_slug || user?.restaurantSlug || 'grand-palace';
+        targetLink = `/admin/${slug}/orders`;
       }
     }
 

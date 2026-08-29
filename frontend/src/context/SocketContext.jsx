@@ -59,7 +59,7 @@ export const SocketProvider = ({ children }) => {
       showToast({
         title: `🛒 New Order #${data.order_number || data.orderId || ''}!`,
         message: `New order received from ${data.customer_name || 'Customer'}. Click to view live pipeline.`,
-        link: '/hotel/admin/orders',
+        link: '/admin/offline/orders',
         type: 'NEW_ORDER'
       }, 10000);
     });
@@ -68,7 +68,7 @@ export const SocketProvider = ({ children }) => {
       showToast({
         title: `🧾 Bill Requested: Table ${data.table_number || 'Dine-In'}`,
         message: `Guests at Table ${data.table_number || ''} requested their bill. Click to view POS.`,
-        link: '/hotel/admin/offline/billing',
+        link: '/admin/offline/billing',
         type: 'BILL_REQUEST'
       }, 10000);
     });
