@@ -61,13 +61,13 @@ export default function AdminOrdersPage() {
     fetchOrdersAndDrivers();
   }, [statusFilter]);
 
-  // 15-Second Auto-Refresh Countdown Ticker
+  // 3-Second Fast Auto-Refresh Ticker
   useEffect(() => {
     const ticker = setInterval(() => {
       setRefreshCountdown((prev) => {
         if (prev <= 1) {
           fetchOrdersAndDrivers(false);
-          return 15;
+          return 3;
         }
         return prev - 1;
       });
@@ -82,12 +82,12 @@ export default function AdminOrdersPage() {
 
     const handleLiveOrderUpdate = () => {
       fetchOrdersAndDrivers(false);
-      setRefreshCountdown(15);
+      setRefreshCountdown(3);
     };
 
     const handleNewOrder = () => {
       fetchOrdersAndDrivers(false);
-      setRefreshCountdown(15);
+      setRefreshCountdown(3);
       playServiceChime('new_order');
     };
 
