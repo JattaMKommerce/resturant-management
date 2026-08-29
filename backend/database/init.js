@@ -152,6 +152,7 @@ async function initDatabase(options = {}) {
 
       // Users columns
       await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'users', 'suite_mode', "VARCHAR(50) NOT NULL DEFAULT 'RESTAURANT_ACCOMMODATION'");
       try {
         await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
       } catch (e) { }
