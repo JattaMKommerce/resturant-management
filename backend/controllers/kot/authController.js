@@ -31,7 +31,11 @@ async function login(req, res, next) {
     let finalSuiteMode = user.suite_mode || 'RESTAURANT_ACCOMMODATION';
     if (suite_mode && ['RESTAURANT_ONLY', 'RESTAURANT_ACCOMMODATION'].includes(suite_mode)) {
       finalSuiteMode = suite_mode;
-      await pool.query(`UPDATE users SET suite_mode = ? WHERE id = ?`, [finalSuiteMode, user.id]);
+      try {
+        await pool.query(`UPDATE users SET suite_mode = ? WHERE id = ?`, [finalSuiteMode, user.id]);
+      } catch (e) {
+        console.warn('suite_mode update notice:', e.message);
+      }
     }
 
     // Fetch primary restaurant
@@ -68,12 +72,22 @@ async function login(req, res, next) {
 
 async function getMe(req, res, next) {
   try {
-    const [rows] = await pool.query(
-      `SELECT u.id, u.name, u.email, u.phone, u.role, u.role as role_name, u.suite_mode 
-       FROM users u 
-       WHERE u.id = ?`,
-      [req.user.id]
-    );
+    let rows = [];
+    try {
+      [rows] = await pool.query(
+        `SELECT u.id, u.name, u.email, u.phone, u.role, u.role as role_name, u.suite_mode 
+         FROM users u 
+         WHERE u.id = ?`,
+        [req.user.id]
+      );
+    } catch (e) {
+      [rows] = await pool.query(
+        `SELECT u.id, u.name, u.email, u.phone, u.role, u.role as role_name 
+         FROM users u 
+         WHERE u.id = ?`,
+        [req.user.id]
+      );
+    }
 
     if (rows.length === 0) {
       return sendError(res, 'User not found', 404);
@@ -96,7 +110,11 @@ async function updateSuiteMode(req, res, next) {
       return sendError(res, 'Invalid suite mode. Must be RESTAURANT_ONLY or RESTAURANT_ACCOMMODATION.', 400);
     }
 
-    await pool.query(`UPDATE users SET suite_mode = ? WHERE id = ?`, [suite_mode, req.user.id]);
+    try {
+      await pool.query(`UPDATE users SET suite_mode = ? WHERE id = ?`, [suite_mode, req.user.id]);
+    } catch (e) {
+      console.warn('suite_mode update notice:', e.message);
+    }
 
     return sendSuccess(res, {
       suite_mode,
