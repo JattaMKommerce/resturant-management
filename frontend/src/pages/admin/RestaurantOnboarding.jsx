@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { 
   Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe, 
   CheckCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle, Upload, Sparkles,
-  Trash2, Clock
+  Trash2, Clock, ShieldCheck, Star, CreditCard, Lock
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
@@ -49,6 +49,7 @@ export default function RestaurantOnboarding() {
   const [newItemForm, setNewItemForm] = useState({ name: '', price: '', category_id: '', is_veg: true, description: '' });
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [customSlugInput, setCustomSlugInput] = useState('');
 
   useEffect(() => {
     loadData();
@@ -67,6 +68,7 @@ export default function RestaurantOnboarding() {
       if (restRes.data.success) {
         const r = restRes.data.restaurant;
         setRestaurant(r);
+        setCustomSlugInput(r.custom_subdomain_slug || r.slug || '');
         setDetailsForm({
           name: r.name || '', phone: r.phone || '', email: r.email || '',
           address: r.address || '', area: r.area || '', city: r.city || '',
@@ -97,6 +99,31 @@ export default function RestaurantOnboarding() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePurchaseSubdomainInWizard = async () => {
+    const slugToUse = customSlugInput.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!slugToUse) {
+      alert('Please enter a valid custom subdomain name.');
+      return;
+    }
+    if (!window.confirm(`Unlock custom subdomain "${slugToUse}.jattamkommerce.com" for ₹99/month?`)) return;
+
+    setSaving(true);
+    try {
+      const res = await api.post('/admin/restaurant/purchase-custom-subdomain', {
+        restaurant_id: restaurant?.id,
+        custom_subdomain_slug: slugToUse
+      });
+      if (res.data.success) {
+        alert('🎉 Custom Subdomain Unlocked Successfully!');
+        loadData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to unlock custom subdomain.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -275,7 +302,8 @@ export default function RestaurantOnboarding() {
     { number: 4, title: 'Menu Categories', icon: Layers },
     { number: 5, title: 'Menu Items', icon: Utensils },
     { number: 6, title: 'Website Preview', icon: Eye },
-    { number: 7, title: 'Publish Website', icon: Globe },
+    { number: 7, title: 'Subdomain Branding', icon: Star },
+    { number: 8, title: 'Publish Website', icon: Globe },
   ];
 
   return (
@@ -653,21 +681,98 @@ export default function RestaurantOnboarding() {
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => setStep(5)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
                 <button type="button" onClick={() => setStep(7)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                  Subdomain Branding <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 7: Subdomain Branding Add-On (₹99/mo) */}
+          {step === 7 && (
+            <div className="space-y-5 text-xs">
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  Step 7: Custom Subdomain Branding
+                </span>
+                <h2 className="text-base font-bold text-[#1F2937] mt-1.5">Official Restaurant Name Subdomain (₹99/mo)</h2>
+                <p className="text-[#64748B] text-xs mt-0.5 leading-relaxed">
+                  By default, your free digital storefront link uses a random 7-character code (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>). 
+                  Upgrade to the **₹99/month Custom Subdomain Plan** to display your official restaurant name (<code className="font-bold text-[#3A7D7C] bg-white px-1 py-0.5 rounded border">{customSlugInput || restaurant?.slug}.jattamkommerce.com</code>) across customer links, QR codes & social share buttons!
+                </p>
+              </div>
+
+              {!restaurant?.custom_subdomain_enabled ? (
+                <div className="bg-gradient-to-r from-[#EAF4F7] to-amber-50 rounded-2xl border-2 border-[#3A7D7C]/30 p-5 space-y-4 shadow-xs">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="font-black text-[#1F2937] text-sm">₹99/mo Custom Subdomain Plan Includes:</h3>
+                      <ul className="space-y-1.5 text-xs text-[#475569] font-medium pt-1">
+                        <li className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>Official Name Domain (<code className="font-bold text-slate-800">{customSlugInput || restaurant?.slug}.jattamkommerce.com</code>)</span></li>
+                        <li className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>Custom Branded Dine-In QR Codes & Flyers</span></li>
+                        <li className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>Professional Identity on WhatsApp & Social Shares</span></li>
+                      </ul>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-2xl font-black text-[#1F2937]">₹99</span>
+                      <span className="text-xs text-[#64748B] font-bold"> / month</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    <div className="relative flex-1 w-full">
+                      <input
+                        type="text"
+                        value={customSlugInput}
+                        onChange={(e) => setCustomSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                        placeholder="e.g. niti-hotel"
+                        className="w-full px-4 py-2.5 bg-white border border-[#D7E5E8] rounded-xl text-xs font-bold text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-[#94A3B8] font-mono">.jattamkommerce.com</span>
+                    </div>
+                    <button
+                      onClick={handlePurchaseSubdomainInWizard}
+                      disabled={saving}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                    >
+                      <CreditCard className="w-4 h-4" /> Pay ₹99 & Unlock Custom Name
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-5 flex items-center justify-between text-emerald-900 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+                      <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm">Custom Subdomain Active</h4>
+                      <p className="text-xs text-emerald-700 font-medium">Your official restaurant name <code className="font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-900">{restaurant?.custom_subdomain_slug}.jattamkommerce.com</code> is active on the ₹99/mo tier.</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold bg-white text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
+                    ACTIVE (₹99/mo)
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setStep(6)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
+                <button type="button" onClick={() => setStep(8)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
                   Proceed to Publish <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 7: Publish */}
-          {step === 7 && (
+          {/* STEP 8: Publish Website */}
+          {step === 8 && (
             <div className="space-y-4 text-xs text-center py-8">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto border border-emerald-200">
                 <Globe className="w-7 h-7" />
               </div>
-              <h2 className="text-lg font-bold text-[#1F2937]">Publish Website Live</h2>
+              <h2 className="text-lg font-bold text-[#1F2937]">Step 8: Publish Website Live</h2>
               <p className="text-[#64748B]">Your storefront setup is ready! Click below to publish your website live and start receiving customer orders.</p>
-              <button onClick={handlePublish} disabled={saving} className="px-8 py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white text-sm rounded-xl shadow-2xs transition-colors">
+              <button onClick={handlePublish} disabled={saving} className="px-8 py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white text-sm rounded-xl shadow-2xs transition-colors cursor-pointer">
                 {saving ? 'Publishing...' : '🚀 Publish Live Website'}
               </button>
             </div>

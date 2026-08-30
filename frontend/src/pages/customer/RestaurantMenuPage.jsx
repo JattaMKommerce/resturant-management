@@ -131,23 +131,19 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   if (lockedInfo) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center font-sans">
-        <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4 border border-amber-200 shadow-xs">
-          <Lock className="w-8 h-8 stroke-[2.2]" />
+        <div className="w-16 h-16 rounded-2xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center mb-4 border border-[#D7E5E8] shadow-xs">
+          <Utensils className="w-8 h-8 stroke-[2.2]" />
         </div>
-        <span className="text-[11px] font-black text-amber-800 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-200 mb-3">
-          🔒 Custom Restaurant Name URL Locked
-        </span>
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Subdomain Plan Upgrade Required (₹99/mo)</h2>
-        <p className="text-slate-600 text-xs max-w-md leading-relaxed mb-6 font-medium">
-          Custom restaurant name links (e.g. <code className="font-bold bg-white px-1.5 py-0.5 rounded border text-slate-800">{slug}</code>) are locked on the free tier. 
-          To unlock your official restaurant name URL, the store admin can upgrade to the **₹99/month Custom Subdomain Plan** in the Admin Portal.
+        <h2 className="text-2xl font-black text-[#1F2937] mb-2">Storefront Link Updated</h2>
+        <p className="text-[#64748B] text-xs max-w-sm leading-relaxed mb-6 font-medium">
+          This digital menu link has moved. Please click below to view the active restaurant menu.
         </p>
         {lockedInfo.random_slug && (
           <button
             onClick={() => navigate(`/restaurant/${lockedInfo.random_slug}`)}
             className="px-6 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
           >
-            Open Storefront via Free Code ({lockedInfo.random_slug}) ↗
+            Open Restaurant Menu ↗
           </button>
         )}
       </div>
