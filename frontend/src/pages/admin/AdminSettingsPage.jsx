@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Power, MapPin, Phone, Mail, Building, Image as ImageIcon, CheckCircle2, CreditCard, Upload, Trash2, AlertCircle } from 'lucide-react';
+import { Settings, Save, Power, MapPin, Phone, Mail, Building, Image as ImageIcon, CheckCircle2, CreditCard, Upload, Trash2, AlertCircle, ShieldCheck, Star } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
 
