@@ -694,15 +694,20 @@ export default function AdminSettingsPage() {
             </h4>
 
             {customSubdomainEnabled ? (
-              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between text-emerald-900 shadow-2xs">
-                <div>
-                  <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
-                  <p className="text-[11px] text-emerald-700 font-mono mt-0.5">
-                    https://{customSubdomainSlug || name.toLowerCase().replace(/[^a-z0-9-]/g, '')}.jattamkommerce.com
-                  </p>
+              <div className="bg-emerald-50 p-4 sm:p-5 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-emerald-900 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+                    <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
+                    <p className="text-[11px] text-emerald-700 font-mono mt-0.5">
+                      https://{customSubdomainSlug || name.toLowerCase().replace(/[^a-z0-9-]/g, '')}.jattamkommerce.com
+                    </p>
+                  </div>
                 </div>
-                <span className="text-[10px] font-extrabold bg-white text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
-                  ACTIVE (₹99/mo)
+                <span className="text-xs font-extrabold bg-emerald-600 text-white px-3.5 py-1.5 rounded-full shadow-2xs shrink-0">
+                  ⭐ ACTIVE (₹99/mo)
                 </span>
               </div>
             ) : (

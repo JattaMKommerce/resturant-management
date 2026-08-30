@@ -237,8 +237,8 @@ export default function AdminWebsitePage() {
                 <p className="text-xs text-emerald-700 font-medium">Your branded storefront link <code className="font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-900">{restaurant?.custom_subdomain_slug}.jattamkommerce.com</code> is active on the ₹99/mo tier.</p>
               </div>
             </div>
-            <span className="text-xs font-extrabold bg-white text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
-              ACTIVE (₹99/mo)
+            <span className="text-xs font-extrabold bg-emerald-600 text-white px-3.5 py-1.5 rounded-full shadow-2xs shrink-0">
+              ⭐ ACTIVE (₹99/mo)
             </span>
           </div>
         )}
