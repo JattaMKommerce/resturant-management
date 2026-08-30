@@ -217,4 +217,8 @@ router.patch('/notifications/:id/read', authenticateToken, notificationControlle
 router.delete('/notifications/clear-all', authenticateToken, notificationController.clearAllNotifications);
 router.delete('/notifications/:id', authenticateToken, notificationController.deleteNotification);
 
+// Custom Subdomain & ₹99/mo Add-On Governance
+router.post('/admin/restaurant/purchase-custom-subdomain', ...adminAuth, restaurantController.purchaseCustomSubdomain);
+router.post('/admin/superadmin/restaurant/:id/toggle-custom-subdomain', authenticateToken, authorizeRoles('SUPER_ADMIN'), superAdminController.toggleCustomSubdomain);
+
 module.exports = router;

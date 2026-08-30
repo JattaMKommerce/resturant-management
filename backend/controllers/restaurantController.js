@@ -3,10 +3,13 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 
 async function getRestaurantBySlug(req, res) {
   try {
-    const slug = req.params.slug;
+    const slug = String(req.params.slug || '').toLowerCase();
     const rows = await query(
-      `SELECT r.* FROM restaurants r WHERE r.slug = ?`,
-      [slug]
+      `SELECT r.* FROM restaurants r
+       WHERE (r.custom_subdomain_enabled = 1 AND LOWER(r.custom_subdomain_slug) = ?)
+          OR LOWER(r.random_slug) = ?
+          OR LOWER(r.slug) = ?`,
+      [slug, slug, slug]
     );
 
     if (rows.length === 0) {
@@ -417,6 +420,36 @@ async function toggleOnlineOrdering(req, res) {
   }
 }
 
+async function purchaseCustomSubdomain(req, res) {
+  try {
+    const { restaurant_id, custom_subdomain_slug } = req.body;
+    const restId = restaurant_id || req.adminRestaurantId;
+
+    if (!restId) return res.status(400).json({ success: false, message: 'Restaurant ID required.' });
+
+    const [rest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
+    if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+
+    const newCustomSlug = custom_subdomain_slug || rest.slug;
+
+    // Enable custom subdomain for ₹99/mo add-on plan
+    await query(
+      'UPDATE restaurants SET custom_subdomain_enabled = 1, custom_subdomain_slug = ? WHERE id = ?',
+      [newCustomSlug, restId]
+    );
+
+    res.json({
+      success: true,
+      message: '₹99/mo Custom Branded Subdomain unlocked successfully!',
+      custom_subdomain_enabled: 1,
+      custom_subdomain_slug: newCustomSlug
+    });
+  } catch (err) {
+    console.error('purchaseCustomSubdomain Error:', err);
+    res.status(500).json({ success: false, message: 'Server error processing custom subdomain purchase.' });
+  }
+}
+
 module.exports = {
   getRestaurantBySlug,
   getDefaultRestaurant,
@@ -426,5 +459,6 @@ module.exports = {
   getSetupProgress,
   publishWebsite,
   unpublishWebsite,
-  toggleOnlineOrdering
+  toggleOnlineOrdering,
+  purchaseCustomSubdomain
 };

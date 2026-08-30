@@ -198,18 +198,27 @@ const HomeRedirect = () => {
   );
 };
 
-// Product Selection & Pricing Page
 import ProductSelectionPage from './pages/product/ProductSelectionPage';
+import { getSubdomainSlug } from './utils/subdomain';
 
 export default function App() {
   const adminRoles = ['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'WAITER', 'KITCHEN', 'CASHIER', 'INVENTORY_MANAGER', 'SUPER_ADMIN'];
+  const activeSubdomain = getSubdomainSlug();
 
   return (
     <>
       <NotificationToast />
       <Routes>
-        {/* Workspace Selection & Pricing Home */}
-        <Route path="/" element={<ProductSelectionPage />} />
+        {/* Dynamic Subdomain Root Handler */}
+        {activeSubdomain ? (
+          <>
+            <Route path="/" element={<RestaurantMenuPage overrideSlug={activeSubdomain} />} />
+            <Route path="/checkout" element={<CheckoutPage overrideSlug={activeSubdomain} />} />
+            <Route path="/order/:orderId" element={<OrderTrackingPage overrideSlug={activeSubdomain} />} />
+          </>
+        ) : (
+          <Route path="/" element={<ProductSelectionPage />} />
+        )}
         <Route path="/select-product" element={<ProductSelectionPage />} />
         <Route path="/product-selection" element={<ProductSelectionPage />} />
 

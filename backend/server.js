@@ -275,6 +275,10 @@ app.get('/health/db', async (req, res) => {
   }
 });
 
+const { tenantResolver } = require('./middleware/tenantResolver');
+
+app.use(tenantResolver);
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,

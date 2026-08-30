@@ -5,8 +5,9 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { Phone, User, ArrowLeft, ShoppingBag, AlertCircle, Loader2, CreditCard, Banknote, Minus, Plus, X } from 'lucide-react';
 
-export default function CheckoutPage() {
-  const { slug } = useParams();
+export default function CheckoutPage({ overrideSlug }) {
+  const params = useParams();
+  const slug = overrideSlug || params.slug;
   const navigate = useNavigate();
   const { cartItems, getSubtotal, updateQuantity, removeFromCart, clearCart, getItemCount } = useCart();
   const { guestInfo } = useAuth();

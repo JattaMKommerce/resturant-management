@@ -12,8 +12,9 @@ const getMediaUrl = (url, fallback) => {
   return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-export default function RestaurantMenuPage() {
-  const { slug } = useParams();
+export default function RestaurantMenuPage({ overrideSlug }) {
+  const params = useParams();
+  const slug = overrideSlug || params.slug;
   const navigate = useNavigate();
   const { cartItems, addToCart, updateQuantity, removeFromCart, getSubtotal, getItemCount, setRestaurantSlug } = useCart();
 

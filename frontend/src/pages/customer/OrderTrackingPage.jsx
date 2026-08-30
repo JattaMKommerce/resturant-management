@@ -9,8 +9,10 @@ import { useSocket } from '../../context/SocketContext';
 import { registerWebPushSubscription } from '../../utils/pushSubscriber';
 import OrderMap from '../../components/OrderMap';
 
-export default function OrderTrackingPage() {
-  const { slug, orderId } = useParams();
+export default function OrderTrackingPage({ overrideSlug }) {
+  const params = useParams();
+  const slug = overrideSlug || params.slug;
+  const orderId = params.orderId;
   const { socket, joinRoom, leaveRoom } = useSocket();
 
   const [order, setOrder] = useState(null);

@@ -425,6 +425,34 @@ async function getAllPlatformOrders(req, res) {
   }
 }
 
+async function toggleCustomSubdomain(req, res) {
+  try {
+    const { id } = req.params;
+    const { enabled, custom_subdomain_slug } = req.body;
+
+    const [rest] = await query('SELECT * FROM restaurants WHERE id = ?', [id]);
+    if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+
+    const newEnabled = enabled !== undefined ? (enabled ? 1 : 0) : (rest.custom_subdomain_enabled ? 0 : 1);
+    const newCustomSlug = custom_subdomain_slug || rest.custom_subdomain_slug || rest.slug;
+
+    await query(
+      'UPDATE restaurants SET custom_subdomain_enabled = ?, custom_subdomain_slug = ? WHERE id = ?',
+      [newEnabled, newCustomSlug, id]
+    );
+
+    res.json({
+      success: true,
+      message: `Custom subdomain ${newEnabled ? 'enabled (₹99/mo plan)' : 'disabled (random slug mode)'}.`,
+      custom_subdomain_enabled: newEnabled,
+      custom_subdomain_slug: newCustomSlug
+    });
+  } catch (err) {
+    console.error('toggleCustomSubdomain Error:', err);
+    res.status(500).json({ success: false, message: 'Server error updating subdomain.' });
+  }
+}
+
 module.exports = {
   getSuperAdminKPIs,
   getAllRestaurants,
@@ -438,5 +466,6 @@ module.exports = {
   updateAdminStatus,
   getAllDrivers,
   updateDriverStatus,
-  getAllPlatformOrders
+  getAllPlatformOrders,
+  toggleCustomSubdomain
 };

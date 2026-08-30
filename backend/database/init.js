@@ -177,6 +177,26 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'restaurants', 'upi_id', "VARCHAR(100) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'restaurants', 'upi_name', "VARCHAR(150) DEFAULT NULL");
 
+      // Custom Subdomain & Random Alphanumeric Slug Migrations
+      await addColumnIfNotExists(conn, 'restaurants', 'random_slug', "VARCHAR(20) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+      await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_slug', "VARCHAR(100) DEFAULT NULL");
+
+      // Auto-populate random_slug for any restaurant missing it (5-8 char random mixed case string)
+      try {
+        const [emptySlugs] = await conn.query("SELECT id FROM restaurants WHERE random_slug IS NULL OR random_slug = ''");
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (const r of emptySlugs) {
+          let rand = '';
+          for (let i = 0; i < 7; i++) {
+            rand += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          await conn.query("UPDATE restaurants SET random_slug = ? WHERE id = ?", [rand, r.id]);
+        }
+      } catch (e) {
+        console.warn('Warning populating random_slugs:', e.message);
+      }
+
       // Delivery Drivers columns
       await addColumnIfNotExists(conn, 'delivery_drivers', 'full_name', "VARCHAR(150) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'mobile', "VARCHAR(20) DEFAULT NULL");

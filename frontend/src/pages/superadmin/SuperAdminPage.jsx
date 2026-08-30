@@ -127,23 +127,25 @@ export default function SuperAdminPage() {
     }
   };
 
-  // Pending Approvals Actions
-  const handleApproveSubscription = async (subscriptionId) => {
-    if (!window.confirm('Approve this subscription and grant immediate active HMS access? Subscription validity will start from NOW.')) return;
+  const handleToggleCustomSubdomain = async (restaurantId, currentEnabled, currentSlug) => {
+    const nextState = !currentEnabled;
+    const promptMsg = nextState 
+      ? `Enable ₹99/mo Custom Subdomain for Restaurant #${restaurantId}? Enter custom subdomain slug:` 
+      : `Disable Custom Subdomain for Restaurant #${restaurantId}? (Will revert to random string subdomain)`;
+    const newSlug = window.prompt(promptMsg, currentSlug || '');
+    if (newSlug === null) return;
+
     try {
-      setActionLoading(true);
-      const res = await api.post(`/superadmin/subscriptions/approvals/${subscriptionId}/approve`, {
-        notes: 'Approved by Master Super Admin'
+      const res = await api.post(`/admin/superadmin/restaurant/${restaurantId}/toggle-custom-subdomain`, {
+        enabled: nextState,
+        custom_subdomain_slug: newSlug.toLowerCase().replace(/[^a-z0-9-]/g, '')
       });
       if (res.data.success) {
-        alert('🎉 ' + res.data.message);
-        setSelectedApproval(null);
+        alert('✅ ' + res.data.message);
         fetchData();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Approval failed.');
-    } finally {
-      setActionLoading(false);
+      alert(err.response?.data?.message || 'Failed to update subdomain status.');
     }
   };
 
@@ -958,7 +960,8 @@ export default function SuperAdminPage() {
                 <thead className="bg-[#EAF4F7] text-[#1F2937] uppercase text-[10px] tracking-wider border-b border-[#D7E5E8]">
                   <tr>
                     <th className="p-4">Restaurant</th>
-                    <th className="p-4">Slug</th>
+                    <th className="p-4">Default / Custom Slug</th>
+                    <th className="p-4">Custom Subdomain (₹99/mo)</th>
                     <th className="p-4">Contact</th>
                     <th className="p-4">City</th>
                     <th className="p-4">Status</th>
@@ -969,7 +972,22 @@ export default function SuperAdminPage() {
                   {restaurants.map(r => (
                     <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-4 font-bold text-[#1F2937]">{r.name}</td>
-                      <td className="p-4 font-mono text-[#64748B]">{r.slug}</td>
+                      <td className="p-4 font-mono text-[#64748B]">
+                        <div className="font-bold text-[#3A7D7C]">{r.custom_subdomain_enabled ? (r.custom_subdomain_slug || r.slug) : (r.random_slug || r.slug)}</div>
+                        <div className="text-[10px] text-[#94A3B8]">Slug: {r.slug}</div>
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => handleToggleCustomSubdomain(r.id, r.custom_subdomain_enabled, r.custom_subdomain_slug || r.slug)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                            r.custom_subdomain_enabled
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-600 border-[#D7E5E8] hover:bg-slate-200'
+                          }`}
+                        >
+                          {r.custom_subdomain_enabled ? '⭐ Active (Click to Lock)' : '🔒 Off (Click to Unlock ₹99/mo)'}
+                        </button>
+                      </td>
                       <td className="p-4 text-[#64748B]">{r.email || r.phone || '—'}</td>
                       <td className="p-4">{r.city || '—'}</td>
                       <td className="p-4">
