@@ -51,6 +51,29 @@ export default function RestaurantOnboarding() {
   const [menuItems, setMenuItems] = useState([]);
   const [customSlugInput, setCustomSlugInput] = useState('');
 
+  // Subdomain Pricing & Skip Modals
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [showSkipModal, setShowSkipModal] = useState(false);
+  const [skipCountdown, setSkipCountdown] = useState(5);
+
+  useEffect(() => {
+    let timer;
+    if (showSkipModal && skipCountdown > 0) {
+      timer = setTimeout(() => {
+        setSkipCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (showSkipModal && skipCountdown === 0) {
+      setShowSkipModal(false);
+      setStep(8);
+    }
+    return () => clearTimeout(timer);
+  }, [showSkipModal, skipCountdown]);
+
+  const handleStartSkip = () => {
+    setSkipCountdown(5);
+    setShowSkipModal(true);
+  };
+
   useEffect(() => {
     loadData();
   }, [slug]);
@@ -696,30 +719,16 @@ export default function RestaurantOnboarding() {
                 </span>
                 <h2 className="text-base font-bold text-[#1F2937] mt-1.5">Official Restaurant Name Subdomain (₹99/mo)</h2>
                 <p className="text-[#64748B] text-xs mt-0.5 leading-relaxed">
-                  By default, your free digital storefront link uses a random 7-character code (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>). 
-                  Upgrade to the **₹99/month Custom Subdomain Plan** to display your official restaurant name (<code className="font-bold text-[#3A7D7C] bg-white px-1 py-0.5 rounded border">{customSlugInput || restaurant?.slug}.jattamkommerce.com</code>) across customer links, QR codes & social share buttons!
+                  By default, your free website uses a random code (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>). 
+                  Enter your restaurant name below to preview your official domain link (<code className="font-bold text-[#3A7D7C] bg-white px-1 py-0.5 rounded border">{customSlugInput || 'yourname'}.jattamkommerce.com</code>)!
                 </p>
               </div>
 
               {!restaurant?.custom_subdomain_enabled ? (
-                <div className="bg-gradient-to-r from-[#EAF4F7] to-amber-50 rounded-2xl border-2 border-[#3A7D7C]/30 p-5 space-y-4 shadow-xs">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <h3 className="font-black text-[#1F2937] text-sm">₹99/mo Custom Subdomain Plan Includes:</h3>
-                      <ul className="space-y-1.5 text-xs text-[#475569] font-medium pt-1">
-                        <li className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>Official Name Domain (<code className="font-bold text-slate-800">{customSlugInput || restaurant?.slug}.jattamkommerce.com</code>)</span></li>
-                        <li className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>Custom Branded Dine-In QR Codes & Flyers</span></li>
-                        <li className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> <span>Professional Identity on WhatsApp & Social Shares</span></li>
-                      </ul>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-2xl font-black text-[#1F2937]">₹99</span>
-                      <span className="text-xs text-[#64748B] font-bold"> / month</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                    <div className="relative flex-1 w-full">
+                <div className="bg-gradient-to-r from-[#EAF4F7] via-white to-amber-50 rounded-2xl border-2 border-[#3A7D7C]/30 p-5 space-y-4 shadow-xs">
+                  <div className="space-y-2">
+                    <label className="block font-bold text-[#1F2937] text-xs">Choose Your Custom Subdomain Name:</label>
+                    <div className="relative w-full">
                       <input
                         type="text"
                         value={customSlugInput}
@@ -727,14 +736,25 @@ export default function RestaurantOnboarding() {
                         placeholder="e.g. niti-hotel"
                         className="w-full px-4 py-2.5 bg-white border border-[#D7E5E8] rounded-xl text-xs font-bold text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
                       />
-                      <span className="absolute right-3 top-2.5 text-xs text-[#94A3B8] font-mono">.jattamkommerce.com</span>
+                      <span className="absolute right-3 top-2.5 text-xs text-[#94A3B8] font-mono font-medium">.jattamkommerce.com</span>
                     </div>
+                    <p className="text-[11px] text-[#64748B] font-mono">
+                      Preview Link: <span className="font-bold text-[#3A7D7C]">https://{customSlugInput || 'yourname'}.jattamkommerce.com</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-[#D7E5E8]">
                     <button
-                      onClick={handlePurchaseSubdomainInWizard}
-                      disabled={saving}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                      onClick={() => setShowPricingModal(true)}
+                      className="w-full sm:flex-1 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <CreditCard className="w-4 h-4" /> Pay ₹99 & Unlock Custom Name
+                      <CreditCard className="w-4 h-4" /> 💳 View Features & Upgrade (₹99/mo)
+                    </button>
+                    <button
+                      onClick={handleStartSkip}
+                      className="w-full sm:w-auto px-5 py-3 bg-slate-100 hover:bg-slate-200 text-[#64748B] hover:text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      Skip Step ⏩
                     </button>
                   </div>
                 </div>
@@ -781,6 +801,116 @@ export default function RestaurantOnboarding() {
         </div>
 
       </div>
+
+      {/* DETAILED SUBDOMAIN PRICING MODAL */}
+      {showPricingModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-[#D7E5E8] max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between border-b border-[#D7E5E8] pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  Subdomain Add-On
+                </span>
+                <h3 className="text-lg font-extrabold text-[#1F2937] mt-1">Official Restaurant Subdomain Plan</h3>
+                <p className="text-xs text-[#64748B]">Unlock official restaurant branding for your digital store</p>
+              </div>
+              <button onClick={() => setShowPricingModal(false)} className="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="bg-gradient-to-r from-amber-50 to-[#EAF4F7] p-4 rounded-2xl border border-amber-200/60 flex items-center justify-between">
+                <div>
+                  <span className="text-2xl font-black text-[#1F2937]">₹99</span>
+                  <span className="text-xs text-[#64748B] font-bold"> / month</span>
+                </div>
+                <span className="text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-full">
+                  INSTANT ACTIVATION
+                </span>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <h4 className="font-bold text-[#1F2937] uppercase tracking-wider text-[10px]">What is included in ₹99/mo Plan:</h4>
+                <div className="space-y-2 text-[#334155] font-medium">
+                  <div className="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">Official Restaurant Subdomain</strong>
+                      <span><code className="bg-white px-1 rounded border text-[#3A7D7C]">{customSlugInput || 'yourname'}.jattamkommerce.com</code> instead of random codes</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">Custom Dine-In Table QR Codes</strong>
+                      <span>Print high-quality branded QR codes with your restaurant name on table stands & menus</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 block">WhatsApp & Social Sharing Identity</strong>
+                      <span>When customers share your store link, it displays your official restaurant name preview</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-3 border-t border-[#D7E5E8]">
+              <button
+                onClick={() => { setShowPricingModal(false); handlePurchaseSubdomainInWizard(); }}
+                className="flex-1 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4" /> Pay ₹99 & Unlock Now
+              </button>
+              <button
+                onClick={() => setShowPricingModal(false)}
+                className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-[#64748B] font-bold text-xs rounded-xl border border-[#D7E5E8] transition-all cursor-pointer"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5-SECOND SKIP COUNTDOWN DECISION MODAL */}
+      {showSkipModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-[#D7E5E8] max-w-md w-full p-6 space-y-4 shadow-2xl text-center animate-in fade-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+              <Sparkles className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-lg font-black text-[#1F2937]">Skip Custom Domain Setup?</h3>
+            <p className="text-xs text-[#64748B] leading-relaxed font-medium">
+              Having your official restaurant name domain increases customer order trust by **45%**! 
+              If you skip now, your store will launch using the free random string (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>).
+            </p>
+
+            <div className="py-2">
+              <span className="inline-block px-4 py-1.5 bg-amber-50 text-amber-900 font-extrabold text-xs rounded-full border border-amber-200 animate-pulse">
+                Auto-advancing to Publish in {skipCountdown}s...
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={() => { setShowSkipModal(false); setShowPricingModal(true); }}
+                className="w-full py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4" /> Wait! Upgrade for ₹99/mo
+              </button>
+              <button
+                onClick={() => { setShowSkipModal(false); setStep(8); }}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-[#64748B] font-bold text-xs rounded-xl border border-[#D7E5E8] transition-all cursor-pointer"
+              >
+                Continue Free & Skip Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

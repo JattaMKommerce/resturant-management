@@ -40,7 +40,7 @@ export default function AdminSettingsPage() {
   const logoInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
-  // Direct Merchant Razorpay & UPI Gateway
+  // Dedicated Merchant Razorpay & UPI Gateway
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
@@ -48,6 +48,10 @@ export default function AdminSettingsPage() {
   const [upiName, setUpiName] = useState('');
 
   const [websiteStatus, setWebsiteStatus] = useState('DRAFT');
+  const [customSubdomainEnabled, setCustomSubdomainEnabled] = useState(false);
+  const [customSubdomainSlug, setCustomSubdomainSlug] = useState('');
+  const [randomSlug, setRandomSlug] = useState('');
+  const [customSlugInput, setCustomSlugInput] = useState('');
 
   useEffect(() => {
     fetchSettings();
@@ -89,11 +93,40 @@ export default function AdminSettingsPage() {
         setUpiName(r.upi_name || '');
 
         setWebsiteStatus(r.website_status || 'DRAFT');
+        setCustomSubdomainEnabled(r.custom_subdomain_enabled === 1 || r.custom_subdomain_enabled === true);
+        setCustomSubdomainSlug(r.custom_subdomain_slug || '');
+        setRandomSlug(r.random_slug || '');
+        setCustomSlugInput(r.custom_subdomain_slug || r.slug || '');
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePurchaseCustomSubdomain = async () => {
+    const slugToUse = customSlugInput.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!slugToUse) {
+      alert('Please enter a valid custom subdomain name.');
+      return;
+    }
+    if (!window.confirm(`Upgrade to Custom Subdomain "${slugToUse}.jattamkommerce.com" for ₹99/month?`)) return;
+
+    setSaving(true);
+    try {
+      const res = await api.post('/admin/restaurant/purchase-custom-subdomain', {
+        restaurant_id: restaurantId,
+        custom_subdomain_slug: slugToUse
+      });
+      if (res.data.success) {
+        alert('🎉 Custom Subdomain Unlocked Successfully!');
+        fetchSettings();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to upgrade custom subdomain.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -650,6 +683,63 @@ export default function AdminSettingsPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Store Subdomain Routing & Branding Settings */}
+          <div className="pt-5 border-t border-[#D7E5E8] space-y-3">
+            <h4 className="text-sm font-bold text-[#1F2937] flex items-center gap-2">
+              <Building className="w-4 h-4 text-[#3A7D7C]" />
+              <span>Digital Storefront Subdomain Routing</span>
+            </h4>
+
+            {customSubdomainEnabled ? (
+              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex items-center justify-between text-emerald-900 shadow-2xs">
+                <div>
+                  <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
+                  <p className="text-[11px] text-emerald-700 font-mono mt-0.5">
+                    https://{customSubdomainSlug || name.toLowerCase().replace(/[^a-z0-9-]/g, '')}.jattamkommerce.com
+                  </p>
+                </div>
+                <span className="text-[10px] font-extrabold bg-white text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
+                  ACTIVE (₹99/mo)
+                </span>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-[#EAF4F7] to-amber-50 p-4 rounded-2xl border border-[#3A7D7C]/30 space-y-3 shadow-2xs">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h5 className="font-bold text-xs text-[#1F2937]">Free Tier Random Subdomain</h5>
+                    <p className="text-[11px] text-[#64748B] font-mono mt-0.5">
+                      Current Free Link: <span className="font-bold text-[#3A7D7C]">https://{randomSlug || 'aK8xP2qZ'}.jattamkommerce.com</span>
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
+                    FREE TIER
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                  <div className="relative flex-1 w-full">
+                    <input
+                      type="text"
+                      value={customSlugInput}
+                      onChange={(e) => setCustomSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder="e.g. niti-hotel"
+                      className="w-full px-3 py-2 bg-white border border-[#D7E5E8] rounded-xl text-xs font-bold text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
+                    />
+                    <span className="absolute right-3 top-2 text-xs text-[#94A3B8] font-mono">.jattamkommerce.com</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePurchaseCustomSubdomain}
+                    disabled={saving}
+                    className="w-full sm:w-auto px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-bold rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" /> Unlock Custom Name (₹99/mo)
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="pt-6 border-t border-[#D7E5E8] flex justify-end">
