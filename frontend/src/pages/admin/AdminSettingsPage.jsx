@@ -706,9 +706,13 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold bg-emerald-600 text-white px-3.5 py-1.5 rounded-full shadow-2xs shrink-0">
-                  ⭐ ACTIVE (₹99/mo)
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSubdomainModal(true)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-full shadow-md transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <ShieldCheck className="w-4 h-4" /> ⭐ ACTIVE (₹99/mo)
+                </button>
               </div>
             ) : (
               <div className="bg-gradient-to-r from-[#EAF4F7] to-amber-50 p-4 rounded-2xl border border-[#3A7D7C]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
@@ -722,7 +726,7 @@ export default function AdminSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowSubdomainModal(true)}
-                  className="px-5 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                  className="px-5 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-extrabold rounded-full shadow-md transition-all flex items-center gap-2 cursor-pointer shrink-0"
                 >
                   <CreditCard className="w-4 h-4" /> Activate Custom Subdomain (₹99/mo)
                 </button>
