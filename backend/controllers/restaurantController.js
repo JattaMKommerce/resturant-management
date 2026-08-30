@@ -18,6 +18,16 @@ async function getRestaurantBySlug(req, res) {
 
     const rest = rows[0];
 
+    // Lock custom name URLs on free tier if ₹99/mo add-on is NOT active
+    if (!rest.custom_subdomain_enabled && slug !== String(rest.random_slug || '').toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        locked: true,
+        message: `Custom restaurant name URLs (e.g. /restaurant/${rest.slug}) are locked on the free tier. Upgrade to the ₹99/mo Custom Subdomain Plan to unlock your restaurant name in URLs!`,
+        random_slug: rest.random_slug
+      });
+    }
+
     // Check restaurant status
     if (rest.status === 'SUSPENDED') {
       return res.json({

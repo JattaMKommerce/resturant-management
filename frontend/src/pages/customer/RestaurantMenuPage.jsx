@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
 
@@ -26,6 +26,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const [activeOrder, setActiveOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lockedInfo, setLockedInfo] = useState(null);
 
   useEffect(() => {
     if (slug) {
@@ -38,6 +39,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
     try {
       setLoading(true);
       setError(null);
+      setLockedInfo(null);
       const [restRes, catRes, menuRes] = await Promise.all([
         api.get(`/restaurants/${slug}`),
         api.get(`/restaurants/${slug}/categories`).catch(() => ({ data: { categories: [] } })),
@@ -66,8 +68,12 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       } catch (e) {}
 
     } catch (err) {
-      console.error('Restaurant load error:', err);
-      setError(err.response?.data?.message || 'Restaurant not found or unavailable.');
+      console.error('Error loading restaurant menu data:', err);
+      if (err.response?.data?.locked) {
+        setLockedInfo(err.response.data);
+      } else {
+        setError(err.response?.data?.message || 'Restaurant not found or unavailable.');
+      }
     } finally {
       setLoading(false);
     }
@@ -118,6 +124,32 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xs font-bold text-[#64748B] mt-3">Loading storefront...</p>
+      </div>
+    );
+  }
+
+  if (lockedInfo) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center font-sans">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4 border border-amber-200 shadow-xs">
+          <Lock className="w-8 h-8 stroke-[2.2]" />
+        </div>
+        <span className="text-[11px] font-black text-amber-800 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider border border-amber-200 mb-3">
+          🔒 Custom Restaurant Name URL Locked
+        </span>
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Subdomain Plan Upgrade Required (₹99/mo)</h2>
+        <p className="text-slate-600 text-xs max-w-md leading-relaxed mb-6 font-medium">
+          Custom restaurant name links (e.g. <code className="font-bold bg-white px-1.5 py-0.5 rounded border text-slate-800">{slug}</code>) are locked on the free tier. 
+          To unlock your official restaurant name URL, the store admin can upgrade to the **₹99/month Custom Subdomain Plan** in the Admin Portal.
+        </p>
+        {lockedInfo.random_slug && (
+          <button
+            onClick={() => navigate(`/restaurant/${lockedInfo.random_slug}`)}
+            className="px-6 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+          >
+            Open Storefront via Free Code ({lockedInfo.random_slug}) ↗
+          </button>
+        )}
       </div>
     );
   }
