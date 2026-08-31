@@ -28,7 +28,8 @@ import {
   BedDouble,
   UserPlus,
   Hotel,
-  Wrench
+  Wrench,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
