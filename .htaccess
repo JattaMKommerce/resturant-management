@@ -17,25 +17,20 @@ PassengerStartupFile server.js
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
   RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
 
-  # 2. If static files exist in dist or frontend/dist, serve directly
-  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f [OR]
-  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -d
-  RewriteRule ^(.*)$ dist/$1 [L]
+  # 2. Serve static assets directly from hotel subfolder
+  RewriteCond %{DOCUMENT_ROOT}/hotel/$1 -f
+  RewriteRule ^(.*)$ hotel/$1 [L]
 
-  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -f [OR]
-  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/$1 -d
-  RewriteRule ^(.*)$ frontend/dist/$1 [L]
+  # 3. Clean Professional SPA Routes: /restaurant/*, /admin/*, /order/*, /waiter/*, /kitchen/*, /driver/*
+  # Internally serve the React app while keeping the short, professional URL in the browser!
+  RewriteCond %{REQUEST_URI} ^/(restaurant|admin|order|waiter|kitchen|driver|rider) [NC]
+  RewriteCond %{DOCUMENT_ROOT}/hotel/index.html -f
+  RewriteRule ^.*$ /hotel/index.html [L]
 
-  # 3. SPA Fallback: Route all unmatched frontend routes to React index.html
-  RewriteCond %{REQUEST_URI} !^/(api|health|socket\.io|uploads) [NC]
+  # 4. Fallback for /hotel/* subpath
+  RewriteCond %{REQUEST_URI} ^/hotel/ [NC]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f
-  RewriteRule . /dist/index.html [L]
-
-  RewriteCond %{REQUEST_URI} !^/(api|health|socket\.io|uploads) [NC]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{DOCUMENT_ROOT}/frontend/dist/index.html -f
-  RewriteRule . /frontend/dist/index.html [L]
+  RewriteCond %{DOCUMENT_ROOT}/hotel/index.html -f
+  RewriteRule ^hotel/.*$ /hotel/index.html [L]
 </IfModule>

@@ -48,9 +48,6 @@ CREATE TABLE IF NOT EXISTS restaurants (
   is_cod_enabled TINYINT(1) NOT NULL DEFAULT 1,
   is_online_payment_enabled TINYINT(1) NOT NULL DEFAULT 1,
   accepts_rider_applications TINYINT(1) NOT NULL DEFAULT 1,
-  random_slug VARCHAR(20) DEFAULT NULL,
-  custom_subdomain_enabled TINYINT(1) NOT NULL DEFAULT 0,
-  custom_subdomain_slug VARCHAR(100) DEFAULT NULL,
   setup_completed_at TIMESTAMP NULL DEFAULT NULL,
   admin_user_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -784,5 +781,9 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   INDEX idx_push_order (order_id),
   INDEX idx_push_customer (customer_identity_id)
 ) ENGINE=InnoDB;
+
+
+
+
 
 

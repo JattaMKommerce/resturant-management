@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
-import { 
-  Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe, 
+import {
+  Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe,
   CheckCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle, Upload, Sparkles,
   Trash2, Clock, ShieldCheck, Star, CreditCard, Lock
 } from 'lucide-react';
@@ -102,7 +102,7 @@ export default function RestaurantOnboarding() {
         });
         setLocationForm({ latitude: r.latitude || '12.9716', longitude: r.longitude || '77.5946' });
         setBrandingForm({ tagline: r.tagline || '', description: r.description || '', about: r.about || '' });
-        
+
         if (r.logo_url) setLogoPreview(getMediaUrl(r.logo_url));
         if (r.cover_url) setCoverPreview(getMediaUrl(r.cover_url));
       }
@@ -351,7 +351,7 @@ export default function RestaurantOnboarding() {
       </div>
 
       <div className="flex-1 max-w-6xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
-        
+
         {/* Step Sidebar */}
         <div className="md:col-span-4 bg-white border border-[#D7E5E8] rounded-2xl p-5 h-fit space-y-3 shadow-xs">
           <h2 className="font-bold text-xs text-[#64748B] uppercase tracking-wider">Setup Progress</h2>
@@ -364,17 +364,15 @@ export default function RestaurantOnboarding() {
                   key={s.number}
                   type="button"
                   onClick={() => setStep(s.number)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-bold transition-all text-left border ${
-                    isCurrent
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-bold transition-all text-left border ${isCurrent
                       ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-2xs'
                       : 'bg-white text-[#1F2937] border-[#D7E5E8] hover:bg-slate-50 hover:border-[#3A7D7C]/40'
-                  }`}
+                    }`}
                 >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                    isCurrent
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${isCurrent
                       ? 'bg-white/20 text-white'
                       : 'bg-slate-100 text-[#64748B] border border-[#D7E5E8]'
-                  }`}>
+                    }`}>
                     {s.number}
                   </div>
                   <span className={isCurrent ? 'text-white font-bold' : 'text-[#1F2937] font-semibold'}>
@@ -388,7 +386,7 @@ export default function RestaurantOnboarding() {
 
         {/* Form Content Area */}
         <div className="md:col-span-8 bg-white border border-[#D7E5E8] rounded-2xl p-6 shadow-xs">
-          
+
           {error && (
             <div className="p-3 mb-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 font-bold">
               <AlertCircle className="w-4 h-4" /> {error}
@@ -401,34 +399,34 @@ export default function RestaurantOnboarding() {
               <h2 className="text-base font-bold text-[#1F2937] mb-2">Step 1: Restaurant Basic Details</h2>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Restaurant Name *</label>
-                <input type="text" required value={detailsForm.name} onChange={e => setDetailsForm({...detailsForm, name: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                <input type="text" required value={detailsForm.name} onChange={e => setDetailsForm({ ...detailsForm, name: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Phone *</label>
-                  <input type="text" required value={detailsForm.phone} onChange={e => setDetailsForm({...detailsForm, phone: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" required value={detailsForm.phone} onChange={e => setDetailsForm({ ...detailsForm, phone: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Email *</label>
-                  <input type="email" required value={detailsForm.email} onChange={e => setDetailsForm({...detailsForm, email: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="email" required value={detailsForm.email} onChange={e => setDetailsForm({ ...detailsForm, email: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Street Address *</label>
-                <input type="text" required value={detailsForm.address} onChange={e => setDetailsForm({...detailsForm, address: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                <input type="text" required value={detailsForm.address} onChange={e => setDetailsForm({ ...detailsForm, address: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Area / Locality</label>
-                  <input type="text" value={detailsForm.area} onChange={e => setDetailsForm({...detailsForm, area: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" value={detailsForm.area} onChange={e => setDetailsForm({ ...detailsForm, area: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">City</label>
-                  <input type="text" value={detailsForm.city} onChange={e => setDetailsForm({...detailsForm, city: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" value={detailsForm.city} onChange={e => setDetailsForm({ ...detailsForm, city: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Postal Code</label>
-                  <input type="text" value={detailsForm.postal_code} onChange={e => setDetailsForm({...detailsForm, postal_code: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" value={detailsForm.postal_code} onChange={e => setDetailsForm({ ...detailsForm, postal_code: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
               </div>
 
@@ -445,11 +443,11 @@ export default function RestaurantOnboarding() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Latitude</label>
-                  <input type="text" value={locationForm.latitude} onChange={e => setLocationForm({...locationForm, latitude: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" value={locationForm.latitude} onChange={e => setLocationForm({ ...locationForm, latitude: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Longitude</label>
-                  <input type="text" value={locationForm.longitude} onChange={e => setLocationForm({...locationForm, longitude: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" value={locationForm.longitude} onChange={e => setLocationForm({ ...locationForm, longitude: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
               </div>
               <p className="text-[#64748B]">Coordinates are used for Haversine server-side delivery distance validation.</p>
@@ -531,15 +529,15 @@ export default function RestaurantOnboarding() {
 
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Tagline</label>
-                <input type="text" placeholder="Where Every Meal is a Royal Experience" value={brandingForm.tagline} onChange={e => setBrandingForm({...brandingForm, tagline: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                <input type="text" placeholder="Where Every Meal is a Royal Experience" value={brandingForm.tagline} onChange={e => setBrandingForm({ ...brandingForm, tagline: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Short Description</label>
-                <textarea rows={2} value={brandingForm.description} onChange={e => setBrandingForm({...brandingForm, description: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] resize-none" />
+                <textarea rows={2} value={brandingForm.description} onChange={e => setBrandingForm({ ...brandingForm, description: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] resize-none" />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">About Story</label>
-                <textarea rows={3} value={brandingForm.about} onChange={e => setBrandingForm({...brandingForm, about: e.target.value})} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] resize-none" />
+                <textarea rows={3} value={brandingForm.about} onChange={e => setBrandingForm({ ...brandingForm, about: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C] resize-none" />
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -584,10 +582,10 @@ export default function RestaurantOnboarding() {
               <h2 className="text-base font-bold text-[#1F2937] mb-2">Step 5: Add Menu Items</h2>
               <form onSubmit={handleAddMenuItem} className="space-y-3 bg-slate-50 p-4 rounded-xl border border-[#D7E5E8]">
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="text" placeholder="Item Name *" value={newItemForm.name} onChange={e => setNewItemForm({...newItemForm, name: e.target.value})} className="p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
-                  <input type="number" placeholder="Price (₹) *" value={newItemForm.price} onChange={e => setNewItemForm({...newItemForm, price: e.target.value})} className="p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="text" placeholder="Item Name *" value={newItemForm.name} onChange={e => setNewItemForm({ ...newItemForm, name: e.target.value })} className="p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+                  <input type="number" placeholder="Price (₹) *" value={newItemForm.price} onChange={e => setNewItemForm({ ...newItemForm, price: e.target.value })} className="p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
                 </div>
-                <select value={newItemForm.category_id} onChange={e => setNewItemForm({...newItemForm, category_id: e.target.value})} className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]">
+                <select value={newItemForm.category_id} onChange={e => setNewItemForm({ ...newItemForm, category_id: e.target.value })} className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]">
                   <option value="">Select Category *</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -642,7 +640,7 @@ export default function RestaurantOnboarding() {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                  
+
                   {/* Floating Branding Info */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 flex items-end gap-3.5">
                     <img
@@ -660,7 +658,7 @@ export default function RestaurantOnboarding() {
                           </span>
                         )}
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-amber-300" /> 10:00 AM – 11:30 PM
+                          <Clock className="w-3 h-3 text-amber-300" /> 10:00 AM - 11:30 PM
                         </span>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                           ● Open Now
@@ -719,7 +717,7 @@ export default function RestaurantOnboarding() {
                 </span>
                 <h2 className="text-base font-bold text-[#1F2937] mt-1.5">Official Restaurant Name Subdomain (₹99/mo)</h2>
                 <p className="text-[#64748B] text-xs mt-0.5 leading-relaxed">
-                  By default, your free website uses a random code (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>). 
+                  By default, your free website uses a random code (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>).
                   Enter your restaurant name below to preview your official domain link (<code className="font-bold text-[#3A7D7C] bg-white px-1 py-0.5 rounded border">{customSlugInput || 'yourname'}.jattamkommerce.com</code>)!
                 </p>
               </div>
@@ -888,7 +886,7 @@ export default function RestaurantOnboarding() {
 
             <h3 className="text-lg font-black text-[#1F2937]">Skip Custom Domain Setup?</h3>
             <p className="text-xs text-[#64748B] leading-relaxed font-medium">
-              Having your official restaurant name domain increases customer order trust by **45%**! 
+              Having your official restaurant name domain increases customer order trust by **45%**!
               If you skip now, your store will launch using the free random string (<code className="font-bold bg-slate-100 px-1 py-0.5 rounded border">{restaurant?.random_slug || 'aK8xP2qZ'}</code>).
             </p>
 

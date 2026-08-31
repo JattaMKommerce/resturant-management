@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { 
-  CheckCircle2, Clock, ChefHat, PackageCheck, AlertCircle, MapPin, Phone, 
+import {
+  CheckCircle2, Clock, ChefHat, PackageCheck, AlertCircle, MapPin, Phone,
   ShoppingBag, ArrowLeft, RefreshCw, Bike, Navigation, AlertTriangle, Sparkles, Volume2
 } from 'lucide-react';
 import api from '../../api/axios';
@@ -56,7 +56,7 @@ export default function OrderTrackingPage({ overrideSlug }) {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') {
         setPushStatus('granted');
-        registerWebPushSubscription(orderId).catch(() => {});
+        registerWebPushSubscription(orderId).catch(() => { });
       } else {
         setPushStatus(Notification.permission);
       }
@@ -92,7 +92,7 @@ export default function OrderTrackingPage({ overrideSlug }) {
     socket.on('order_update', handleUpdate);
     socket.on('order_updated', handleUpdate);
     socket.on('order_status_updated', handleUpdate);
-    
+
     // Phase 2 Live Driver Location Stream
     socket.on('driver_location_stream', (data) => {
       if (data.latitude && data.longitude) {
@@ -199,7 +199,7 @@ export default function OrderTrackingPage({ overrideSlug }) {
 
       {/* Main Content */}
       <main className="max-w-3xl w-full mx-auto p-4 sm:p-6 space-y-6 flex-1">
-        
+
         {/* Status Notification Banner */}
         {isCancelled ? (
           <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 text-xs font-bold flex items-center gap-3">
@@ -223,8 +223,8 @@ export default function OrderTrackingPage({ overrideSlug }) {
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-orange-600 block">Active Order Status</span>
               <h2 className="text-lg font-black text-slate-900 mt-0.5">
                 {order.order_status === 'OUT_FOR_DELIVERY' ? 'Food is Out For Delivery! 🚀' :
-                 order.order_status === 'DELIVERED' ? 'Order Delivered! Enjoy Your Meal 🎉' :
-                 order.order_status.replace(/_/g, ' ')}
+                  order.order_status === 'DELIVERED' ? 'Order Delivered! Enjoy Your Meal 🎉' :
+                    order.order_status.replace(/_/g, ' ')}
               </h2>
             </div>
             <div className="text-right">
@@ -245,11 +245,10 @@ export default function OrderTrackingPage({ overrideSlug }) {
                 const Icon = step.icon;
                 return (
                   <div key={step.key} className="flex flex-col items-center flex-1">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                      isCompleted ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
-                      isCurrent ? 'bg-orange-500 text-white ring-4 ring-orange-100 animate-pulse' :
-                      'bg-slate-100 text-slate-400'
-                    }`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isCompleted ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' :
+                        isCurrent ? 'bg-orange-500 text-white ring-4 ring-orange-100 animate-pulse' :
+                          'bg-slate-100 text-slate-400'
+                      }`}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <span className={`text-[10px] font-bold mt-1.5 text-center hidden sm:block ${isCompleted ? 'text-emerald-700' : 'text-slate-400'}`}>

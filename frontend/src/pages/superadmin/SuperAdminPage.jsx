@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
+import {
   ShieldAlert, Building, Users, Bike, ShoppingBag, DollarSign, Lock, Unlock,
   CheckCircle, XCircle, Eye, EyeOff, LogOut, RefreshCw, Search, ExternalLink,
   AlertTriangle, Plus, Store, Check, Layers, ChevronRight, Sparkles, Clock, Calendar,
@@ -129,8 +129,8 @@ export default function SuperAdminPage() {
 
   const handleToggleCustomSubdomain = async (restaurantId, currentEnabled, currentSlug) => {
     const nextState = !currentEnabled;
-    const promptMsg = nextState 
-      ? `Enable ₹99/mo Custom Subdomain for Restaurant #${restaurantId}? Enter custom subdomain slug:` 
+    const promptMsg = nextState
+      ? `Enable ₹99/mo Custom Subdomain for Restaurant #${restaurantId}? Enter custom subdomain slug:`
       : `Disable Custom Subdomain for Restaurant #${restaurantId}? (Will revert to random string subdomain)`;
     const newSlug = window.prompt(promptMsg, currentSlug || '');
     if (newSlug === null) return;
@@ -417,15 +417,15 @@ export default function SuperAdminPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
-            onClick={fetchData} 
+          <button
+            onClick={fetchData}
             className="p-2.5 bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl transition-colors border border-[#D7E5E8] shadow-2xs cursor-pointer"
             title="Refresh Data"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button 
-            onClick={() => { logout(); navigate('/admin/login'); }} 
+          <button
+            onClick={() => { logout(); navigate('/admin/login'); }}
             className="flex items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition-all shadow-2xs cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Sign Out
@@ -437,9 +437,8 @@ export default function SuperAdminPage() {
 
         {/* Master KPIs Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className={`p-4 rounded-2xl border shadow-xs transition-all ${
-            pendingApprovals.length > 0 ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400/20' : 'bg-white border-[#D7E5E8]'
-          }`}>
+          <div className={`p-4 rounded-2xl border shadow-xs transition-all ${pendingApprovals.length > 0 ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400/20' : 'bg-white border-[#D7E5E8]'
+            }`}>
             <span className="text-[10px] font-bold uppercase text-amber-800 block">Pending Approvals</span>
             <span className="text-2xl font-bold text-amber-900 mt-1 block">{pendingApprovals.length}</span>
           </div>
@@ -468,67 +467,61 @@ export default function SuperAdminPage() {
         {/* Tab Controls Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-[#D7E5E8] shadow-xs">
           <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-            <button 
-              onClick={() => setActiveTab('approvals')} 
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'approvals' 
-                  ? 'bg-amber-600 text-white shadow-2xs' 
+            <button
+              onClick={() => setActiveTab('approvals')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'approvals'
+                  ? 'bg-amber-600 text-white shadow-2xs'
                   : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
-              }`}
+                }`}
             >
               <UserCheck className="w-4 h-4" /> Pending Approvals ({pendingApprovals.length})
             </button>
 
-            <button 
-              onClick={() => setActiveTab('subscriptions')} 
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'subscriptions' 
-                  ? 'bg-[#3A7D7C] text-white shadow-2xs' 
+            <button
+              onClick={() => setActiveTab('subscriptions')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'subscriptions'
+                  ? 'bg-[#3A7D7C] text-white shadow-2xs'
                   : 'bg-[#EAF4F7] text-[#1F2937] hover:bg-[#D7E5E8]'
-              }`}
+                }`}
             >
               <Sparkles className="w-4 h-4" /> Hotel Subscriptions ({hotelSubscriptions.length})
             </button>
 
-            <button 
-              onClick={() => setActiveTab('plans')} 
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'plans' 
-                  ? 'bg-[#3A7D7C] text-white shadow-2xs' 
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'plans'
+                  ? 'bg-[#3A7D7C] text-white shadow-2xs'
                   : 'bg-[#EAF4F7] text-[#1F2937] hover:bg-[#D7E5E8]'
-              }`}
+                }`}
             >
               <Tag className="w-4 h-4" /> SaaS Plans ({subscriptionPlans.length})
             </button>
 
-            <button 
-              onClick={() => setActiveTab('subscription_payments')} 
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'subscription_payments' 
-                  ? 'bg-[#3A7D7C] text-white shadow-2xs' 
+            <button
+              onClick={() => setActiveTab('subscription_payments')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'subscription_payments'
+                  ? 'bg-[#3A7D7C] text-white shadow-2xs'
                   : 'bg-[#EAF4F7] text-[#1F2937] hover:bg-[#D7E5E8]'
-              }`}
+                }`}
             >
               <CreditCard className="w-4 h-4" /> SaaS Payments ({subscriptionPayments.length})
             </button>
 
-            <button 
-              onClick={() => setActiveTab('restaurants')} 
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'restaurants' 
-                  ? 'bg-[#3A7D7C] text-white shadow-2xs' 
+            <button
+              onClick={() => setActiveTab('restaurants')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'restaurants'
+                  ? 'bg-[#3A7D7C] text-white shadow-2xs'
                   : 'bg-[#EAF4F7] text-[#1F2937] hover:bg-[#D7E5E8]'
-              }`}
+                }`}
             >
               <Store className="w-4 h-4" /> Restaurants ({restaurants.length})
             </button>
-            <button 
-              onClick={() => setActiveTab('admins')} 
-              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === 'admins' 
-                  ? 'bg-[#3A7D7C] text-white shadow-2xs' 
+            <button
+              onClick={() => setActiveTab('admins')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'admins'
+                  ? 'bg-[#3A7D7C] text-white shadow-2xs'
                   : 'bg-[#EAF4F7] text-[#1F2937] hover:bg-[#D7E5E8]'
-              }`}
+                }`}
             >
               <Users className="w-4 h-4" /> Admins ({admins.length})
             </button>
@@ -537,25 +530,25 @@ export default function SuperAdminPage() {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 bg-[#EAF4F7] border border-[#D7E5E8] rounded-xl text-xs text-[#1F2937] outline-none"
               />
             </div>
             {activeTab === 'plans' && (
-              <button 
-                onClick={() => setShowNewPlanModal(true)} 
+              <button
+                onClick={() => setShowNewPlanModal(true)}
                 className="px-3.5 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Create Plan
               </button>
             )}
             {activeTab === 'subscriptions' && (
-              <button 
-                onClick={() => setShowAssignPlanModal(true)} 
+              <button
+                onClick={() => setShowAssignPlanModal(true)}
                 className="px-3.5 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Assign Plan
@@ -629,11 +622,10 @@ export default function SuperAdminPage() {
                             </span>
                           </td>
                           <td className="p-4">
-                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${
-                              item.payment_status === 'SUCCESS'
+                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${item.payment_status === 'SUCCESS'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : 'bg-amber-50 text-amber-800 border-amber-200'
-                            }`}>
+                              }`}>
                               {item.payment_status}
                             </span>
                           </td>
@@ -688,7 +680,7 @@ export default function SuperAdminPage() {
                 <h2 className="text-base font-bold text-[#1F2937]">Hotel Subscriptions Master Table</h2>
                 <p className="text-xs text-[#64748B]">Real-time state, plan assignments, countdowns, and immediate expiry enforcement</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowAssignPlanModal(true)}
                 className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
@@ -723,36 +715,34 @@ export default function SuperAdminPage() {
                           <td className="p-4">
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-[#1F2937]">{hs.plan_name}</span>
-                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold border ${
-                                hs.is_trial || hs.subscription_type === 'TRIAL'
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold border ${hs.is_trial || hs.subscription_type === 'TRIAL'
                                   ? 'bg-purple-50 text-purple-700 border-purple-200'
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              }`}>
+                                }`}>
                                 {hs.is_trial || hs.subscription_type === 'TRIAL' ? 'FREE TRIAL' : 'PAID'}
                               </span>
                             </div>
                             {hs.plan_price > 0 && <span className="text-[11px] text-[#64748B] block mt-0.5">₹{hs.plan_price} / {hs.plan_duration_days}d</span>}
                           </td>
                           <td className="p-4">
-                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${
-                              hs.status === 'ACTIVE'
+                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${hs.status === 'ACTIVE'
                                 ? hs.is_trial ? 'bg-purple-50 text-purple-800 border-purple-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : hs.status === 'PENDING_APPROVAL'
-                                ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                : hs.status === 'EXPIRED'
-                                ? 'bg-rose-50 text-rose-800 border-rose-200'
-                                : hs.status === 'REJECTED'
-                                ? 'bg-rose-100 text-rose-900 border-rose-300'
-                                : 'bg-slate-100 text-[#64748B] border-[#D7E5E8]'
-                            }`}>
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : hs.status === 'EXPIRED'
+                                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                    : hs.status === 'REJECTED'
+                                      ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                      : 'bg-slate-100 text-[#64748B] border-[#D7E5E8]'
+                              }`}>
                               {hs.status}
                             </span>
                           </td>
                           <td className="p-4 text-[#64748B]">
-                            {hs.starts_at ? new Date(hs.starts_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            {hs.starts_at ? new Date(hs.starts_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                           </td>
                           <td className="p-4 text-[#64748B]">
-                            {hs.expires_at ? new Date(hs.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            {hs.expires_at ? new Date(hs.expires_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                           </td>
                           <td className="p-4 font-mono font-bold">
                             {hs.status === 'ACTIVE' ? (
@@ -797,11 +787,10 @@ export default function SuperAdminPage() {
                             {hs.has_subscription && (
                               <button
                                 onClick={() => handleToggleHotelSubStatus(hs.restaurant_id, hs.status)}
-                                className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-colors cursor-pointer ${
-                                  hs.status === 'ACTIVE'
+                                className={`px-2 py-1 rounded-lg font-bold text-[11px] border transition-colors cursor-pointer ${hs.status === 'ACTIVE'
                                     ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                }`}
+                                  }`}
                               >
                                 {hs.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
                               </button>
@@ -824,7 +813,7 @@ export default function SuperAdminPage() {
                 <h2 className="text-base font-bold text-[#1F2937]">Subscription Plans Catalog</h2>
                 <p className="text-xs text-[#64748B]">Manage pricing, quotas, duration, and feature lists available to hotels</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowNewPlanModal(true)}
                 className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
@@ -838,9 +827,8 @@ export default function SuperAdminPage() {
                   <div>
                     <div className="flex justify-between items-center">
                       <h3 className="text-base font-extrabold text-[#1F2937]">{plan.name}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                        plan.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${plan.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}>
                         {plan.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </div>
@@ -849,7 +837,7 @@ export default function SuperAdminPage() {
                       <span className="text-xs text-[#64748B]"> / {plan.duration_days} days</span>
                     </div>
                     <p className="text-xs text-[#64748B] mt-2 leading-relaxed">{plan.description}</p>
-                    
+
                     <div className="mt-4 pt-3 border-t border-[#D7E5E8] space-y-1.5">
                       <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Features:</div>
                       {plan.features.map((f, i) => (
@@ -913,29 +901,27 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${
-                            pay.status === 'SUCCESS'
+                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${pay.status === 'SUCCESS'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : pay.status === 'PENDING'
-                              ? 'bg-amber-50 text-amber-800 border-amber-200'
-                              : 'bg-rose-50 text-rose-800 border-rose-200'
-                          }`}>
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                            }`}>
                             {pay.status}
                           </span>
                         </td>
                         <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${
-                            pay.subscription_status === 'ACTIVE'
+                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${pay.subscription_status === 'ACTIVE'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : pay.subscription_status === 'PENDING_APPROVAL'
-                              ? 'bg-amber-100 text-amber-900 border-amber-300'
-                              : 'bg-rose-50 text-rose-800 border-rose-200'
-                          }`}>
+                                ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                            }`}>
                             {pay.subscription_status || 'PENDING'}
                           </span>
                         </td>
                         <td className="p-4 text-[#64748B] text-[11px] max-w-xs truncate">
-                          {pay.offline_proof_note || '—'}
+                          {pay.offline_proof_note || '-'}
                         </td>
                       </tr>
                     ))
@@ -979,21 +965,19 @@ export default function SuperAdminPage() {
                       <td className="p-4">
                         <button
                           onClick={() => handleToggleCustomSubdomain(r.id, r.custom_subdomain_enabled, r.custom_subdomain_slug || r.slug)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
-                            r.custom_subdomain_enabled
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${r.custom_subdomain_enabled
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
                               : 'bg-slate-100 text-slate-600 border-[#D7E5E8] hover:bg-slate-200'
-                          }`}
+                            }`}
                         >
                           {r.custom_subdomain_enabled ? '⭐ Active (Click to Lock)' : '🔒 Off (Click to Unlock ₹99/mo)'}
                         </button>
                       </td>
-                      <td className="p-4 text-[#64748B]">{r.email || r.phone || '—'}</td>
-                      <td className="p-4">{r.city || '—'}</td>
+                      <td className="p-4 text-[#64748B]">{r.email || r.phone || '-'}</td>
+                      <td className="p-4">{r.city || '-'}</td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${
-                          r.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
-                        }`}>
+                        <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${r.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                          }`}>
                           {r.status}
                         </span>
                       </td>
@@ -1021,7 +1005,7 @@ export default function SuperAdminPage() {
                 <h2 className="text-base font-bold text-[#1F2937]">Restaurant Admins</h2>
                 <p className="text-xs text-[#64748B]">Manager & Admin credentials</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowNewAdminModal(true)}
                 className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
@@ -1068,7 +1052,7 @@ export default function SuperAdminPage() {
                 </span>
                 <h3 className="text-lg font-extrabold text-[#1F2937] mt-1.5">{selectedApproval.restaurant_name}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedApproval(null)}
                 className="text-[#64748B] hover:text-[#1F2937] p-1.5 rounded-xl hover:bg-slate-100"
               >
@@ -1142,7 +1126,7 @@ export default function SuperAdminPage() {
           <div className="bg-white border border-[#D7E5E8] rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-[#1F2937]">Reject Subscription Request</h3>
             <p className="text-xs text-[#64748B]">Please provide a specific rejection reason for the hotel.</p>
-            
+
             <form onSubmit={handleRejectSubscription} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Rejection Reason *</label>
@@ -1184,10 +1168,10 @@ export default function SuperAdminPage() {
             <form onSubmit={handleAssignPlan} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Select Hotel / Restaurant *</label>
-                <select 
-                  required 
-                  value={assignPlanForm.restaurant_id} 
-                  onChange={e => setAssignPlanForm({...assignPlanForm, restaurant_id: e.target.value})} 
+                <select
+                  required
+                  value={assignPlanForm.restaurant_id}
+                  onChange={e => setAssignPlanForm({ ...assignPlanForm, restaurant_id: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 >
                   <option value="">Select Hotel...</option>
@@ -1196,10 +1180,10 @@ export default function SuperAdminPage() {
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Select SaaS Plan *</label>
-                <select 
-                  required 
-                  value={assignPlanForm.plan_id} 
-                  onChange={e => setAssignPlanForm({...assignPlanForm, plan_id: e.target.value})} 
+                <select
+                  required
+                  value={assignPlanForm.plan_id}
+                  onChange={e => setAssignPlanForm({ ...assignPlanForm, plan_id: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 >
                   <option value="">Select Plan...</option>
@@ -1208,34 +1192,34 @@ export default function SuperAdminPage() {
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Override Duration Days (Optional)</label>
-                <input 
-                  type="number" 
-                  placeholder="Leave empty to use plan default" 
-                  value={assignPlanForm.duration_days} 
-                  onChange={e => setAssignPlanForm({...assignPlanForm, duration_days: e.target.value})} 
+                <input
+                  type="number"
+                  placeholder="Leave empty to use plan default"
+                  value={assignPlanForm.duration_days}
+                  onChange={e => setAssignPlanForm({ ...assignPlanForm, duration_days: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Notes</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Assigned on special promo" 
-                  value={assignPlanForm.notes} 
-                  onChange={e => setAssignPlanForm({...assignPlanForm, notes: e.target.value})} 
+                <input
+                  type="text"
+                  placeholder="e.g. Assigned on special promo"
+                  value={assignPlanForm.notes}
+                  onChange={e => setAssignPlanForm({ ...assignPlanForm, notes: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div className="flex gap-2 pt-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAssignPlanModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowAssignPlanModal(false)}
                   className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] font-bold rounded-xl"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl"
                 >
                   Assign & Activate
@@ -1255,35 +1239,35 @@ export default function SuperAdminPage() {
             <form onSubmit={handleExtendSubscription} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Extra Days to Add *</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   required
                   min="1"
-                  value={extendForm.extra_days} 
-                  onChange={e => setExtendForm({...extendForm, extra_days: e.target.value})} 
+                  value={extendForm.extra_days}
+                  onChange={e => setExtendForm({ ...extendForm, extra_days: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Reason / Notes</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Courtesy bonus extension" 
-                  value={extendForm.notes} 
-                  onChange={e => setExtendForm({...extendForm, notes: e.target.value})} 
+                <input
+                  type="text"
+                  placeholder="e.g. Courtesy bonus extension"
+                  value={extendForm.notes}
+                  onChange={e => setExtendForm({ ...extendForm, notes: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div className="flex gap-2 pt-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowExtendModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowExtendModal(false)}
                   className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] font-bold rounded-xl"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl"
                 >
                   Add Days
@@ -1302,71 +1286,71 @@ export default function SuperAdminPage() {
             <form onSubmit={handleCreatePlan} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Plan Name *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   placeholder="e.g. Premium Annual Plan"
-                  value={newPlanForm.name} 
-                  onChange={e => setNewPlanForm({...newPlanForm, name: e.target.value})} 
+                  value={newPlanForm.name}
+                  onChange={e => setNewPlanForm({ ...newPlanForm, name: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Price (₹) *</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     required
                     min="0"
                     placeholder="e.g. 2999"
-                    value={newPlanForm.price} 
-                    onChange={e => setNewPlanForm({...newPlanForm, price: e.target.value})} 
+                    value={newPlanForm.price}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, price: e.target.value })}
                     className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Duration (Days) *</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     required
                     min="1"
                     placeholder="e.g. 30"
-                    value={newPlanForm.duration_days} 
-                    onChange={e => setNewPlanForm({...newPlanForm, duration_days: e.target.value})} 
+                    value={newPlanForm.duration_days}
+                    onChange={e => setNewPlanForm({ ...newPlanForm, duration_days: e.target.value })}
                     className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Description</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Short tagline about the plan"
-                  value={newPlanForm.description} 
-                  onChange={e => setNewPlanForm({...newPlanForm, description: e.target.value})} 
+                  value={newPlanForm.description}
+                  onChange={e => setNewPlanForm({ ...newPlanForm, description: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Features (One feature per line)</label>
-                <textarea 
+                <textarea
                   rows={4}
                   placeholder="Kitchen Display System&#10;Table QR Menus&#10;Online Storefront"
-                  value={newPlanForm.featuresText} 
-                  onChange={e => setNewPlanForm({...newPlanForm, featuresText: e.target.value})} 
+                  value={newPlanForm.featuresText}
+                  onChange={e => setNewPlanForm({ ...newPlanForm, featuresText: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none font-sans"
                 />
               </div>
               <div className="flex gap-2 pt-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowNewPlanModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowNewPlanModal(false)}
                   className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] font-bold rounded-xl"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl"
                 >
                   Create Plan
@@ -1385,44 +1369,44 @@ export default function SuperAdminPage() {
             <form onSubmit={handleCreateRestaurant} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Restaurant Name *</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={newRestForm.name} 
-                  onChange={e => setNewRestForm({...newRestForm, name: e.target.value})} 
-                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                <input
+                  type="text"
+                  required
+                  value={newRestForm.name}
+                  onChange={e => setNewRestForm({ ...newRestForm, name: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Phone</label>
-                  <input 
-                    type="text" 
-                    value={newRestForm.phone} 
-                    onChange={e => setNewRestForm({...newRestForm, phone: e.target.value})} 
-                    className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                  <input
+                    type="text"
+                    value={newRestForm.phone}
+                    onChange={e => setNewRestForm({ ...newRestForm, phone: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-[#1F2937] font-bold mb-1">Email</label>
-                  <input 
-                    type="email" 
-                    value={newRestForm.email} 
-                    onChange={e => setNewRestForm({...newRestForm, email: e.target.value})} 
-                    className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                  <input
+                    type="email"
+                    value={newRestForm.email}
+                    onChange={e => setNewRestForm({ ...newRestForm, email: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                   />
                 </div>
               </div>
               <div className="flex gap-2 pt-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowNewRestModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowNewRestModal(false)}
                   className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] font-bold rounded-xl"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl"
                 >
                   Create Restaurant
@@ -1441,49 +1425,49 @@ export default function SuperAdminPage() {
             <form onSubmit={handleCreateAdmin} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Full Name *</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={newAdminForm.name} 
-                  onChange={e => setNewAdminForm({...newAdminForm, name: e.target.value})} 
-                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                <input
+                  type="text"
+                  required
+                  value={newAdminForm.name}
+                  onChange={e => setNewAdminForm({ ...newAdminForm, name: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Email Address *</label>
-                <input 
-                  type="email" 
-                  required 
-                  value={newAdminForm.email} 
-                  onChange={e => setNewAdminForm({...newAdminForm, email: e.target.value})} 
-                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                <input
+                  type="email"
+                  required
+                  value={newAdminForm.email}
+                  onChange={e => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Password *</label>
-                <input 
-                  type="password" 
-                  required 
-                  value={newAdminForm.password} 
-                  onChange={e => setNewAdminForm({...newAdminForm, password: e.target.value})} 
-                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                <input
+                  type="password"
+                  required
+                  value={newAdminForm.password}
+                  onChange={e => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Phone Number *</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={newAdminForm.phone} 
-                  onChange={e => setNewAdminForm({...newAdminForm, phone: e.target.value})} 
-                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none" 
+                <input
+                  type="text"
+                  required
+                  value={newAdminForm.phone}
+                  onChange={e => setNewAdminForm({ ...newAdminForm, phone: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 />
               </div>
               <div>
                 <label className="block text-[#1F2937] font-bold mb-1">Assign to Restaurant</label>
-                <select 
-                  value={newAdminForm.restaurant_id} 
-                  onChange={e => setNewAdminForm({...newAdminForm, restaurant_id: e.target.value})} 
+                <select
+                  value={newAdminForm.restaurant_id}
+                  onChange={e => setNewAdminForm({ ...newAdminForm, restaurant_id: e.target.value })}
                   className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] outline-none"
                 >
                   <option value="">Select Restaurant...</option>
@@ -1491,15 +1475,15 @@ export default function SuperAdminPage() {
                 </select>
               </div>
               <div className="flex gap-2 pt-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowNewAdminModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowNewAdminModal(false)}
                   className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] font-bold rounded-xl"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl"
                 >
                   Create Admin

@@ -44,4 +44,8 @@ backend/uploads/riders/*
 mysql_data/
 *.sqlite3
 
+# Worktrees / Sub-folders
+accommodation/
+
+
 

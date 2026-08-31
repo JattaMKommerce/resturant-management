@@ -39,7 +39,7 @@ function MapController({ bounds }) {
     const timer = setTimeout(() => {
       try {
         map.invalidateSize();
-      } catch (e) {}
+      } catch (e) { }
     }, 200);
 
     if (bounds && bounds.length > 0) {
@@ -49,7 +49,7 @@ function MapController({ bounds }) {
         } else {
           map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     return () => clearTimeout(timer);
