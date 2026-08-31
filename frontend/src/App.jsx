@@ -320,13 +320,18 @@ export default function App() {
             </AdminLayout>
           </ProtectedRoute>
         } />
+        <Route path="/admin/:slug/drivers" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
+            <AdminRidersPage />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/:slug/riders" element={
-          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
             <AdminRidersPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/deliveries" element={
-          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
             <AdminDeliveriesPage />
           </ProtectedRoute>
         } />
