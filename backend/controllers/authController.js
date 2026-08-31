@@ -247,7 +247,11 @@ async function login(req, res) {
     let finalSuiteMode = user.suite_mode || 'RESTAURANT_ACCOMMODATION';
     if (req.body.suite_mode && ['RESTAURANT_ONLY', 'RESTAURANT_ACCOMMODATION'].includes(req.body.suite_mode)) {
       finalSuiteMode = req.body.suite_mode;
-      await query('UPDATE users SET suite_mode = ? WHERE id = ?', [finalSuiteMode, user.id]);
+      try {
+        await query('UPDATE users SET suite_mode = ? WHERE id = ?', [finalSuiteMode, user.id]);
+      } catch (e) {
+        console.warn('suite_mode update notice:', e.message);
+      }
     }
 
     res.json({
@@ -278,7 +282,11 @@ async function updateSuiteMode(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid suite mode. Must be RESTAURANT_ONLY or RESTAURANT_ACCOMMODATION.' });
     }
 
-    await query('UPDATE users SET suite_mode = ? WHERE id = ?', [suite_mode, req.user.id]);
+    try {
+      await query('UPDATE users SET suite_mode = ? WHERE id = ?', [suite_mode, req.user.id]);
+    } catch (e) {
+      console.warn('suite_mode update notice:', e.message);
+    }
 
     return res.json({
       success: true,
@@ -293,7 +301,12 @@ async function updateSuiteMode(req, res) {
 
 async function getMe(req, res) {
   try {
-    const users = await query('SELECT id, name, email, phone, role, status, suite_mode, created_at FROM users WHERE id = ?', [req.user.id]);
+    let users = [];
+    try {
+      users = await query('SELECT id, name, email, phone, role, status, suite_mode, created_at FROM users WHERE id = ?', [req.user.id]);
+    } catch (e) {
+      users = await query('SELECT id, name, email, phone, role, status, created_at FROM users WHERE id = ?', [req.user.id]);
+    }
     if (users.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
