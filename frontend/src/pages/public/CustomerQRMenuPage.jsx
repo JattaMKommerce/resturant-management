@@ -167,7 +167,20 @@ export default function CustomerQRMenuPage() {
     if (selectedCategory !== 'ALL' && item.category_id != selectedCategory) {
       return false;
     }
-    const isVeg = item.is_veg === 1 || item.is_veg === true || item.is_veg === '1';
+    const nameLower = (item.name || '').toLowerCase();
+    const isMeatName = 
+      nameLower.includes('chicken') || 
+      nameLower.includes('mutton') || 
+      nameLower.includes('fish') || 
+      nameLower.includes('prawn') || 
+      nameLower.includes('egg') || 
+      nameLower.includes('meat') || 
+      nameLower.includes('pork') || 
+      nameLower.includes('beef') || 
+      nameLower.includes('non-veg') ||
+      nameLower.includes('non veg');
+
+    const isVeg = !isMeatName && (item.is_veg === 1 || item.is_veg === true || item.is_veg === '1' || item.is_veg === 'true');
     if (vegOnly && !isVeg) {
       return false;
     }
@@ -373,7 +386,20 @@ export default function CustomerQRMenuPage() {
               .filter((c) => c.item.id === item.id)
               .reduce((sum, c) => sum + c.quantity, 0);
 
-            const isVeg = item.is_veg === 1 || item.is_veg === true || item.is_veg === '1';
+            const nameLower = (item.name || '').toLowerCase();
+            const isMeatName = 
+              nameLower.includes('chicken') || 
+              nameLower.includes('mutton') || 
+              nameLower.includes('fish') || 
+              nameLower.includes('prawn') || 
+              nameLower.includes('egg') || 
+              nameLower.includes('meat') || 
+              nameLower.includes('pork') || 
+              nameLower.includes('beef') || 
+              nameLower.includes('non-veg') ||
+              nameLower.includes('non veg');
+
+            const isVeg = !isMeatName && (item.is_veg === 1 || item.is_veg === true || item.is_veg === '1' || item.is_veg === 'true');
 
             return (
               <div

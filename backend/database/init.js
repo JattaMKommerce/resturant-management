@@ -152,6 +152,7 @@ async function initDatabase(options = {}) {
 
       // Users columns
       await addColumnIfNotExists(conn, 'users', 'plain_password', "VARCHAR(255) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'users', 'suite_mode', "VARCHAR(50) NOT NULL DEFAULT 'RESTAURANT_ACCOMMODATION'");
       try {
         await conn.query(`ALTER TABLE users MODIFY COLUMN role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER'`);
       } catch (e) { }
@@ -268,7 +269,7 @@ async function initDatabase(options = {}) {
           WHERE TABLE_SCHEMA = DATABASE() 
             AND TABLE_NAME = 'order_items' 
             AND COLUMN_NAME = 'order_id' 
-            AND REFERENCED_TABLE_NAME = 'orders'
+            AND REFERENCED_TABLE_NAME IS NOT NULL
         `);
         for (const fk of fks) {
           await conn.query(`ALTER TABLE order_items DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
@@ -279,6 +280,23 @@ async function initDatabase(options = {}) {
       }
       await addIndexIfNotExists(conn, 'order_items', 'idx_order_items_order_id', '`order_id`');
 
+      // Auto-correct any corrupt is_veg flags in database for meat/non-veg dishes
+      try {
+        await conn.query(`
+          UPDATE menu_items 
+          SET is_veg = 0 
+          WHERE LOWER(name) LIKE '%chicken%' 
+             OR LOWER(name) LIKE '%mutton%' 
+             OR LOWER(name) LIKE '%fish%' 
+             OR LOWER(name) LIKE '%prawn%' 
+             OR LOWER(name) LIKE '%egg%' 
+             OR LOWER(name) LIKE '%meat%' 
+             OR LOWER(name) LIKE '%pork%' 
+             OR LOWER(name) LIKE '%beef%'
+             OR LOWER(name) LIKE '%non-veg%'
+             OR LOWER(name) LIKE '%non veg%'
+        `);
+      } catch (e) { }
 
       // Payments columns
       await addColumnIfNotExists(conn, 'payments', 'bill_id', "INT DEFAULT NULL");
@@ -396,12 +414,21 @@ async function initDatabase(options = {}) {
         try { await conn.query(sql); } catch (e) { }
       }
 
-      // Status column widenings to prevent ENUM truncation
-      console.log('🔄 Ensuring status columns are VARCHAR(30)...');
+      // Status column widenings to prevent ENUM truncation & schema updates
+      console.log('🔄 Ensuring status columns and schema updates are applied...');
       try { await conn.query("ALTER TABLE order_items MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE kot_items MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE kots MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
       try { await conn.query("ALTER TABLE restaurant_orders MODIFY COLUMN order_status VARCHAR(30) NOT NULL DEFAULT 'PENDING'"); } catch (e) { }
+      try { await conn.query("ALTER TABLE menu_items ADD COLUMN tax_percentage DECIMAL(5,2) DEFAULT 5.00"); } catch (e) { }
+      try { await conn.query("ALTER TABLE menu_items ADD COLUMN kitchen_department_id INT DEFAULT NULL"); } catch (e) { }
+      try { await conn.query("ALTER TABLE order_items ADD COLUMN kitchen_department_id INT DEFAULT NULL"); } catch (e) { }
+      
+      // Drop all legacy global unique indexes on table_number so each tenant has their own T01, T02, etc.
+      const indexesToDrop = ['table_number', 'table_number_2', 'table_number_3', 'table_number_4', 'idx_table_number', 'idx_restaurant_tables_table_number'];
+      for (const idx of indexesToDrop) {
+        try { await conn.query(`ALTER TABLE restaurant_tables DROP INDEX ${idx}`); } catch (e) { }
+      }
 
       console.log('✅ Phase 1 + Phase 2 migrations applied.');
     }

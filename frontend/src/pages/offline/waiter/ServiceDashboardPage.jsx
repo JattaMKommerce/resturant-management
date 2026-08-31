@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../../services/api';
 import { useSocket } from '../../../context/SocketContext';
+import { playServiceChime, unlockAudio } from '../../../utils/audio';
 import Badge from '../../../components/common/Badge';
 import { ConciergeBell, CheckCheck, RefreshCw, AlertCircle, Utensils, Receipt, CheckCircle2 } from 'lucide-react';
 
@@ -32,32 +33,44 @@ export default function ServiceDashboardPage() {
   };
 
   useEffect(() => {
+    const handleUserInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
     fetchServiceData();
 
     joinRoom('waiter');
 
     if (socket) {
-      socket.on('order_ready', () => {
+      const handleServiceUpdate = () => fetchServiceData();
+
+      socket.on('order_ready', handleServiceUpdate);
+      socket.on('new_order', handleServiceUpdate);
+      socket.on('kot_updated', handleServiceUpdate);
+      socket.on('table_status_changed', handleServiceUpdate);
+      socket.on('call_waiter', () => {
         fetchServiceData();
+        playServiceChime('call_waiter');
       });
-      socket.on('new_order', () => {
+      socket.on('bill_requested', () => {
         fetchServiceData();
-      });
-      socket.on('kot_updated', () => {
-        fetchServiceData();
-      });
-      socket.on('table_status_changed', () => {
-        fetchServiceData();
+        playServiceChime('call_waiter');
       });
     }
 
     return () => {
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
       leaveRoom('waiter');
       if (socket) {
         socket.off('order_ready');
         socket.off('new_order');
         socket.off('kot_updated');
         socket.off('table_status_changed');
+        socket.off('call_waiter');
+        socket.off('bill_requested');
       }
     };
   }, [socket]);
