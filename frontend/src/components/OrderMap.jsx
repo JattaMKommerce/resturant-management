@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { GoogleMap, useJsApiLoader, MarkerF, PolylineF, InfoWindowF } from '@react-google-maps/api';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBoPZYg3ouXbJG5vZrNRQN78ShROooE4ac';
 
 // Custom Leaflet DivIcons (prevents missing image asset errors in Vite)
 const storeIcon = L.divIcon({
@@ -28,7 +31,7 @@ const customerIcon = L.divIcon({
   popupAnchor: [0, -16]
 });
 
-// Helper component to auto-fit bounds on coordinate changes
+// Helper component to auto-fit bounds on coordinate changes for Leaflet
 function MapController({ bounds }) {
   const map = useMap();
   useEffect(() => {
@@ -70,6 +73,13 @@ export default function OrderMap({
   orderStatus,
   distanceKm
 }) {
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY
+  });
+
+  const [activeMarker, setActiveMarker] = useState(null);
+
   const restLat = parseFloat(restaurantLat) || 15.3647;
   const restLng = parseFloat(restaurantLng) || 75.1240;
 
@@ -89,6 +99,13 @@ export default function OrderMap({
 
   // Build polyline route path: Restaurant -> Driver -> Customer
   const polylinePath = useMemo(() => {
+    const path = [{ lat: restLat, lng: restLng }];
+    if (driverLat && driverLng) path.push({ lat: driverLat, lng: driverLng });
+    if (custLat && custLng) path.push({ lat: custLat, lng: custLng });
+    return path;
+  }, [restLat, restLng, custLat, custLng, driverLat, driverLng]);
+
+  const leafletPolylinePath = useMemo(() => {
     const path = [[restLat, restLng]];
     if (driverLat && driverLng) path.push([driverLat, driverLng]);
     if (custLat && custLng) path.push([custLat, custLng]);
@@ -101,77 +118,166 @@ export default function OrderMap({
     return null;
   }, [distanceKm, restLat, restLng, custLat, custLng]);
 
-  const centerPos = driverLat && driverLng ? [driverLat, driverLng] : (custLat && custLng ? [custLat, custLng] : [restLat, restLng]);
+  const centerPos = useMemo(() => ({
+    lat: driverLat && driverLng ? driverLat : (custLat && custLng ? custLat : restLat),
+    lng: driverLat && driverLng ? driverLng : (custLat && custLng ? custLng : restLng)
+  }), [restLat, restLng, custLat, custLng, driverLat, driverLng]);
 
-  return (
-    <div className="w-full h-full min-h-[220px] rounded-2xl overflow-hidden shadow-inner border border-[#D7E5E8] relative z-0">
-      <MapContainer
-        center={centerPos}
-        zoom={13}
-        scrollWheelZoom={false}
-        className="w-full h-full rounded-2xl"
-        style={{ height: '100%', width: '100%', minHeight: '220px' }}
+  const onMapLoad = useCallback((map) => {
+    if (window.google && bounds.length > 0) {
+      const gBounds = new window.google.maps.LatLngBounds();
+      bounds.forEach(([lat, lng]) => gBounds.extend({ lat, lng }));
+      map.fitBounds(gBounds);
+    }
+  }, [bounds]);
+
+  const renderGoogleMap = () => (
+    <GoogleMap
+      mapContainerStyle={{ width: '100%', height: '100%', minHeight: '220px', borderRadius: '1rem' }}
+      center={centerPos}
+      zoom={14}
+      onLoad={onMapLoad}
+      options={{
+        zoomControl: true,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: true
+      }}
+    >
+      {/* Restaurant Marker */}
+      <MarkerF
+        position={{ lat: restLat, lng: restLng }}
+        title={restaurantName}
+        onClick={() => setActiveMarker('store')}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          maxZoom={19}
-        />
-
-        <MapController bounds={bounds} />
-
-        {/* Restaurant Pin */}
-        <Marker position={[restLat, restLng]} icon={storeIcon}>
-          <Popup>
+        {activeMarker === 'store' && (
+          <InfoWindowF onCloseClick={() => setActiveMarker(null)}>
             <div className="p-1 font-sans text-[#1F2937]">
               <strong className="block text-xs font-bold">{restaurantName}</strong>
-              <span className="text-[10px] text-[#64748B] block">Restaurant Kitchen</span>
+              <span className="text-[10px] text-[#64748B] block">Restaurant Kitchen 🏪</span>
             </div>
-          </Popup>
-        </Marker>
+          </InfoWindowF>
+        )}
+      </MarkerF>
 
-        {/* Driver Pin */}
-        {driverLat && driverLng && (
-          <Marker position={[driverLat, driverLng]} icon={driverIcon}>
-            <Popup>
+      {/* Driver Marker */}
+      {driverLat && driverLng && (
+        <MarkerF
+          position={{ lat: driverLat, lng: driverLng }}
+          title={driverName || 'Delivery Partner'}
+          onClick={() => setActiveMarker('driver')}
+        >
+          {activeMarker === 'driver' && (
+            <InfoWindowF onCloseClick={() => setActiveMarker(null)}>
               <div className="p-1 font-sans text-[#1F2937]">
                 <strong className="block text-xs font-bold">{driverName || 'Delivery Partner'} 🛵</strong>
                 <span className="text-[10px] text-emerald-700 font-bold block">Live GPS Active</span>
               </div>
-            </Popup>
-          </Marker>
-        )}
+            </InfoWindowF>
+          )}
+        </MarkerF>
+      )}
 
-        {/* Customer Pin */}
-        {custLat && custLng && (
-          <Marker position={[custLat, custLng]} icon={customerIcon}>
-            <Popup>
+      {/* Customer Marker */}
+      {custLat && custLng && (
+        <MarkerF
+          position={{ lat: custLat, lng: custLng }}
+          title="Delivery Destination"
+          onClick={() => setActiveMarker('customer')}
+        >
+          {activeMarker === 'customer' && (
+            <InfoWindowF onCloseClick={() => setActiveMarker(null)}>
               <div className="p-1 font-sans text-[#1F2937]">
-                <strong className="block text-xs font-bold">Delivery Destination</strong>
+                <strong className="block text-xs font-bold">Delivery Destination 📍</strong>
                 <span className="text-[10px] text-[#64748B] block">{customerAddress}</span>
-                {calcDist && (
-                  <span className="text-[10px] font-bold text-[#3A7D7C] block mt-1">
-                    Est. Distance: {calcDist} km
-                  </span>
-                )}
               </div>
-            </Popup>
-          </Marker>
-        )}
+            </InfoWindowF>
+          )}
+        </MarkerF>
+      )}
 
-        {/* Polyline Delivery Route */}
-        {polylinePath.length >= 2 && (
-          <Polyline
-            positions={polylinePath}
-            pathOptions={{
-              color: '#3A7D7C',
-              weight: 4,
-              opacity: 0.85,
-              dashArray: '8, 8'
-            }}
-          />
-        )}
-      </MapContainer>
+      {/* Route Polyline */}
+      {polylinePath.length >= 2 && (
+        <PolylineF
+          path={polylinePath}
+          options={{
+            strokeColor: '#3A7D7C',
+            strokeOpacity: 0.85,
+            strokeWeight: 5
+          }}
+        />
+      )}
+    </GoogleMap>
+  );
+
+  const renderLeafletMap = () => (
+    <MapContainer
+      center={[centerPos.lat, centerPos.lng]}
+      zoom={13}
+      scrollWheelZoom={false}
+      className="w-full h-full rounded-2xl"
+      style={{ height: '100%', width: '100%', minHeight: '220px' }}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        maxZoom={19}
+      />
+
+      <MapController bounds={bounds} />
+
+      {/* Restaurant Pin */}
+      <Marker position={[restLat, restLng]} icon={storeIcon}>
+        <Popup>
+          <div className="p-1 font-sans text-[#1F2937]">
+            <strong className="block text-xs font-bold">{restaurantName}</strong>
+            <span className="text-[10px] text-[#64748B] block">Restaurant Kitchen</span>
+          </div>
+        </Popup>
+      </Marker>
+
+      {/* Driver Pin */}
+      {driverLat && driverLng && (
+        <Marker position={[driverLat, driverLng]} icon={driverIcon}>
+          <Popup>
+            <div className="p-1 font-sans text-[#1F2937]">
+              <strong className="block text-xs font-bold">{driverName || 'Delivery Partner'} 🛵</strong>
+              <span className="text-[10px] text-emerald-700 font-bold block">Live GPS Active</span>
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {/* Customer Pin */}
+      {custLat && custLng && (
+        <Marker position={[custLat, custLng]} icon={customerIcon}>
+          <Popup>
+            <div className="p-1 font-sans text-[#1F2937]">
+              <strong className="block text-xs font-bold">Delivery Destination</strong>
+              <span className="text-[10px] text-[#64748B] block">{customerAddress}</span>
+            </div>
+          </Popup>
+        </Marker>
+      )}
+
+      {/* Polyline Delivery Route */}
+      {leafletPolylinePath.length >= 2 && (
+        <Polyline
+          positions={leafletPolylinePath}
+          pathOptions={{
+            color: '#3A7D7C',
+            weight: 4,
+            opacity: 0.85,
+            dashArray: '8, 8'
+          }}
+        />
+      )}
+    </MapContainer>
+  );
+
+  return (
+    <div className="w-full h-full min-h-[220px] rounded-2xl overflow-hidden shadow-inner border border-[#D7E5E8] relative z-0">
+      {isLoaded && !loadError ? renderGoogleMap() : renderLeafletMap()}
 
       {/* Map Legend Overlay */}
       <div className="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#D7E5E8] shadow-md text-[10px] font-semibold text-[#1F2937] flex items-center gap-3 pointer-events-auto">
