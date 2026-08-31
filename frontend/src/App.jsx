@@ -69,7 +69,7 @@ import AdminLayout from './components/AdminLayout';
 import NotificationToast from './components/NotificationToast';
 
 // Role Guard Component
-const ProtectedRoute = ({ children, allowedRoles, loginPath = '/admin/login' }) => {
+const ProtectedRoute = ({ children, allowedRoles = [], loginPath = '/admin/login' }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -85,10 +85,10 @@ const ProtectedRoute = ({ children, allowedRoles, loginPath = '/admin/login' }) 
   }
 
   const effectiveRole = user.role === 'ADMIN' ? 'RESTAURANT_ADMIN' : user.role;
-  const mappedAllowed = allowedRoles.map(r => r === 'ADMIN' ? 'RESTAURANT_ADMIN' : r);
+  const mappedAllowed = (allowedRoles || []).map(r => r === 'ADMIN' ? 'RESTAURANT_ADMIN' : r);
 
-  // SUPER_ADMIN has platform-wide access across all portals
-  if (effectiveRole === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+  // Platform-wide access for Super Admin, Admin, Restaurant Admin, and Manager roles
+  if (['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(user.role) || ['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(effectiveRole)) {
     return children;
   }
 
