@@ -64,6 +64,7 @@ export default function UnifiedSidebar({
   const onlineNavItems = [
     { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History },
+    { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users },
     { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
     { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
@@ -76,7 +77,9 @@ export default function UnifiedSidebar({
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2 },
     { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
     { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat },
-    { name: 'Kitchen Display System (Accept/Reject)', path: '/admin/offline/kot-status', icon: CheckSquare2 },
+    { name: 'Kitchen Display System (Active KDS)', path: '/admin/offline/kds', icon: ChefHat },
+    { name: 'KOT Status & Acceptance', path: '/admin/offline/kot-status', icon: CheckSquare2 },
+    { name: 'Staff Management', path: '/admin/offline/staff', icon: UserCheck },
     { name: 'Billing & Folio', path: '/admin/offline/billing', icon: Receipt },
     { name: 'Receipts & Stocks', path: '/admin/offline/inventory', icon: Boxes },
     { name: 'Reports', path: '/admin/offline/reports', icon: BarChart3 },
