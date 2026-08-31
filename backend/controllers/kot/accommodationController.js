@@ -1269,17 +1269,20 @@ async function getRoomFolio(req, res, next) {
 async function getRoomStats(req, res, next) {
   try {
     await ensureRoomSchema();
+    const hotelId = parseInt(req.query.hotel_id || '1', 10);
     const [allRooms] = await pool.query(`
       SELECT 
         COUNT(*) as total_rooms,
         SUM(CASE WHEN r.status = 'VACANT' THEN 1 ELSE 0 END) as vacant_count,
         SUM(CASE WHEN r.status = 'OCCUPIED' THEN 1 ELSE 0 END) as occupied_count,
-        SUM(CASE WHEN r.status = 'CLEANING' THEN 1 ELSE 0 END) as cleaning_count,
-        SUM(CASE WHEN r.status = 'MAINTENANCE' THEN 1 ELSE 0 END) as maintenance_count,
+        SUM(CASE WHEN r.status IN ('CLEANING', 'CLEANING_IN_PROGRESS') THEN 1 ELSE 0 END) as cleaning_count,
+        SUM(CASE WHEN r.status IN ('MAINTENANCE', 'OUT_OF_ORDER') THEN 1 ELSE 0 END) as maintenance_count,
+        SUM(CASE WHEN r.status = 'RESERVED' THEN 1 ELSE 0 END) as reserved_count,
         COALESCE(SUM(f.balance), 0.00) as total_outstanding_balance
       FROM rooms r
       LEFT JOIN room_folios f ON r.id = f.room_id AND f.folio_status = 'OPEN'
-    `);
+      WHERE r.hotel_id = ? OR ? = 0
+    `, [hotelId, hotelId]);
 
     const stats = {
       total: allRooms[0]?.total_rooms || 0,
@@ -1287,6 +1290,7 @@ async function getRoomStats(req, res, next) {
       occupied: allRooms[0]?.occupied_count || 0,
       cleaning: allRooms[0]?.cleaning_count || 0,
       maintenance: allRooms[0]?.maintenance_count || 0,
+      reserved: allRooms[0]?.reserved_count || 0,
       total_balance: parseFloat(allRooms[0]?.total_outstanding_balance || 0),
       occupancy_rate: allRooms[0]?.total_rooms > 0 
         ? Math.round((allRooms[0].occupied_count / allRooms[0].total_rooms) * 100) 
@@ -1294,6 +1298,453 @@ async function getRoomStats(req, res, next) {
     };
 
     return sendSuccess(res, stats, 'Room statistics fetched');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/accommodation/dashboard
+ * Scoped Accommodation Dashboard Summary
+ */
+async function getAccommodationDashboard(req, res, next) {
+  try {
+    await ensureRoomSchema();
+    const hotelId = parseInt(req.query.hotel_id || '1', 10);
+
+    // 1. Primary Room Overview
+    const [roomCounts] = await pool.query(`
+      SELECT 
+        COUNT(*) as total_rooms,
+        SUM(CASE WHEN status = 'OCCUPIED' THEN 1 ELSE 0 END) as occupied_rooms,
+        SUM(CASE WHEN status = 'VACANT' THEN 1 ELSE 0 END) as available_rooms,
+        SUM(CASE WHEN status = 'RESERVED' THEN 1 ELSE 0 END) as reserved_rooms,
+        SUM(CASE WHEN status IN ('CLEANING', 'CLEANING_IN_PROGRESS') THEN 1 ELSE 0 END) as cleaning_rooms,
+        SUM(CASE WHEN status IN ('MAINTENANCE', 'OUT_OF_ORDER') THEN 1 ELSE 0 END) as maintenance_rooms
+      FROM rooms
+      WHERE hotel_id = ? OR ? = 0
+    `, [hotelId, hotelId]);
+
+    const overview = {
+      total_rooms: parseInt(roomCounts[0]?.total_rooms || 0, 10),
+      occupied_rooms: parseInt(roomCounts[0]?.occupied_rooms || 0, 10),
+      available_rooms: parseInt(roomCounts[0]?.available_rooms || 0, 10),
+      reserved_rooms: parseInt(roomCounts[0]?.reserved_rooms || 0, 10),
+      cleaning_rooms: parseInt(roomCounts[0]?.cleaning_rooms || 0, 10),
+      maintenance_rooms: parseInt(roomCounts[0]?.maintenance_rooms || 0, 10)
+    };
+
+    // 2. Today's Operations
+    const [todayOps] = await pool.query(`
+      SELECT
+        COUNT(CASE WHEN DATE(check_in_date) = CURDATE() OR booking_status = 'CHECKED_IN' THEN 1 END) as today_checkins,
+        COUNT(CASE WHEN DATE(check_out_date) = CURDATE() OR booking_status = 'CHECKED_OUT' THEN 1 END) as today_checkouts
+      FROM bookings
+      WHERE (hotel_id = ? OR ? = 0)
+    `, [hotelId, hotelId]);
+
+    const today_operations = {
+      today_checkins: parseInt(todayOps[0]?.today_checkins || 0, 10),
+      today_checkouts: parseInt(todayOps[0]?.today_checkouts || 0, 10)
+    };
+
+    // 3. Attention Required Lists
+    const [cleaningNeeded] = await pool.query(`
+      SELECT id, room_number, floor, room_type, status, updated_at
+      FROM rooms
+      WHERE (hotel_id = ? OR ? = 0) AND status IN ('CLEANING', 'CLEANING_IN_PROGRESS')
+      ORDER BY updated_at ASC LIMIT 6
+    `, [hotelId, hotelId]);
+
+    const [maintenanceIssues] = await pool.query(`
+      SELECT id, room_number, floor, room_type, status, maintenance_notes, updated_at
+      FROM rooms
+      WHERE (hotel_id = ? OR ? = 0) AND status IN ('MAINTENANCE', 'OUT_OF_ORDER')
+      ORDER BY updated_at ASC LIMIT 6
+    `, [hotelId, hotelId]);
+
+    const [pendingPayments] = await pool.query(`
+      SELECT f.id, f.room_id, r.room_number, f.guest_name, f.guest_phone, f.balance
+      FROM room_folios f
+      JOIN rooms r ON f.room_id = r.id
+      WHERE (f.hotel_id = ? OR ? = 0) AND f.folio_status = 'OPEN' AND f.balance > 0
+      ORDER BY f.balance DESC LIMIT 6
+    `, [hotelId, hotelId]);
+
+    const [overdueCheckouts] = await pool.query(`
+      SELECT f.id, f.room_id, r.room_number, f.guest_name, f.guest_phone, f.expected_check_out
+      FROM room_folios f
+      JOIN rooms r ON f.room_id = r.id
+      WHERE (f.hotel_id = ? OR ? = 0) AND f.folio_status = 'OPEN' AND f.expected_check_out IS NOT NULL AND f.expected_check_out < NOW()
+      ORDER BY f.expected_check_out ASC LIMIT 6
+    `, [hotelId, hotelId]);
+
+    // 4. Upcoming Activity (Next 3 to 5 activities)
+    const [upcomingActivities] = await pool.query(`
+      SELECT 
+        b.id,
+        b.booking_number,
+        b.guest_name,
+        b.guest_phone,
+        COALESCE(r.room_number, 'Unassigned') as room_number,
+        b.booking_source,
+        b.booking_status,
+        CASE 
+          WHEN b.booking_status = 'CONFIRMED' THEN 'Check-in'
+          WHEN b.booking_status = 'CHECKED_IN' THEN 'Check-out'
+          ELSE 'Reservation'
+        END as activity_type,
+        CASE 
+          WHEN b.booking_status = 'CONFIRMED' THEN b.check_in_date
+          ELSE b.check_out_date
+        END as activity_time
+      FROM bookings b
+      LEFT JOIN rooms r ON b.room_id = r.id
+      WHERE (b.hotel_id = ? OR ? = 0) AND b.booking_status IN ('CONFIRMED', 'CHECKED_IN')
+      ORDER BY activity_time ASC LIMIT 5
+    `, [hotelId, hotelId]);
+
+    // 5. Recent Activity Feed
+    const [recentActivity] = await pool.query(`
+      SELECT 
+        b.id,
+        b.booking_number,
+        b.guest_name,
+        b.booking_source,
+        b.booking_status,
+        b.total_amount,
+        b.payment_status,
+        COALESCE(r.room_number, 'Room Assigned') as room_number,
+        b.created_at,
+        CONCAT('Booking #', b.booking_number, ' created for ', b.guest_name, ' (', b.booking_source, ')') as description
+      FROM bookings b
+      LEFT JOIN rooms r ON b.room_id = r.id
+      WHERE (b.hotel_id = ? OR ? = 0)
+      ORDER BY b.created_at DESC LIMIT 6
+    `, [hotelId, hotelId]);
+
+    return sendSuccess(res, {
+      hotel_id: hotelId,
+      overview,
+      today_operations,
+      attention_required: {
+        cleaning_needed: cleaningNeeded,
+        maintenance_issues: maintenanceIssues,
+        pending_payments: pendingPayments,
+        overdue_checkouts: overdueCheckouts
+      },
+      upcoming_activities: upcomingActivities,
+      recent_activities: recentActivity
+    }, 'Accommodation dashboard data fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/accommodation/bookings
+ */
+async function getBookings(req, res, next) {
+  try {
+    await ensureRoomSchema();
+    const hotelId = parseInt(req.query.hotel_id || '1', 10);
+    const { source, status, search } = req.query;
+
+    let sql = `
+      SELECT b.*, r.room_number, r.floor, r.status as current_room_status, h.name as hotel_name
+      FROM bookings b
+      LEFT JOIN rooms r ON b.room_id = r.id
+      LEFT JOIN hotels h ON b.hotel_id = h.id
+      WHERE (b.hotel_id = ? OR ? = 0)
+    `;
+    const params = [hotelId, hotelId];
+
+    if (source && source !== 'ALL') {
+      sql += ` AND b.booking_source = ?`;
+      params.push(source);
+    }
+    if (status && status !== 'ALL') {
+      sql += ` AND b.booking_status = ?`;
+      params.push(status);
+    }
+    if (search && search.trim()) {
+      sql += ` AND (b.guest_name LIKE ? OR b.booking_number LIKE ? OR b.guest_phone LIKE ? OR r.room_number LIKE ?)`;
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term, term);
+    }
+
+    sql += ` ORDER BY b.check_in_date DESC`;
+
+    const [rows] = await pool.query(sql, params);
+    return sendSuccess(res, rows, 'Bookings fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/accommodation/bookings
+ */
+async function createBooking(req, res, next) {
+  try {
+    await ensureRoomSchema();
+    const {
+      hotel_id = 1,
+      room_id,
+      guest_name,
+      guest_phone,
+      guest_email,
+      guest_type = 'DOMESTIC',
+      booking_source = 'WALK_IN',
+      check_in_date,
+      check_out_date,
+      adults = 2,
+      children = 0,
+      room_type = 'Deluxe Room',
+      rate_per_night = 2500,
+      total_amount = 2500,
+      paid_amount = 0,
+      payment_status = 'PENDING',
+      special_requests = ''
+    } = req.body;
+
+    if (!guest_name || !check_in_date || !check_out_date) {
+      return sendError(res, 'Guest name, check-in date, and check-out date are required.', 400);
+    }
+
+    const bookingNum = `BK-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const [result] = await pool.query(`
+      INSERT INTO bookings (
+        hotel_id, booking_number, room_id, guest_name, guest_phone, guest_email,
+        guest_type, booking_source, booking_status, check_in_date, check_out_date,
+        adults, children, room_type, rate_per_night, total_amount, paid_amount,
+        payment_status, special_requests
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      hotel_id, bookingNum, room_id || null, guest_name, guest_phone, guest_email,
+      guest_type, booking_source, check_in_date, check_out_date,
+      adults, children, room_type, rate_per_night, total_amount, paid_amount,
+      payment_status, special_requests
+    ]);
+
+    // If room assigned and it was vacant, mark RESERVED
+    if (room_id) {
+      await pool.query(`UPDATE rooms SET status = 'RESERVED' WHERE id = ? AND status = 'VACANT'`, [room_id]);
+    }
+
+    // Create Notification
+    await pool.query(`
+      INSERT INTO accommodation_notifications (hotel_id, notification_type, title, message, severity)
+      VALUES (?, 'BOOKING_NEW', ?, ?, 'INFO')
+    `, [
+      hotel_id,
+      `New ${booking_source} Booking #${bookingNum}`,
+      `Reservation received for ${guest_name} (${room_type}).`
+    ]);
+
+    return sendSuccess(res, { id: result.insertId, booking_number: bookingNum }, 'Booking created successfully', 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/accommodation/bookings/:id/status
+ */
+async function updateBookingStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { booking_status, room_id } = req.body;
+
+    const [booking] = await pool.query('SELECT * FROM bookings WHERE id = ?', [id]);
+    if (booking.length === 0) return sendError(res, 'Booking not found', 404);
+
+    await pool.query('UPDATE bookings SET booking_status = ?, room_id = COALESCE(?, room_id) WHERE id = ?', [
+      booking_status, room_id || null, id
+    ]);
+
+    if (booking_status === 'CANCELLED' && booking[0].room_id) {
+      await pool.query(`UPDATE rooms SET status = 'VACANT' WHERE id = ? AND status = 'RESERVED'`, [booking[0].room_id]);
+      
+      await pool.query(`
+        INSERT INTO accommodation_notifications (hotel_id, notification_type, title, message, severity)
+        VALUES (?, 'BOOKING_CANCELLED', ?, ?, 'WARNING')
+      `, [
+        booking[0].hotel_id,
+        `Booking Cancelled #${booking[0].booking_number}`,
+        `Booking for ${booking[0].guest_name} was cancelled.`
+      ]);
+    }
+
+    return sendSuccess(res, { id, booking_status }, 'Booking status updated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/accommodation/notifications
+ */
+async function getAccommodationNotifications(req, res, next) {
+  try {
+    const hotelId = parseInt(req.query.hotel_id || '1', 10);
+    const [rows] = await pool.query(`
+      SELECT * FROM accommodation_notifications
+      WHERE hotel_id = ? OR ? = 0
+      ORDER BY created_at DESC LIMIT 30
+    `, [hotelId, hotelId]);
+
+    const [unread] = await pool.query(`
+      SELECT COUNT(*) as unread_count FROM accommodation_notifications
+      WHERE (hotel_id = ? OR ? = 0) AND is_read = 0
+    `, [hotelId, hotelId]);
+
+    return sendSuccess(res, {
+      notifications: rows,
+      unread_count: unread[0]?.unread_count || 0
+    }, 'Notifications fetched');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/accommodation/notifications/mark-read
+ */
+async function markNotificationsRead(req, res, next) {
+  try {
+    const hotelId = parseInt(req.body.hotel_id || '1', 10);
+    await pool.query(`
+      UPDATE accommodation_notifications SET is_read = 1
+      WHERE hotel_id = ? OR ? = 0
+    `, [hotelId, hotelId]);
+
+    return sendSuccess(res, null, 'Notifications marked as read');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/accommodation/payments
+ */
+async function getAccommodationPayments(req, res, next) {
+  try {
+    const hotelId = parseInt(req.query.hotel_id || '1', 10);
+    const [rows] = await pool.query(`
+      SELECT p.*, r.room_number, f.guest_name as folio_guest_name, f.balance as current_folio_balance
+      FROM accommodation_payments p
+      LEFT JOIN rooms r ON p.room_id = r.id
+      LEFT JOIN room_folios f ON p.folio_id = f.id
+      WHERE p.hotel_id = ? OR ? = 0
+      ORDER BY p.paid_at DESC LIMIT 50
+    `, [hotelId, hotelId]);
+
+    return sendSuccess(res, rows, 'Payments fetched successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/accommodation/payments/record
+ * Record a demo/verified payment (e.g. UPI QR, Card, Cash) and update folio balance
+ */
+async function recordAccommodationPayment(req, res, next) {
+  try {
+    const {
+      hotel_id = 1,
+      folio_id,
+      room_id,
+      guest_name,
+      amount,
+      payment_method = 'UPI',
+      payment_provider = 'GOOGLE_PAY',
+      payment_status = 'PAID',
+      notes = ''
+    } = req.body;
+
+    if (!amount || amount <= 0) {
+      return sendError(res, 'A valid positive payment amount is required', 400);
+    }
+
+    const txRef = `TXN-${payment_provider.slice(0, 3)}-${Date.now().toString().slice(-6)}`;
+
+    const [result] = await pool.query(`
+      INSERT INTO accommodation_payments (
+        hotel_id, folio_id, room_id, guest_name, amount, payment_method,
+        payment_provider, payment_status, transaction_ref, is_demo_payment, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `, [
+      hotel_id, folio_id || null, room_id || null, guest_name || 'Guest',
+      amount, payment_method, payment_provider, payment_status, txRef, notes
+    ]);
+
+    // If linked to an open folio, deduct balance
+    if (folio_id) {
+      await pool.query(`
+        UPDATE room_folios 
+        SET balance = GREATEST(0.00, balance - ?),
+            notes = CONCAT(COALESCE(notes, ''), ' | Payment ₹', ?, ' via ', ?, ' (', ?, ')')
+        WHERE id = ?
+      `, [amount, amount, payment_method, txRef, folio_id]);
+    }
+
+    return sendSuccess(res, {
+      payment_id: result.insertId,
+      transaction_ref: txRef,
+      amount,
+      payment_method,
+      payment_provider,
+      payment_status
+    }, 'Payment recorded successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/accommodation/guest-document
+ */
+async function saveGuestDocument(req, res, next) {
+  try {
+    const {
+      hotel_id = 1,
+      folio_id,
+      booking_id,
+      guest_name,
+      guest_type = 'DOMESTIC',
+      id_type,
+      id_number,
+      nationality,
+      passport_number,
+      passport_country,
+      passport_issue_date,
+      passport_expiry_date,
+      visa_number,
+      visa_type,
+      visa_issue_date,
+      visa_expiry_date,
+      arrival_date_india,
+      arrival_place_india
+    } = req.body;
+
+    const [result] = await pool.query(`
+      INSERT INTO guest_documents (
+        hotel_id, folio_id, booking_id, guest_name, guest_type,
+        id_type, id_number, nationality, passport_number, passport_country,
+        passport_issue_date, passport_expiry_date, visa_number, visa_type,
+        visa_issue_date, visa_expiry_date, arrival_date_india, arrival_place_india
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      hotel_id, folio_id || null, booking_id || null, guest_name, guest_type,
+      id_type || null, id_number || null, nationality || null, passport_number || null, passport_country || null,
+      passport_issue_date || null, passport_expiry_date || null, visa_number || null, visa_type || null,
+      visa_issue_date || null, visa_expiry_date || null, arrival_date_india || null, arrival_place_india || null
+    ]);
+
+    return sendSuccess(res, { id: result.insertId }, 'Guest identity document recorded');
   } catch (err) {
     next(err);
   }
@@ -1319,5 +1770,14 @@ module.exports = {
   getAllFolios,
   addFolioCharge,
   settleFolio,
+  getAccommodationDashboard,
+  getBookings,
+  createBooking,
+  updateBookingStatus,
+  getAccommodationNotifications,
+  markNotificationsRead,
+  getAccommodationPayments,
+  recordAccommodationPayment,
+  saveGuestDocument,
   ensureRoomSchema
 };

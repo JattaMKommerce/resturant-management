@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 
 export default function GuestManagementTab({
+  selectedHotelId = 1,
+  selectedHotelName = 'The Grand Palace',
   onCheckInClick,
   onCheckOutClick,
   onViewFolioClick,
@@ -31,7 +33,7 @@ export default function GuestManagementTab({
   const fetchGuests = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
+      const params = { hotel_id: selectedHotelId };
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (search.trim()) params.search = search.trim();
 
@@ -43,7 +45,7 @@ export default function GuestManagementTab({
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter, search, selectedHotelId]);
 
   useEffect(() => {
     fetchGuests();

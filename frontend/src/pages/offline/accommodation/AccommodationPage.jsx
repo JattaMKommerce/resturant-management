@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import AccommodationHeader from '../../../components/accommodation/AccommodationHeader';
+import AccommodationDashboardTab from '../../../components/accommodation/AccommodationDashboardTab';
+import BookingsTab from '../../../components/accommodation/BookingsTab';
 import RoomCard from '../../../components/accommodation/RoomCard';
 import RoomDetailsModal from '../../../components/accommodation/RoomDetailsModal';
 import RoomFormModal from '../../../components/accommodation/RoomFormModal';
@@ -39,7 +42,8 @@ import {
   TrendingUp,
   DollarSign,
   Coffee,
-  Hotel
+  Hotel,
+  Calendar
 } from 'lucide-react';
 
 export default function AccommodationPage() {
@@ -50,35 +54,53 @@ export default function AccommodationPage() {
   const navigate = useNavigate();
   const isAdminOrManager = ['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'].includes(user?.role);
 
-  // Determine initial active tab from route path or query param
+  // 1. Hotel selection state (persisted)
+  const [hotels, setHotels] = useState([]);
+  const [selectedHotelId, setSelectedHotelId] = useState(() => {
+    return parseInt(localStorage.getItem('accommodation_selected_hotel_id') || '1', 10);
+  });
+
+  const handleSelectHotel = (hotelId) => {
+    setSelectedHotelId(hotelId);
+    localStorage.setItem('accommodation_selected_hotel_id', hotelId.toString());
+  };
+
+  // Determine active tab from route path or query param
   const resolveTab = () => {
     if (subTab) {
-      if (subTab === 'check-in') return 'checkin';
-      if (subTab === 'check-out') return 'checkout';
+      if (subTab === 'checkin-checkout' || subTab === 'check-in' || subTab === 'checkin') return 'checkin-checkout';
+      if (subTab === 'payments-folios' || subTab === 'payments' || subTab === 'folios') return 'payments-folios';
       return subTab;
     }
     const path = location.pathname;
     if (path.includes('/accommodation/hotels')) return 'hotels';
     if (path.includes('/accommodation/rooms')) return 'rooms';
+    if (path.includes('/accommodation/bookings')) return 'bookings';
     if (path.includes('/accommodation/guests')) return 'guests';
-    if (path.includes('/accommodation/checkin') || path.includes('/accommodation/check-in')) return 'checkin';
-    if (path.includes('/accommodation/checkout') || path.includes('/accommodation/check-out')) return 'checkout';
-    if (path.includes('/accommodation/folios')) return 'folios';
+    if (path.includes('/accommodation/checkin-checkout') || path.includes('/accommodation/checkin') || path.includes('/accommodation/checkout')) return 'checkin-checkout';
+    if (path.includes('/accommodation/payments-folios') || path.includes('/accommodation/payments') || path.includes('/accommodation/folios')) return 'payments-folios';
     if (path.includes('/accommodation/housekeeping')) return 'housekeeping';
     if (path.includes('/accommodation/maintenance')) return 'maintenance';
     if (path.includes('/accommodation/dashboard')) return 'dashboard';
-    return searchParams.get('tab') || 'hotels';
+    return searchParams.get('tab') || 'dashboard';
   };
 
   const [activeTab, setActiveTab] = useState(resolveTab);
 
+  useEffect(() => {
+    setActiveTab(resolveTab());
+  }, [subTab, location.pathname]);
+
   const [rooms, setRooms] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [dashboardData, setDashboardData] = useState({});
   const [stats, setStats] = useState({
     total: 0,
     vacant: 0,
     occupied: 0,
     cleaning: 0,
     maintenance: 0,
+    reserved: 0,
     total_balance: 0,
     occupancy_rate: 0
   });
@@ -99,560 +121,438 @@ export default function AccommodationPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
   const [checkInRoom, setCheckInRoom] = useState(null);
-  const [folioRoom, setFolioRoom] = useState(null);
+  const [folioRoomId, setFolioRoomId] = useState(null);
 
-  // Notification / Alert message
-  const [toastMessage, setToastMessage] = useState(null);
+  // Internal desk toggle for Check-in / Check-out tab
+  const [deskSubMode, setDeskSubMode] = useState('CHECK_IN'); // 'CHECK_IN' | 'CHECK_OUT'
 
-  const showToast = (msg, type = 'success') => {
-    setToastMessage({ text: msg, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
+  // Fetch all hotels
+  useEffect(() => {
+    const fetchHotels = async () => {
+      try {
+        const res = await api.get('/hotels');
+        if (res.data?.success) {
+          setHotels(res.data.data || []);
+        }
+      } catch (err) {
+        console.warn('Hotels load notice:', err);
+      }
+    };
+    fetchHotels();
+  }, []);
+
+  const selectedHotel = hotels.find(h => Number(h.id) === Number(selectedHotelId)) || hotels[0] || {
+    id: 1,
+    name: 'The Grand Palace Heritage & Spa',
+    city: 'Bengaluru',
+    rating: 4.9
   };
 
-  // Sync tab state when URL route param changes
-  useEffect(() => {
-    const current = resolveTab();
-    if (current !== activeTab) {
-      setActiveTab(current);
+  // Main Data Fetcher scoped by selectedHotelId
+  const fetchData = useCallback(async () => {
+    try {
+      // 1. Dashboard summary
+      const dashRes = await api.get(`/rooms/dashboard?hotel_id=${selectedHotelId}`);
+      if (dashRes.data?.success) {
+        setDashboardData(dashRes.data.data || {});
+      }
+
+      // 2. Aggregate stats
+      const statsRes = await api.get(`/rooms/stats/summary?hotel_id=${selectedHotelId}`);
+      if (statsRes.data?.success) {
+        setStats(statsRes.data.data);
+      }
+
+      // 3. Rooms inventory
+      const roomsRes = await api.get(`/rooms?hotel_id=${selectedHotelId}`);
+      if (roomsRes.data?.success) {
+        const data = roomsRes.data.data || [];
+        setRooms(data);
+        
+        // Extract unique floors & room types
+        const uniqueFloors = [...new Set(data.map(r => r.floor).filter(Boolean))];
+        const uniqueTypes = [...new Set(data.map(r => r.room_type).filter(Boolean))];
+        setFloors(uniqueFloors);
+        setRoomTypes(uniqueTypes);
+      }
+
+      // 4. Bookings
+      const bookRes = await api.get(`/rooms/bookings?hotel_id=${selectedHotelId}`);
+      if (bookRes.data?.success) {
+        setBookings(bookRes.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch accommodation data:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [subTab, location.pathname]);
+  }, [selectedHotelId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData, refreshKey, selectedHotelId]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setRefreshKey(k => k + 1);
+  };
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     navigate(`/admin/accommodation/${tabId}`);
   };
 
-  // Fetch Rooms and Summary Stats
-  const fetchAccommodationData = useCallback(async (showFullLoader = false) => {
-    if (showFullLoader) setLoading(true);
-    setRefreshing(true);
+  // ROOM ACTIONS
+  const handleSaveRoom = async (formData) => {
     try {
-      const params = {};
-      if (search.trim()) params.search = search.trim();
-      if (selectedFloor && selectedFloor !== 'ALL') params.floor = selectedFloor;
-      if (selectedStatus && selectedStatus !== 'ALL') params.status = selectedStatus;
-      if (selectedType && selectedType !== 'ALL') params.room_type = selectedType;
-
-      const res = await api.get('/rooms', { params });
-      const payload = res?.data || res;
-
-      if (payload) {
-        setRooms(payload.rooms || []);
-        if (payload.stats) setStats(payload.stats);
-        if (payload.floors) setFloors(payload.floors);
-        if (payload.room_types) setRoomTypes(payload.room_types);
+      const payload = { ...formData, hotel_id: selectedHotelId };
+      if (editingRoom) {
+        await api.put(`/rooms/${editingRoom.id}`, payload);
+      } else {
+        await api.post('/rooms', payload);
       }
+      setIsFormOpen(false);
+      setEditingRoom(null);
+      handleRefresh();
     } catch (err) {
-      console.error('Failed to fetch rooms:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [search, selectedFloor, selectedStatus, selectedType]);
-
-  useEffect(() => {
-    fetchAccommodationData(true);
-  }, [fetchAccommodationData, refreshKey]);
-
-  // Handle Quick Room Status Change
-  const handleStatusChange = async (roomId, newStatus) => {
-    try {
-      const res = await api.patch(`/rooms/${roomId}/status`, { status: newStatus });
-      showToast(`Room status updated to ${newStatus}`);
-      fetchAccommodationData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update room status');
+      throw err;
     }
   };
 
-  // Handle Room Deletion
   const handleDeleteRoom = async (roomId) => {
-    if (!window.confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
-      return;
-    }
+    if (!window.confirm('Are you sure you want to delete this room?')) return;
     try {
       await api.delete(`/rooms/${roomId}`);
-      showToast('Room deleted successfully');
-      fetchAccommodationData();
+      setSelectedRoomDetails(null);
+      handleRefresh();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete room');
+      alert(err.response?.data?.message || 'Failed to delete room.');
     }
   };
 
-  // Open Room Form for Add/Edit
-  const handleOpenAddRoom = () => {
-    setEditingRoom(null);
-    setIsFormOpen(true);
+  const handleStatusUpdate = async (roomId, newStatus) => {
+    try {
+      await api.patch(`/rooms/${roomId}/status`, { status: newStatus });
+      handleRefresh();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update status.');
+    }
   };
 
-  const handleOpenEditRoom = (room) => {
-    setEditingRoom(room);
-    setIsFormOpen(true);
+  const handleCheckInSubmit = async (roomId, guestData) => {
+    try {
+      await api.post(`/rooms/${roomId}/check-in`, { ...guestData, hotel_id: selectedHotelId });
+      setCheckInRoom(null);
+      handleRefresh();
+    } catch (err) {
+      throw err;
+    }
   };
 
-  const handleRoomSaved = (savedRoom) => {
-    setIsFormOpen(false);
-    setEditingRoom(null);
-    showToast(editingRoom ? 'Room updated successfully' : 'New room added successfully');
-    fetchAccommodationData();
+  const handleCheckOut = async (roomId) => {
+    try {
+      await api.post(`/rooms/${roomId}/check-out`);
+      handleRefresh();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Check-out failed.');
+    }
   };
+
+  // Filtered rooms for Rooms Tab
+  const filteredRooms = rooms.filter(r => {
+    const matchesSearch = 
+      r.room_number?.toLowerCase().includes(search.toLowerCase()) ||
+      r.room_type?.toLowerCase().includes(search.toLowerCase()) ||
+      r.guest_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.floor?.toLowerCase().includes(search.toLowerCase());
+
+    const matchesFloor = !selectedFloor || r.floor === selectedFloor;
+    const matchesStatus = !selectedStatus || r.status === selectedStatus;
+    const matchesType = !selectedType || r.room_type === selectedType;
+
+    return matchesSearch && matchesFloor && matchesStatus && matchesType;
+  });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* 1. TOP HEADER & MAIN NAVIGATION TABS */}
-      <div className="bg-white rounded-3xl border border-[#D7E5E8] p-6 shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#D7E5E8] pb-5">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-[#3A7D7C] text-white shadow-md shadow-[#3A7D7C]/20">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                  Hotel Accommodation & Room Management
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  Live System
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Front desk check-in/out, 20 hotel specifications, guest folios, housekeeping, and room service.
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      
+      {/* 1. GLOBAL ACCOMMODATION HEADER WITH HOTEL SELECTOR & NOTIFICATIONS */}
+      <AccommodationHeader
+        hotels={hotels}
+        selectedHotelId={selectedHotelId}
+        onSelectHotel={handleSelectHotel}
+        title="Accommodation Management"
+        subtitle={`Admin Operations • Property: ${selectedHotel.name || 'Selected Property'}`}
+      />
 
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {isAdminOrManager && (
-              <button
-                onClick={handleOpenAddRoom}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-bold transition-all shadow-xs active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Room</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                setRefreshKey(k => k + 1);
-                fetchAccommodationData(true);
-              }}
-              disabled={refreshing}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-[#D7E5E8] text-slate-600 hover:bg-slate-50 text-xs font-semibold transition-colors disabled:opacity-50"
-              title="Refresh Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-[#3A7D7C]' : ''}`} />
-              <span>Refresh</span>
-            </button>
-          </div>
-        </div>
-
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
         {/* 2. SUB-NAVIGATION TABS */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-4 no-scrollbar">
-          {[
-            { id: 'hotels', label: '20 Hotels Catalog', icon: Hotel, badge: '20 Hotels' },
-            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'rooms', label: 'Rooms Grid', icon: BedDouble, count: stats.total },
-            { id: 'guests', label: 'Guest Directory', icon: Users, count: stats.occupied },
-            { id: 'checkin', label: 'Check-In Desk', icon: UserPlus, badge: stats.vacant ? `${stats.vacant} Ready` : null },
-            { id: 'checkout', label: 'Check-Out Desk', icon: LogOut, badge: stats.occupied ? `${stats.occupied} In-House` : null },
-            { id: 'folios', label: 'Room Folios', icon: Receipt },
-            { id: 'housekeeping', label: 'Housekeeping', icon: Sparkles, badge: stats.cleaning > 0 ? `${stats.cleaning} Pending` : null },
-            { id: 'maintenance', label: 'Maintenance', icon: Wrench, badge: stats.maintenance > 0 ? `${stats.maintenance} Out` : null }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                  isActive
-                    ? 'bg-[#3A7D7C] text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-                {tab.count !== undefined && !tab.badge && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="bg-white rounded-3xl p-1.5 border border-slate-200/80 shadow-2xs overflow-x-auto custom-scrollbar">
+          <div className="flex items-center gap-1 min-w-max">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'rooms', label: 'Rooms', icon: BedDouble },
+              { id: 'bookings', label: 'Bookings', icon: Calendar },
+              { id: 'guests', label: 'Guests', icon: Users },
+              { id: 'checkin-checkout', label: 'Check-in / Check-out', icon: UserPlus },
+              { id: 'housekeeping', label: 'Housekeeping', icon: Sparkles },
+              { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+              { id: 'payments-folios', label: 'Payments & Folios', icon: Receipt },
+              { id: 'hotels', label: 'Hotels Directory', icon: Hotel },
+            ].map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    isActive
+                      ? 'bg-[#006C70] text-white shadow-xs scale-100'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* 3. DEDICATED TAB VIEWS */}
+        
+        {/* 3A. DASHBOARD TAB */}
+        {activeTab === 'dashboard' && (
+          <AccommodationDashboardTab
+            dashboardData={dashboardData}
+            selectedHotel={selectedHotel}
+            onNavigateTab={handleTabChange}
+          />
+        )}
+
+        {/* 3B. ROOMS TAB */}
+        {activeTab === 'rooms' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Filter & Action Controls */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search Room #, Type, Guest Name, Floor..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-[#006C70]/20 focus:border-[#006C70]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="p-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 shadow-2xs"
+                    title="Refresh Rooms"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  </button>
+
+                  {isAdminOrManager && (
+                    <button
+                      onClick={() => {
+                        setEditingRoom(null);
+                        setIsFormOpen(true);
+                      }}
+                      className="py-2.5 px-4 rounded-2xl bg-[#006C70] hover:bg-[#00585C] text-white text-xs font-bold transition-all flex items-center gap-2 shadow-sm active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add New Room</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status & Category Filters */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                  Status:
+                </span>
+                {['', 'VACANT', 'OCCUPIED', 'RESERVED', 'CLEANING', 'CLEANING_IN_PROGRESS', 'MAINTENANCE', 'OUT_OF_ORDER'].map(st => (
+                  <button
+                    key={st}
+                    onClick={() => setSelectedStatus(st)}
+                    className={`px-3 py-1 rounded-xl font-bold transition-all ${
+                      selectedStatus === st
+                        ? 'bg-slate-900 text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {st === '' ? 'All Rooms' : st.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rooms Grid */}
+            {filteredRooms.length === 0 ? (
+              <div className="py-16 text-center bg-white rounded-3xl border border-slate-200/80 space-y-3">
+                <BedDouble className="w-12 h-12 text-slate-300 mx-auto" />
+                <h4 className="text-sm font-bold text-slate-700">No Rooms Found</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  No rooms match your filter criteria for {selectedHotel.name}.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredRooms.map(room => (
+                  <RoomCard
+                    key={room.id}
+                    room={room}
+                    onViewDetails={() => setSelectedRoomDetails(room)}
+                    onCheckIn={() => setCheckInRoom(room)}
+                    onCheckOut={() => handleCheckOut(room.id)}
+                    onViewFolio={() => setFolioRoomId(room.id)}
+                    onStatusChange={(status) => handleStatusUpdate(room.id, status)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3C. BOOKINGS TAB */}
+        {activeTab === 'bookings' && (
+          <BookingsTab
+            bookings={bookings}
+            rooms={rooms}
+            selectedHotelId={selectedHotelId}
+            selectedHotelName={selectedHotel.name}
+            onRefresh={handleRefresh}
+          />
+        )}
+
+        {/* 3D. GUEST MANAGEMENT TAB */}
+        {activeTab === 'guests' && (
+          <GuestManagementTab
+            selectedHotelId={selectedHotelId}
+            selectedHotelName={selectedHotel.name}
+            onCheckInClick={() => handleTabChange('checkin-checkout')}
+            onCheckOutClick={() => handleTabChange('checkin-checkout')}
+            onViewFolioClick={(roomId) => setFolioRoomId(roomId)}
+            refreshKey={refreshKey}
+          />
+        )}
+
+        {/* 3E. CHECK-IN / CHECK-OUT OPERATIONAL DESK */}
+        {activeTab === 'checkin-checkout' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Desk Toggle */}
+            <div className="flex justify-center">
+              <div className="inline-flex p-1.5 bg-slate-200/80 rounded-2xl shadow-inner text-xs font-black">
+                <button
+                  type="button"
+                  onClick={() => setDeskSubMode('CHECK_IN')}
+                  className={`px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                    deskSubMode === 'CHECK_IN'
+                      ? 'bg-[#006C70] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Check-In Desk (Arrivals)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeskSubMode('CHECK_OUT')}
+                  className={`px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 ${
+                    deskSubMode === 'CHECK_OUT'
+                      ? 'bg-amber-700 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Check-Out Desk (Departures)</span>
+                </button>
+              </div>
+            </div>
+
+            {deskSubMode === 'CHECK_IN' ? (
+              <CheckInDeskTab
+                rooms={rooms}
+                bookings={bookings}
+                selectedHotelId={selectedHotelId}
+                selectedHotelName={selectedHotel.name}
+                onCheckInSubmit={handleCheckInSubmit}
+              />
+            ) : (
+              <CheckOutDeskTab
+                rooms={rooms}
+                onCheckOutClick={(r) => handleCheckOut(r.id)}
+                onViewFolioClick={(roomId) => setFolioRoomId(roomId)}
+              />
+            )}
+          </div>
+        )}
+
+        {/* 3F. HOUSEKEEPING TAB */}
+        {activeTab === 'housekeeping' && (
+          <HousekeepingTab
+            rooms={rooms}
+            onCompleteCleaning={(roomId) => handleStatusUpdate(roomId, 'VACANT')}
+            onStatusChange={(roomId, status) => handleStatusUpdate(roomId, status)}
+          />
+        )}
+
+        {/* 3G. MAINTENANCE TAB */}
+        {activeTab === 'maintenance' && (
+          <MaintenanceTab
+            rooms={rooms}
+            onSetMaintenance={(roomId, notes) => handleStatusUpdate(roomId, 'MAINTENANCE')}
+            onCompleteMaintenance={(roomId) => handleStatusUpdate(roomId, 'VACANT')}
+          />
+        )}
+
+        {/* 3H. PAYMENTS & FOLIOS TAB */}
+        {activeTab === 'payments-folios' && (
+          <FoliosTab
+            selectedHotelId={selectedHotelId}
+            selectedHotelName={selectedHotel.name}
+            onViewFolioClick={(roomId) => setFolioRoomId(roomId)}
+            refreshKey={refreshKey}
+          />
+        )}
+
+        {/* 3I. HOTELS DIRECTORY TAB */}
+        {activeTab === 'hotels' && (
+          <HotelsTab />
+        )}
+
       </div>
 
-      {/* 3. TOAST NOTIFICATION */}
-      {toastMessage && (
-        <div className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-md animate-in slide-in-from-top-2 duration-200 ${
-          toastMessage.type === 'error'
-            ? 'bg-rose-50 border-rose-200 text-rose-800'
-            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-        }`}>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{toastMessage.text}</span>
-          </div>
-          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-slate-600">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* 4. TAB CONTENTS */}
-
-      {/* TAB A: 20 HOTELS SPECIFICATION CATALOG */}
-      {activeTab === 'hotels' && (
-        <HotelsTab
-          refreshKey={refreshKey}
-          onSelectHotel={(h) => console.log('Selected hotel:', h)}
-          onBookRoomClick={(hotel) => handleTabChange('checkin')}
-        />
-      )}
-
-      {/* TAB B: DASHBOARD KPI OVERVIEW */}
-      {activeTab === 'dashboard' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* KPI CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-            <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Rooms</span>
-              <div className="flex items-baseline justify-between mt-2">
-                <span className="text-2xl font-black text-slate-900">{stats.total}</span>
-                <span className="text-[10px] font-bold text-slate-500">100%</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Vacant Ready</span>
-              <div className="flex items-baseline justify-between mt-2">
-                <span className="text-2xl font-black text-emerald-600">{stats.vacant}</span>
-                <span className="text-[10px] font-bold text-emerald-600/80">
-                  {stats.total > 0 ? Math.round((stats.vacant / stats.total) * 100) : 0}%
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">Occupied Stays</span>
-              <div className="flex items-baseline justify-between mt-2">
-                <span className="text-2xl font-black text-blue-600">{stats.occupied}</span>
-                <span className="text-[10px] font-bold text-blue-600/80">
-                  {stats.occupancy_rate}% Occ.
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600">Turnaround / Clean</span>
-              <div className="flex items-baseline justify-between mt-2">
-                <span className="text-2xl font-black text-amber-600">{stats.cleaning}</span>
-                <span className="text-[10px] font-bold text-amber-600/80">Housekeeping</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Maintenance</span>
-              <div className="flex items-baseline justify-between mt-2">
-                <span className="text-2xl font-black text-rose-600">{stats.maintenance}</span>
-                <span className="text-[10px] font-bold text-rose-600/80">Out of Order</span>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-600">Folio Balance</span>
-              <div className="flex items-baseline justify-between mt-2">
-                <span className="text-lg font-black text-purple-700">₹{stats.total_balance.toLocaleString()}</span>
-                <span className="text-[10px] font-bold text-purple-600">Receivable</span>
-              </div>
-            </div>
-          </div>
-
-          {/* QUICK SHORTCUTS & FLOOR OVERVIEW */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Left: Quick Actions */}
-            <div className="bg-white p-5 rounded-3xl border border-[#D7E5E8] shadow-2xs space-y-4">
-              <h3 className="text-sm font-black text-slate-900">Front Desk Quick Actions</h3>
-              <div className="space-y-2.5">
-                <button
-                  onClick={() => handleTabChange('checkin')}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100 hover:bg-emerald-100/70 transition-all text-left group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-emerald-600 text-white">
-                      <UserPlus className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-emerald-950 block">Express Guest Check-In</span>
-                      <span className="text-[10px] text-emerald-700">Assign room & setup breakfast package</span>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-emerald-700 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                <button
-                  onClick={() => handleTabChange('checkout')}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-blue-50/70 border border-blue-100 hover:bg-blue-100/70 transition-all text-left group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-blue-600 text-white">
-                      <LogOut className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-blue-950 block">Guest Check-Out Desk</span>
-                      <span className="text-[10px] text-blue-700">Settle balance & auto-mark cleaning</span>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-blue-700 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-
-                <button
-                  onClick={() => handleTabChange('housekeeping')}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-amber-50/70 border border-amber-100 hover:bg-amber-100/70 transition-all text-left group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-amber-500 text-white">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-amber-950 block">Housekeeping Turnover</span>
-                      <span className="text-[10px] text-amber-700">{stats.cleaning} room(s) pending sanitization</span>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-amber-700 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right: Room Occupancy Status Summary */}
-            <div className="lg:col-span-2 bg-white p-5 rounded-3xl border border-[#D7E5E8] shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900">Current In-House Stays & Room Status</h3>
-                <button
-                  onClick={() => handleTabChange('rooms')}
-                  className="text-xs font-bold text-[#3A7D7C] hover:underline"
-                >
-                  View All Rooms ({rooms.length}) →
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {rooms.slice(0, 8).map((room) => {
-                  const isOccupied = room.status === 'OCCUPIED';
-                  const isCleaning = room.status === 'CLEANING';
-                  const isMaint = room.status === 'MAINTENANCE';
-                  return (
-                    <div
-                      key={room.id}
-                      onClick={() => {
-                        setSelectedRoomDetails(room);
-                      }}
-                      className={`p-3 rounded-2xl border text-xs cursor-pointer hover:shadow-xs transition-all ${
-                        isOccupied
-                          ? 'bg-blue-50/60 border-blue-200 text-blue-900'
-                          : isCleaning
-                          ? 'bg-amber-50/60 border-amber-200 text-amber-900'
-                          : isMaint
-                          ? 'bg-rose-50/60 border-rose-200 text-rose-900'
-                          : 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-sm">Room {room.room_number}</span>
-                        <span className="text-[10px] font-bold uppercase">{room.status}</span>
-                      </div>
-                      <div className="text-[11px] opacity-80 mt-1 truncate">
-                        {isOccupied ? (room.guest_name || 'In-House') : room.room_type}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB C: ROOMS MANAGEMENT GRID */}
-      {activeTab === 'rooms' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* FILTERS */}
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div className="flex flex-1 items-center gap-2 max-w-md bg-slate-50 border border-[#D7E5E8] rounded-xl px-3 py-2 text-xs">
-              <Search className="w-4 h-4 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search rooms by number, floor, type, guest..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-transparent outline-hidden text-slate-800 placeholder:text-slate-400 font-medium"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap text-xs">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-slate-700"
-              >
-                <option value="">All Statuses</option>
-                <option value="VACANT">Vacant Ready ({stats.vacant})</option>
-                <option value="OCCUPIED">Occupied ({stats.occupied})</option>
-                <option value="CLEANING">Cleaning ({stats.cleaning})</option>
-                <option value="MAINTENANCE">Maintenance ({stats.maintenance})</option>
-              </select>
-
-              <select
-                value={selectedFloor}
-                onChange={(e) => setSelectedFloor(e.target.value)}
-                className="px-3 py-2 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-slate-700"
-              >
-                <option value="">All Floors</option>
-                {floors.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-
-              {(search || selectedFloor || selectedStatus) && (
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setSelectedFloor('');
-                    setSelectedStatus('');
-                  }}
-                  className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 font-bold"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ROOMS GRID */}
-          {loading ? (
-            <div className="py-24 text-center bg-white rounded-3xl border border-[#D7E5E8]">
-              <div className="w-8 h-8 border-3 border-[#3A7D7C] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-              <p className="text-xs text-slate-500 font-semibold">Loading rooms from database...</p>
-            </div>
-          ) : rooms.length === 0 ? (
-            <div className="py-20 text-center bg-white rounded-3xl border border-[#D7E5E8] space-y-3">
-              <BedDouble className="w-12 h-12 text-slate-300 mx-auto" />
-              <h4 className="text-sm font-bold text-slate-700">No Rooms Found</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No rooms match the selected filters.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {rooms.map((room) => (
-                <RoomCard
-                  key={room.id}
-                  room={room}
-                  onViewDetails={() => setSelectedRoomDetails(room)}
-                  onEdit={() => handleOpenEditRoom(room)}
-                  onDelete={() => handleDeleteRoom(room.id)}
-                  onStatusChange={(status) => handleStatusChange(room.id, status)}
-                  onCheckIn={() => setCheckInRoom(room)}
-                  onViewFolio={() => setFolioRoom(room)}
-                  canManage={isAdminOrManager}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB D: GUEST DIRECTORY */}
-      {activeTab === 'guests' && (
-        <GuestManagementTab
-          onViewFolio={(room) => setFolioRoom(room)}
-          onCheckOutClick={(room) => handleTabChange('checkout')}
-          refreshKey={refreshKey}
-        />
-      )}
-
-      {/* TAB E: CHECK-IN DESK */}
-      {activeTab === 'checkin' && (
-        <CheckInDeskTab
-          rooms={rooms}
-          onCheckInSuccess={() => {
-            showToast('Guest checked in successfully!');
-            fetchAccommodationData();
-            handleTabChange('rooms');
-          }}
-          onRefresh={() => fetchAccommodationData()}
-        />
-      )}
-
-      {/* TAB F: CHECK-OUT DESK */}
-      {activeTab === 'checkout' && (
-        <CheckOutDeskTab
-          rooms={rooms}
-          onCheckOutSuccess={() => {
-            showToast('Guest checked out successfully! Room marked for Housekeeping.');
-            fetchAccommodationData();
-            handleTabChange('housekeeping');
-          }}
-          onRefresh={() => fetchAccommodationData()}
-        />
-      )}
-
-      {/* TAB G: ROOM FOLIOS */}
-      {activeTab === 'folios' && (
-        <FoliosTab
-          refreshKey={refreshKey}
-          onRefresh={() => fetchAccommodationData()}
-        />
-      )}
-
-      {/* TAB H: HOUSEKEEPING TAB */}
-      {activeTab === 'housekeeping' && (
-        <HousekeepingTab
-          rooms={rooms}
-          onRoomUpdated={() => fetchAccommodationData()}
-          onRefresh={() => fetchAccommodationData()}
-        />
-      )}
-
-      {/* TAB I: MAINTENANCE TAB */}
-      {activeTab === 'maintenance' && (
-        <MaintenanceTab
-          rooms={rooms}
-          onRoomUpdated={() => fetchAccommodationData()}
-          onRefresh={() => fetchAccommodationData()}
-        />
-      )}
-
-      {/* 5. MODALS */}
+      {/* 4. MODALS */}
       {selectedRoomDetails && (
         <RoomDetailsModal
-          isOpen={true}
+          room={selectedRoomDetails}
           onClose={() => setSelectedRoomDetails(null)}
-          roomId={selectedRoomDetails.id}
+          onEdit={() => {
+            setEditingRoom(selectedRoomDetails);
+            setSelectedRoomDetails(null);
+            setIsFormOpen(true);
+          }}
+          onDelete={() => handleDeleteRoom(selectedRoomDetails.id)}
           onCheckIn={() => {
             setCheckInRoom(selectedRoomDetails);
             setSelectedRoomDetails(null);
           }}
-          onViewFolio={() => {
-            setFolioRoom(selectedRoomDetails);
+          onCheckOut={() => {
+            handleCheckOut(selectedRoomDetails.id);
             setSelectedRoomDetails(null);
           }}
-          onEdit={() => {
-            handleOpenEditRoom(selectedRoomDetails);
+          onViewFolio={() => {
+            setFolioRoomId(selectedRoomDetails.id);
             setSelectedRoomDetails(null);
           }}
         />
@@ -661,35 +561,34 @@ export default function AccommodationPage() {
       {isFormOpen && (
         <RoomFormModal
           isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          room={editingRoom}
-          onSaved={handleRoomSaved}
-          floors={floors}
-          roomTypes={roomTypes}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingRoom(null);
+          }}
+          onSave={handleSaveRoom}
+          initialData={editingRoom}
         />
       )}
 
       {checkInRoom && (
         <CheckInModal
-          isOpen={true}
+          isOpen={!!checkInRoom}
           onClose={() => setCheckInRoom(null)}
           room={checkInRoom}
-          onSuccess={() => {
-            setCheckInRoom(null);
-            showToast(`Guest checked into Room ${checkInRoom.room_number}`);
-            fetchAccommodationData();
-          }}
+          onCheckIn={(guestData) => handleCheckInSubmit(checkInRoom.id, guestData)}
         />
       )}
 
-      {folioRoom && (
+      {folioRoomId && (
         <FolioModal
-          isOpen={true}
-          onClose={() => setFolioRoom(null)}
-          roomId={folioRoom.id}
-          onFolioUpdated={() => fetchAccommodationData()}
+          isOpen={!!folioRoomId}
+          onClose={() => setFolioRoomId(null)}
+          roomId={folioRoomId}
+          onChargeAdded={handleRefresh}
+          onSettled={handleRefresh}
         />
       )}
+
     </div>
   );
 }
