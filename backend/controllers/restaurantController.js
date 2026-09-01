@@ -265,7 +265,11 @@ async function updateRestaurantSettings(req, res) {
       sql += `, cover_url = ?`; params.push(coverUrl);
     }
 
-    if (slug) { sql += `, slug = ?`; params.push(slug); }
+    const targetSlug = (req.body.custom_subdomain_slug || req.body.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (targetSlug) {
+      sql += `, slug = ?, custom_subdomain_slug = ?`;
+      params.push(targetSlug, targetSlug);
+    }
 
     sql += ` WHERE id = ?`;
     params.push(restId);
@@ -440,19 +444,20 @@ async function purchaseCustomSubdomain(req, res) {
     const [rest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
     if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
 
-    const newCustomSlug = custom_subdomain_slug || rest.slug;
+    const newCustomSlug = (custom_subdomain_slug || rest.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
 
-    // Enable custom subdomain for ₹99/mo add-on plan
+    // Enable custom subdomain for ₹99/mo add-on plan and update both slug & custom_subdomain_slug
     await query(
-      'UPDATE restaurants SET custom_subdomain_enabled = 1, custom_subdomain_slug = ? WHERE id = ?',
-      [newCustomSlug, restId]
+      'UPDATE restaurants SET custom_subdomain_enabled = 1, custom_subdomain_slug = ?, slug = ? WHERE id = ?',
+      [newCustomSlug, newCustomSlug, restId]
     );
 
     res.json({
       success: true,
       message: '₹99/mo Custom Branded Subdomain unlocked successfully!',
       custom_subdomain_enabled: 1,
-      custom_subdomain_slug: newCustomSlug
+      custom_subdomain_slug: newCustomSlug,
+      slug: newCustomSlug
     });
   } catch (err) {
     console.error('purchaseCustomSubdomain Error:', err);

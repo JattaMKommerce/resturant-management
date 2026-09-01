@@ -224,6 +224,13 @@ export default function AdminSettingsPage() {
         formData.append('remove_cover', '1');
       }
 
+      // Subdomain & Custom URL Slug
+      if (customSlugInput) {
+        const cleanSlug = customSlugInput.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        formData.append('custom_subdomain_slug', cleanSlug);
+        formData.append('slug', cleanSlug);
+      }
+
       // Razorpay & UPI
       formData.append('razorpay_enabled', razorpayEnabled ? '1' : '0');
       formData.append('razorpay_key_id', razorpayKeyId);
