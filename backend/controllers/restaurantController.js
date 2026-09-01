@@ -97,16 +97,98 @@ async function getDefaultRestaurant(req, res) {
 async function getPublishedRestaurants(req, res) {
   try {
     const rows = await query(
-      `SELECT id, name, slug, logo_url, cover_url, tagline, description, area, city,
-              latitude, longitude, delivery_radius_km, min_order_amount, delivery_fee
-       FROM restaurants
-       WHERE status = 'ACTIVE' AND website_status = 'PUBLISHED'
-       ORDER BY name ASC`
+// Public Room Catalog for Customer Website
+async function getPublicRoomsBySlug(req, res) {
+  try {
+    const slug = String(req.params.slug || '').toLowerCase();
+    const restRows = await query(
+      `SELECT r.id, r.name, r.custom_subdomain_slug, r.random_slug, r.amenities 
+       FROM restaurants r 
+       WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
+      [slug, slug, slug]
     );
-    res.json({ success: true, count: rows.length, restaurants: rows });
+
+    if (restRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+    }
+
+    const rest = restRows[0];
+    const roomRows = await query(
+      `SELECT rm.* FROM rooms rm WHERE rm.restaurant_id = ? ORDER BY rm.room_number ASC`,
+      [rest.id]
+    ).catch(() => []);
+
+    let parsedAmenities = ['High-Speed Wi-Fi', '100% AC Suites', 'Free Breakfast', 'Valet Parking', '24/7 Housekeeping'];
+    if (rest.amenities) {
+      try {
+        parsedAmenities = JSON.parse(rest.amenities);
+      } catch (e) {
+        parsedAmenities = String(rest.amenities).split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+
+    res.json({
+      success: true,
+      hotel_name: rest.name,
+      hotel_amenities: parsedAmenities,
+      rooms: roomRows
+    });
   } catch (err) {
-    console.error('getPublishedRestaurants Error:', err);
-    res.status(500).json({ success: false, message: 'Server error.' });
+    console.error('getPublicRoomsBySlug Error:', err);
+    res.status(500).json({ success: false, message: 'Server error loading room catalog.' });
+  }
+}
+
+// Public Room Reservation Lead Submission Endpoint
+async function submitRoomInquiry(req, res) {
+  try {
+    const slug = String(req.params.slug || '').toLowerCase();
+    const { guest_name, guest_phone, room_type, check_in_date, check_out_date, notes } = req.body;
+
+    if (!guest_name || !guest_phone) {
+      return res.status(400).json({ success: false, message: 'Name and Phone number are required.' });
+    }
+
+    const restRows = await query(
+      `SELECT r.id FROM restaurants r 
+       WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
+      [slug, slug, slug]
+    );
+
+    if (restRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+    }
+
+    const restId = restRows[0].id;
+
+    await query(
+      `CREATE TABLE IF NOT EXISTS room_bookings (
+         id INT AUTO_INCREMENT PRIMARY KEY,
+         restaurant_id INT NOT NULL,
+         guest_name VARCHAR(100),
+         guest_phone VARCHAR(30),
+         room_type VARCHAR(50),
+         check_in_date DATE,
+         check_out_date DATE,
+         notes TEXT,
+         status VARCHAR(30) DEFAULT 'PENDING_INQUIRY',
+         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`
+    ).catch(() => {});
+
+    await query(
+      `INSERT INTO room_bookings (restaurant_id, guest_name, guest_phone, room_type, check_in_date, check_out_date, notes, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_INQUIRY', NOW())`,
+      [restId, guest_name, guest_phone, room_type || 'Deluxe Room', check_in_date || null, check_out_date || null, notes || '']
+    );
+
+    res.json({
+      success: true,
+      message: '🎉 Your room reservation request has been sent! Front Desk will call/WhatsApp you shortly to confirm.'
+    });
+  } catch (err) {
+    console.error('submitRoomInquiry Error:', err);
+    res.status(500).json({ success: false, message: 'Failed to submit room inquiry.' });
   }
 }
 
@@ -554,6 +636,8 @@ module.exports = {
   getRestaurantBySlug,
   getDefaultRestaurant,
   getPublishedRestaurants,
+  getPublicRoomsBySlug,
+  submitRoomInquiry,
   getAdminRestaurant,
   updateRestaurantSettings,
   getSetupProgress,

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useCart } from '../../context/CartContext';
-import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils } from 'lucide-react';
+import AccommodationCustomerTab from '../../components/customer/AccommodationCustomerTab';
+import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
 
@@ -16,7 +17,11 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const params = useParams();
   const slug = overrideSlug || params.slug;
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { cartItems, addToCart, updateQuantity, removeFromCart, getSubtotal, getItemCount, setRestaurantSlug } = useCart();
+
+  // Main mode switcher tab: 'dining' or 'stay'
+  const [mainTab, setMainTab] = useState(searchParams.get('tab') === 'stay' ? 'stay' : 'dining');
 
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -263,18 +268,59 @@ export default function RestaurantMenuPage({ overrideSlug }) {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search dishes, cuisines, ingredients..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-2xl text-sm focus:outline-none focus:border-[#3A7D7C] shadow-xs transition-all"
-          />
+      {/* 2-IN-1 MODE SWITCHER HEADER BAR (FOOD vs ACCOMMODATION) */}
+      <div className="bg-white border-b border-[#D7E5E8] sticky top-0 z-40 shadow-xs">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center sm:justify-start">
+          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/80 shadow-inner w-full sm:w-auto">
+            <button
+              onClick={() => {
+                setMainTab('dining');
+                setSearchParams({ tab: 'dining' });
+              }}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                mainTab === 'dining'
+                  ? 'bg-[#3A7D7C] text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <Utensils className="w-4 h-4" />
+              <span>🍽️ Food & Dining</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMainTab('stay');
+                setSearchParams({ tab: 'stay' });
+              }}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                mainTab === 'stay'
+                  ? 'bg-[#3A7D7C] text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <BedDouble className="w-4 h-4" />
+              <span>🛏️ Rooms & Hotel Stay</span>
+            </button>
+          </div>
         </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        {mainTab === 'stay' ? (
+          <AccommodationCustomerTab restaurant={restaurant} slug={slug} />
+        ) : (
+          <>
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search dishes, cuisines, ingredients..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-2xl text-sm focus:outline-none focus:border-[#3A7D7C] shadow-xs transition-all"
+              />
+            </div>
 
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
@@ -366,6 +412,8 @@ export default function RestaurantMenuPage({ overrideSlug }) {
               </div>
             </div>
           ))
+        )}
+        </>
         )}
       </div>
 

@@ -59,6 +59,8 @@ router.get('/restaurants/published', restaurantController.getPublishedRestaurant
 router.get('/restaurants/:slug', restaurantController.getRestaurantBySlug);
 router.get('/restaurants/:slug/categories', categoryController.getCategoriesBySlug);
 router.get('/restaurants/:slug/menu', menuController.getMenuBySlug);
+router.get('/restaurants/:slug/rooms', restaurantController.getPublicRoomsBySlug);
+router.post('/restaurants/:slug/room-inquiry', restaurantController.submitRoomInquiry);
 
 // ═══════════════════════════════════════════════
 // 4. PUBLIC RIDER APPLICATION ROUTES (Rate-Limited)
