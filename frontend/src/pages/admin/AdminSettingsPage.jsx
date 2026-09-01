@@ -703,15 +703,19 @@ export default function AdminSettingsPage() {
               <Building className="w-4 h-4 text-[#3A7D7C]" />
               <span>Digital Storefront Subdomain Routing</span>
             </h4>
-
-            {customSubdomainEnabled ? (
+                   {customSubdomainEnabled ? (
               <div className="bg-emerald-50 p-4 sm:p-5 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-emerald-900 shadow-2xs">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
                     <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
                   </div>
                   <div>
-                    <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
+                    <div className="flex items-center gap-2">
+                      <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${subdomainChangesLeft > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'}`}>
+                        ⚡ {subdomainChangesLeft} of 3 name updates left this month
+                      </span>
+                    </div>
                     <p className="text-[11px] text-emerald-700 font-mono mt-0.5">
                       https://{customSubdomainSlug || name.toLowerCase().replace(/[^a-z0-9-]/g, '')}.jattamkommerce.com
                     </p>
@@ -720,9 +724,9 @@ export default function AdminSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowSubdomainModal(true)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-full shadow-md transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-full shadow-md transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
-                  <ShieldCheck className="w-4 h-4" /> ⭐ ACTIVE (₹99/mo)
+                  ✏️ Update Subdomain Name
                 </button>
               </div>
             ) : (
@@ -760,17 +764,21 @@ export default function AdminSettingsPage() {
 
       </div>
 
-      {/* SUBDOMAIN DETAILS & PAYMENT CARD MODAL */}
+      {/* SUBDOMAIN DETAILS & UPDATE / PAYMENT CARD MODAL */}
       {showSubdomainModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border border-[#D7E5E8] max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-start justify-between border-b border-[#D7E5E8] pb-4">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
-                  Subdomain Add-On
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${customSubdomainEnabled ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300'}`}>
+                  {customSubdomainEnabled ? 'Active Subdomain Management' : 'Subdomain Add-On'}
                 </span>
-                <h3 className="text-lg font-extrabold text-[#1F2937] mt-1">Official Restaurant Subdomain Plan</h3>
-                <p className="text-xs text-[#64748B]">Unlock official restaurant branding for your digital store</p>
+                <h3 className="text-lg font-extrabold text-[#1F2937] mt-1">
+                  {customSubdomainEnabled ? 'Update Subdomain Name' : 'Official Restaurant Subdomain Plan'}
+                </h3>
+                <p className="text-xs text-[#64748B]">
+                  {customSubdomainEnabled ? 'Change your digital store URL (Max 3 changes per month)' : 'Unlock official restaurant branding for your digital store'}
+                </p>
               </div>
               <button onClick={() => setShowSubdomainModal(false)} className="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
             </div>
@@ -783,7 +791,7 @@ export default function AdminSettingsPage() {
                     type="text"
                     value={customSlugInput}
                     onChange={(e) => setCustomSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    placeholder="e.g. niti-hotel"
+                    placeholder="e.g. nithin-hotel"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-xs font-bold text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-[#94A3B8] font-mono">.jattamkommerce.com</span>
@@ -791,20 +799,22 @@ export default function AdminSettingsPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 mt-1 text-[11px] font-mono">
                   <span className="text-[#64748B]">Live Preview: <strong className="text-[#3A7D7C]">https://{customSlugInput || 'yourname'}.jattamkommerce.com</strong></span>
                   <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${subdomainChangesLeft > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
-                    ⚡ {subdomainChangesLeft} of 3 name changes left this month
+                    ⚡ {subdomainChangesLeft} of 3 name updates left this month
                   </span>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-amber-50 to-[#EAF4F7] p-4 rounded-2xl border border-amber-200/60 flex items-center justify-between">
-                <div>
-                  <span className="text-2xl font-black text-[#1F2937]">₹99</span>
-                  <span className="text-xs text-[#64748B] font-bold"> / month</span>
+              {!customSubdomainEnabled && (
+                <div className="bg-gradient-to-r from-amber-50 to-[#EAF4F7] p-4 rounded-2xl border border-amber-200/60 flex items-center justify-between">
+                  <div>
+                    <span className="text-2xl font-black text-[#1F2937]">₹99</span>
+                    <span className="text-xs text-[#64748B] font-bold"> / month</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-full">
+                    INSTANT ACTIVATION
+                  </span>
                 </div>
-                <span className="text-[10px] font-extrabold bg-emerald-600 text-white px-2.5 py-1 rounded-full">
-                  INSTANT ACTIVATION
-                </span>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <h4 className="font-bold text-[#1F2937] uppercase tracking-wider text-[10px]">Included Features:</h4>
@@ -834,19 +844,11 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 pt-3 border-t border-[#D7E5E8]">
-              <button
-                type="button"
-                onClick={() => { setShowSubdomainModal(false); handlePurchaseCustomSubdomain(); }}
-                disabled={saving}
-                className="flex-1 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <CreditCard className="w-4 h-4" /> Pay ₹99 & Unlock Custom Subdomain
-              </button>
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#D7E5E8]">
               <button
                 type="button"
                 onClick={() => setShowSubdomainModal(false)}
-                className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-[#64748B] font-bold text-xs rounded-xl border border-[#D7E5E8] transition-all cursor-pointer"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-[#1F2937] font-bold rounded-xl text-xs transition-colors"
               >
                 Cancel
               </button>

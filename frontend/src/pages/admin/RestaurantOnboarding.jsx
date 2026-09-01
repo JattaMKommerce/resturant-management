@@ -763,17 +763,13 @@ export default function RestaurantOnboarding() {
                       <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm">Custom Subdomain Active</h4>
-                      <p className="text-xs text-emerald-700 font-medium">Your official restaurant name <code className="font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-900">{restaurant?.custom_subdomain_slug}.jattamkommerce.com</code> is active on the ₹99/mo tier.</p>
+                      <h4 className="font-bold text-sm">Official Custom Subdomain Active</h4>
+                      <p className="text-xs text-emerald-700 font-medium">Your official restaurant name <code className="font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200 text-emerald-900">https://{restaurant?.custom_subdomain_slug || restaurant?.slug}.jattamkommerce.com</code> is active. No payment required!</p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowPricingModal(true)}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-full shadow-md transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                  >
-                    <ShieldCheck className="w-4 h-4" /> ⭐ ACTIVE (₹99/mo)
-                  </button>
+                  <span className="px-4 py-2 bg-emerald-600 text-white font-extrabold text-xs rounded-full shadow-md flex items-center gap-1.5 shrink-0">
+                    <ShieldCheck className="w-4 h-4" /> ✅ ACTIVE (₹99/mo)
+                  </span>
                 </div>
               )}
 
