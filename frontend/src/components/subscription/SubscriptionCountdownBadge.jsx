@@ -111,7 +111,12 @@ export default function SubscriptionCountdownBadge({ subscription, onExpire, com
     );
   }
 
-  // ACTIVE Trial or Paid live pill
+  // ACTIVE Trial or Paid live pill — Only show if plan ends within 7 days
+  const isWithin7Days = timeLeft.days <= 7 || (timeLeft.totalMs > 0 && timeLeft.totalMs <= 7 * 24 * 60 * 60 * 1000);
+  if (!isWithin7Days && !isExpired && !isPendingApproval && !isRejected) {
+    return null;
+  }
+
   return (
     <button
       onClick={onOpenRenew}
