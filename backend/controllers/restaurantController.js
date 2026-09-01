@@ -24,31 +24,25 @@ async function getRestaurantBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
     
-    // 1. Primary lookup: Match custom_subdomain_slug, random_slug, or slug
+    // 1. Primary lookup: Match random_slug, or enabled custom_subdomain_slug
     let rows = await query(
       `SELECT r.* FROM restaurants r
-       WHERE LOWER(r.custom_subdomain_slug) = ?
-          OR LOWER(r.random_slug) = ?
-          OR LOWER(r.slug) = ?`,
+       WHERE LOWER(r.random_slug) = ?
+          OR (r.custom_subdomain_enabled = 1 AND LOWER(r.custom_subdomain_slug) = ?)
+          OR (r.custom_subdomain_enabled = 1 AND LOWER(r.slug) = ?)`,
       [slug, slug, slug]
     );
 
-    // 2. Secondary lookup: Partial/fuzzy match on slug, name, or subdomain
+    // 2. Secondary lookup if not matched directly
     if (rows.length === 0) {
-      const cleanSearch = slug.replace(/[^a-z0-9]/g, '');
-      if (cleanSearch.length > 2) {
-        rows = await query(
-          `SELECT r.* FROM restaurants r
-           WHERE REPLACE(LOWER(r.slug), '-', '') LIKE ?
-              OR REPLACE(LOWER(r.custom_subdomain_slug), '-', '') LIKE ?
-              OR REPLACE(LOWER(r.name), ' ', '') LIKE ?
-           ORDER BY r.id ASC LIMIT 1`,
-          [`%${cleanSearch}%`, `%${cleanSearch}%`, `%${cleanSearch}%`]
-        );
-      }
+      rows = await query(
+        `SELECT r.* FROM restaurants r
+         WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
+        [slug, slug, slug]
+      );
     }
 
-    // 3. Ultimate Fallback: Serve primary active restaurant so customers NEVER get 404!
+    // 3. Fallback to active restaurant
     if (rows.length === 0) {
       rows = await query(
         `SELECT r.* FROM restaurants r
@@ -62,10 +56,14 @@ async function getRestaurantBySlug(req, res) {
 
     const rest = rows[0];
 
-    // Auto-enable custom subdomain if custom_subdomain_slug exists
-    if (rest.custom_subdomain_slug && !rest.custom_subdomain_enabled) {
-      rest.custom_subdomain_enabled = 1;
-      await query("UPDATE restaurants SET custom_subdomain_enabled = 1, status = 'ACTIVE' WHERE id = ?", [rest.id]).catch(() => {});
+    // Lock custom name URLs on free tier if ₹99/mo add-on is NOT active
+    if (!rest.custom_subdomain_enabled && slug !== String(rest.random_slug || '').toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        locked: true,
+        message: `Custom restaurant name URLs (e.g. /restaurant/${rest.slug}) are locked on the free tier. Upgrade to the ₹99/mo Custom Subdomain Plan to unlock your restaurant name in URLs!`,
+        random_slug: rest.random_slug
+      });
     }
 
     // Always serve active restaurant publicly

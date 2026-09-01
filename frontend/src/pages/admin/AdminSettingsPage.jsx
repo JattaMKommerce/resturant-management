@@ -714,19 +714,14 @@ export default function AdminSettingsPage() {
               <Building className="w-4 h-4 text-[#3A7D7C]" />
               <span>Digital Storefront Subdomain Routing</span>
             </h4>
-                   {customSubdomainEnabled ? (
+           {customSubdomainEnabled ? (
               <div className="bg-emerald-50 p-4 sm:p-5 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-emerald-900 shadow-2xs">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
                     <ShieldCheck className="w-5 h-5 stroke-[2.2]" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${subdomainChangesLeft > 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'}`}>
-                        ⚡ {subdomainChangesLeft} of 3 name updates left this month
-                      </span>
-                    </div>
+                    <h5 className="font-bold text-xs">Official Custom Subdomain Active</h5>
                     <p className="text-[11px] text-emerald-700 font-mono mt-0.5">
                       https://{customSubdomainSlug || name.toLowerCase().replace(/[^a-z0-9-]/g, '')}.jattamkommerce.com
                     </p>
@@ -788,7 +783,7 @@ export default function AdminSettingsPage() {
                   {customSubdomainEnabled ? 'Update Subdomain Name' : 'Official Restaurant Subdomain Plan'}
                 </h3>
                 <p className="text-xs text-[#64748B]">
-                  {customSubdomainEnabled ? 'Change your digital store URL (Max 3 changes per month)' : 'Unlock official restaurant branding for your digital store'}
+                  {customSubdomainEnabled ? 'Manage and update your official digital store URL' : 'Unlock official restaurant branding for your digital store'}
                 </p>
               </div>
               <button onClick={() => setShowSubdomainModal(false)} className="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
@@ -807,11 +802,8 @@ export default function AdminSettingsPage() {
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-[#94A3B8] font-mono">.jattamkommerce.com</span>
                 </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 mt-1 text-[11px] font-mono">
+                <div className="flex items-center justify-between mt-1 text-[11px] font-mono">
                   <span className="text-[#64748B]">Live Preview: <strong className="text-[#3A7D7C]">https://{customSlugInput || 'yourname'}.jattamkommerce.com</strong></span>
-                  <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${subdomainChangesLeft > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
-                    ⚡ {subdomainChangesLeft} of 3 name updates left this month
-                  </span>
                 </div>
               </div>
 
@@ -865,7 +857,7 @@ export default function AdminSettingsPage() {
               </button>
               <button
                 type="button"
-                disabled={saving || (customSubdomainEnabled && subdomainChangesLeft <= 0)}
+                disabled={saving}
                 onClick={async () => {
                   await handlePurchaseCustomSubdomain();
                   setShowSubdomainModal(false);
@@ -874,13 +866,13 @@ export default function AdminSettingsPage() {
                   customSubdomainEnabled
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-[#3A7D7C] hover:bg-[#2F6665] text-white'
-                } ${subdomainChangesLeft <= 0 && customSubdomainEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                }`}
               >
                 <CreditCard className="w-4 h-4" />
                 {saving 
                   ? 'Saving Subdomain...' 
                   : customSubdomainEnabled 
-                  ? '💾 Save New Subdomain Name' 
+                  ? '🔄 Renew Plan (₹99/mo)' 
                   : '💳 Pay ₹99 & Unlock Custom Subdomain'}
               </button>
             </div>
