@@ -369,7 +369,7 @@ export default function App() {
         {/* 2. OFFLINE RESTAURANT & KOT SYSTEM ROUTES (Exact 10)     */}
         {/* ========================================================= */}
         <Route path="/admin/offline" element={<Navigate to="/admin/offline/dashboard" replace />} />
-        
+
         {/* SaaS Subscription */}
         <Route path="/admin/offline/subscription" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
@@ -378,7 +378,7 @@ export default function App() {
             </AdminLayout>
           </ProtectedRoute>
         } />
-        
+
         {/* Staff Management */}
         <Route path="/admin/offline/staff" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>

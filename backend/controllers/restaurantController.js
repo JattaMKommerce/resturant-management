@@ -1,6 +1,31 @@
 const { query } = require('../config/db');
 const { validateRestaurantAccess } = require('../middleware/auth');
 
+// Ensure database columns for subdomain change throttling exist
+(async function ensureSubdomainColumns() {
+  try {
+    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changes_this_month INT DEFAULT 0`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_last_reset_month VARCHAR(7) DEFAULT NULL`);
+  } catch (e) {}
+})();
+
+function getSubdomainQuota(rest) {
+  const currentYearMonth = new Date().toISOString().slice(0, 7); // e.g. '2026-09'
+  const lastReset = rest.subdomain_last_reset_month || '';
+  const usedThisMonth = lastReset === currentYearMonth ? (rest.subdomain_changes_this_month || 0) : 0;
+  const maxAllowed = 3;
+  const remaining = Math.max(0, maxAllowed - usedThisMonth);
+
+  return {
+    currentYearMonth,
+    usedThisMonth,
+    remaining,
+    maxAllowed
+  };
+}
+
 async function getRestaurantBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
@@ -94,7 +119,16 @@ async function getAdminRestaurant(req, res) {
         if (!req.isSuperAdmin && !validateRestaurantAccess(rowsBySlug[0].id, req)) {
           return res.status(403).json({ success: false, message: 'Access denied to this restaurant.' });
         }
-        return res.json({ success: true, restaurant: rowsBySlug[0] });
+        const quota = getSubdomainQuota(rowsBySlug[0]);
+        return res.json({
+          success: true,
+          restaurant: {
+            ...rowsBySlug[0],
+            subdomain_changes_this_month: quota.usedThisMonth,
+            subdomain_changes_left: quota.remaining,
+            max_subdomain_changes_per_month: 3
+          }
+        });
       }
     }
 
@@ -124,7 +158,16 @@ async function getAdminRestaurant(req, res) {
       return res.status(404).json({ success: false, message: 'Restaurant not found.' });
     }
 
-    res.json({ success: true, restaurant: rows[0] });
+    const quota = getSubdomainQuota(rows[0]);
+    res.json({
+      success: true,
+      restaurant: {
+        ...rows[0],
+        subdomain_changes_this_month: quota.usedThisMonth,
+        subdomain_changes_left: quota.remaining,
+        max_subdomain_changes_per_month: 3
+      }
+    });
   } catch (err) {
     console.error('getAdminRestaurant Error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
@@ -266,9 +309,22 @@ async function updateRestaurantSettings(req, res) {
     }
 
     const targetSlug = (req.body.custom_subdomain_slug || req.body.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
-    if (targetSlug) {
-      sql += `, slug = ?, custom_subdomain_slug = ?`;
-      params.push(targetSlug, targetSlug);
+    const [existingRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
+
+    if (targetSlug && existingRest) {
+      const currentSlug = String(existingRest.custom_subdomain_slug || existingRest.slug || '').toLowerCase();
+      if (targetSlug !== currentSlug) {
+        const quota = getSubdomainQuota(existingRest);
+        if (quota.remaining <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'You have reached your limit of 3 subdomain name changes for this month. You can change your subdomain name again next month.'
+          });
+        }
+        const newUsedCount = quota.usedThisMonth + 1;
+        sql += `, slug = ?, custom_subdomain_slug = ?, subdomain_changes_this_month = ?, subdomain_last_reset_month = ?`;
+        params.push(targetSlug, targetSlug, newUsedCount, quota.currentYearMonth);
+      }
     }
 
     sql += ` WHERE id = ?`;
@@ -445,19 +501,42 @@ async function purchaseCustomSubdomain(req, res) {
     if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
 
     const newCustomSlug = (custom_subdomain_slug || rest.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const currentSlug = String(rest.custom_subdomain_slug || rest.slug || '').toLowerCase();
+    const isSlugChanging = newCustomSlug !== currentSlug;
+
+    const quota = getSubdomainQuota(rest);
+
+    if (isSlugChanging && quota.remaining <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have reached your limit of 3 subdomain name changes for this month. You can change your subdomain name again next month.'
+      });
+    }
+
+    const newUsedCount = isSlugChanging ? quota.usedThisMonth + 1 : quota.usedThisMonth;
 
     // Enable custom subdomain for ₹99/mo add-on plan and update both slug & custom_subdomain_slug
     await query(
-      'UPDATE restaurants SET custom_subdomain_enabled = 1, custom_subdomain_slug = ?, slug = ? WHERE id = ?',
-      [newCustomSlug, newCustomSlug, restId]
+      `UPDATE restaurants SET 
+         custom_subdomain_enabled = 1, 
+         custom_subdomain_slug = ?, 
+         slug = ?,
+         subdomain_changes_this_month = ?,
+         subdomain_last_reset_month = ?
+       WHERE id = ?`,
+      [newCustomSlug, newCustomSlug, newUsedCount, quota.currentYearMonth, restId]
     );
+
+    const remainingLeft = Math.max(0, 3 - newUsedCount);
 
     res.json({
       success: true,
-      message: '₹99/mo Custom Branded Subdomain unlocked successfully!',
+      message: `🎉 ₹99/mo Custom Subdomain active! (${remainingLeft} name changes remaining this month)`,
       custom_subdomain_enabled: 1,
       custom_subdomain_slug: newCustomSlug,
-      slug: newCustomSlug
+      slug: newCustomSlug,
+      subdomain_changes_this_month: newUsedCount,
+      subdomain_changes_left: remainingLeft
     });
   } catch (err) {
     console.error('purchaseCustomSubdomain Error:', err);

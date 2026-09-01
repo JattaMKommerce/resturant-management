@@ -53,6 +53,8 @@ export default function AdminSettingsPage() {
   const [randomSlug, setRandomSlug] = useState('');
   const [customSlugInput, setCustomSlugInput] = useState('');
   const [showSubdomainModal, setShowSubdomainModal] = useState(false);
+  const [subdomainChangesLeft, setSubdomainChangesLeft] = useState(3);
+  const [subdomainChangesThisMonth, setSubdomainChangesThisMonth] = useState(0);
 
   useEffect(() => {
     fetchSettings();
@@ -72,13 +74,13 @@ export default function AdminSettingsPage() {
         setDescription(r.description || '');
         setAbout(r.about || '');
         setAddress(r.address || '');
-        setLatitude(r.latitude ? r.latitude.toString() : '12.9716');
-        setLongitude(r.longitude ? r.longitude.toString() : '77.5946');
-        setOpeningHours(r.opening_hours || '10:00 AM - 11:30 PM');
-        setDeliveryRadiusKm(r.delivery_radius_km ? r.delivery_radius_km.toString() : '10.0');
-        setMinOrderAmount(r.min_order_amount ? r.min_order_amount.toString() : '199.00');
-        setDeliveryFee(r.delivery_fee ? r.delivery_fee.toString() : '49.00');
-        setTaxPercentage(r.tax_percentage ? r.tax_percentage.toString() : '5.00');
+        setLatitude(r.latitude || '');
+        setLongitude(r.longitude || '');
+        setOpeningHours(r.opening_hours || r.opening_time || '09:00 - 22:00');
+        setDeliveryRadiusKm(r.delivery_radius_km || '10');
+        setMinOrderAmount(r.min_order_amount || '100');
+        setDeliveryFee(r.delivery_fee || '40');
+        setTaxPercentage(r.tax_percentage || '5');
         setIsOnlineOrderingEnabled(r.is_online_ordering_enabled === 1 || r.is_online_ordering_enabled === true);
         setIsCodEnabled(r.is_cod_enabled === 1 || r.is_cod_enabled === true);
         setIsOnlinePaymentEnabled(r.is_online_payment_enabled === 1 || r.is_online_payment_enabled === true);
@@ -98,6 +100,8 @@ export default function AdminSettingsPage() {
         setCustomSubdomainSlug(r.custom_subdomain_slug || '');
         setRandomSlug(r.random_slug || '');
         setCustomSlugInput(r.custom_subdomain_slug || r.slug || '');
+        setSubdomainChangesLeft(r.subdomain_changes_left !== undefined ? r.subdomain_changes_left : 3);
+        setSubdomainChangesThisMonth(r.subdomain_changes_this_month || 0);
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -784,9 +788,12 @@ export default function AdminSettingsPage() {
                   />
                   <span className="absolute right-3 top-2.5 text-xs text-[#94A3B8] font-mono">.jattamkommerce.com</span>
                 </div>
-                <p className="text-[11px] text-[#64748B] font-mono">
-                  Live Preview: <span className="font-bold text-[#3A7D7C]">https://{customSlugInput || 'yourname'}.jattamkommerce.com</span>
-                </p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 mt-1 text-[11px] font-mono">
+                  <span className="text-[#64748B]">Live Preview: <strong className="text-[#3A7D7C]">https://{customSlugInput || 'yourname'}.jattamkommerce.com</strong></span>
+                  <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${subdomainChangesLeft > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}`}>
+                    ⚡ {subdomainChangesLeft} of 3 name changes left this month
+                  </span>
+                </div>
               </div>
 
               <div className="bg-gradient-to-r from-amber-50 to-[#EAF4F7] p-4 rounded-2xl border border-amber-200/60 flex items-center justify-between">
