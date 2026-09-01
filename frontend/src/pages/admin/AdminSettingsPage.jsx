@@ -116,7 +116,12 @@ export default function AdminSettingsPage() {
       alert('Please enter a valid custom subdomain name.');
       return;
     }
-    if (!window.confirm(`Upgrade to Custom Subdomain "${slugToUse}.jattamkommerce.com" for ₹99/month?`)) return;
+
+    const confirmMsg = customSubdomainEnabled 
+      ? `Update your custom subdomain name to "${slugToUse}.jattamkommerce.com"?`
+      : `Upgrade to Custom Subdomain "${slugToUse}.jattamkommerce.com" for ₹99/month?`;
+
+    if (!window.confirm(confirmMsg)) return;
 
     setSaving(true);
     try {
@@ -125,11 +130,17 @@ export default function AdminSettingsPage() {
         custom_subdomain_slug: slugToUse
       });
       if (res.data.success) {
-        alert('🎉 Custom Subdomain Unlocked Successfully!');
-        fetchSettings();
+        const successNotice = customSubdomainEnabled
+          ? `🎉 Custom Subdomain Name Updated Successfully!\nNew URL: https://${slugToUse}.jattamkommerce.com`
+          : '🎉 Custom Subdomain Unlocked Successfully!';
+        alert(successNotice);
+        if (res.data.restaurant && updateRestaurant) {
+          updateRestaurant(res.data.restaurant);
+        }
+        await fetchSettings();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to upgrade custom subdomain.');
+      alert(err.response?.data?.message || 'Failed to update custom subdomain.');
     } finally {
       setSaving(false);
     }
@@ -844,13 +855,33 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#D7E5E8]">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#D7E5E8] mt-4">
               <button
                 type="button"
                 onClick={() => setShowSubdomainModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-[#1F2937] font-bold rounded-xl text-xs transition-colors"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#1F2937] font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving || (customSubdomainEnabled && subdomainChangesLeft <= 0)}
+                onClick={async () => {
+                  await handlePurchaseCustomSubdomain();
+                  setShowSubdomainModal(false);
+                }}
+                className={`px-5 py-2.5 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer ${
+                  customSubdomainEnabled
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-[#3A7D7C] hover:bg-[#2F6665] text-white'
+                } ${subdomainChangesLeft <= 0 && customSubdomainEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <CreditCard className="w-4 h-4" />
+                {saving 
+                  ? 'Saving Subdomain...' 
+                  : customSubdomainEnabled 
+                  ? '💾 Save New Subdomain Name' 
+                  : '💳 Pay ₹99 & Unlock Custom Subdomain'}
               </button>
             </div>
           </div>
