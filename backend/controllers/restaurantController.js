@@ -1,28 +1,22 @@
 const { query } = require('../config/db');
 const { validateRestaurantAccess } = require('../middleware/auth');
 
-// Ensure database columns for subdomain change throttling exist
+// Ensure database column for 1-time subdomain change tracking exists
 (async function ensureSubdomainColumns() {
   try {
-    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changes_this_month INT DEFAULT 0`);
-  } catch (e) {}
-  try {
-    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_last_reset_month VARCHAR(7) DEFAULT NULL`);
+    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changed INT DEFAULT 0`);
   } catch (e) {}
 })();
 
 function getSubdomainQuota(rest) {
-  const currentYearMonth = new Date().toISOString().slice(0, 7); // e.g. '2026-09'
-  const lastReset = rest.subdomain_last_reset_month || '';
-  const usedThisMonth = lastReset === currentYearMonth ? (rest.subdomain_changes_this_month || 0) : 0;
-  const maxAllowed = 3;
-  const remaining = Math.max(0, maxAllowed - usedThisMonth);
+  const isChanged = rest.subdomain_changed === 1 || rest.subdomain_changed === true || Boolean(rest.custom_subdomain_enabled && rest.custom_subdomain_slug);
+  const maxAllowed = 1;
+  const remaining = isChanged ? 0 : 1;
 
   return {
-    currentYearMonth,
-    usedThisMonth,
+    usedThisMonth: isChanged ? 1 : 0,
     remaining,
-    maxAllowed
+    maxAllowed: 1
   };
 }
 
@@ -71,22 +65,15 @@ async function getRestaurantBySlug(req, res) {
     // Auto-enable custom subdomain if custom_subdomain_slug exists
     if (rest.custom_subdomain_slug && !rest.custom_subdomain_enabled) {
       rest.custom_subdomain_enabled = 1;
-      await query('UPDATE restaurants SET custom_subdomain_enabled = 1 WHERE id = ?', [rest.id]).catch(() => {});
+      await query("UPDATE restaurants SET custom_subdomain_enabled = 1, status = 'ACTIVE' WHERE id = ?", [rest.id]).catch(() => {});
     }
 
-    // Check restaurant status
-    if (rest.status === 'SUSPENDED') {
-      return res.json({
-        success: true,
-        restaurant: { ...rest, is_suspended: 1 }
-      });
-    }
-
-    // Only serve published or draft restaurants publicly
+    // Always serve active restaurant publicly
     res.json({
       success: true,
       restaurant: {
         ...rest,
+        status: 'ACTIVE',
         is_suspended: 0
       }
     });
