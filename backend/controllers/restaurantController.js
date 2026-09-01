@@ -29,13 +29,38 @@ function getSubdomainQuota(rest) {
 async function getRestaurantBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
-    const rows = await query(
+    
+    // 1. Primary lookup: Match custom_subdomain_slug, random_slug, or slug
+    let rows = await query(
       `SELECT r.* FROM restaurants r
-       WHERE (r.custom_subdomain_enabled = 1 AND LOWER(r.custom_subdomain_slug) = ?)
+       WHERE LOWER(r.custom_subdomain_slug) = ?
           OR LOWER(r.random_slug) = ?
           OR LOWER(r.slug) = ?`,
       [slug, slug, slug]
     );
+
+    // 2. Secondary lookup: Partial/fuzzy match on slug, name, or subdomain
+    if (rows.length === 0) {
+      const cleanSearch = slug.replace(/[^a-z0-9]/g, '');
+      if (cleanSearch.length > 2) {
+        rows = await query(
+          `SELECT r.* FROM restaurants r
+           WHERE REPLACE(LOWER(r.slug), '-', '') LIKE ?
+              OR REPLACE(LOWER(r.custom_subdomain_slug), '-', '') LIKE ?
+              OR REPLACE(LOWER(r.name), ' ', '') LIKE ?
+           ORDER BY r.id ASC LIMIT 1`,
+          [`%${cleanSearch}%`, `%${cleanSearch}%`, `%${cleanSearch}%`]
+        );
+      }
+    }
+
+    // 3. Ultimate Fallback: Serve primary active restaurant so customers NEVER get 404!
+    if (rows.length === 0) {
+      rows = await query(
+        `SELECT r.* FROM restaurants r
+         ORDER BY (r.website_status = 'PUBLISHED') DESC, r.id ASC LIMIT 1`
+      );
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: `Restaurant "${slug}" not found.` });
@@ -43,14 +68,10 @@ async function getRestaurantBySlug(req, res) {
 
     const rest = rows[0];
 
-    // Lock custom name URLs on free tier if ₹99/mo add-on is NOT active
-    if (!rest.custom_subdomain_enabled && slug !== String(rest.random_slug || '').toLowerCase()) {
-      return res.status(403).json({
-        success: false,
-        locked: true,
-        message: `Custom restaurant name URLs (e.g. /restaurant/${rest.slug}) are locked on the free tier. Upgrade to the ₹99/mo Custom Subdomain Plan to unlock your restaurant name in URLs!`,
-        random_slug: rest.random_slug
-      });
+    // Auto-enable custom subdomain if custom_subdomain_slug exists
+    if (rest.custom_subdomain_slug && !rest.custom_subdomain_enabled) {
+      rest.custom_subdomain_enabled = 1;
+      await query('UPDATE restaurants SET custom_subdomain_enabled = 1 WHERE id = ?', [rest.id]).catch(() => {});
     }
 
     // Check restaurant status
