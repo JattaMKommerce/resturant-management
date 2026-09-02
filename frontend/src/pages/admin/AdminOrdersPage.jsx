@@ -256,14 +256,14 @@ export default function AdminOrdersPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none touch-pan-x">
             {statuses.map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border shrink-0 ${
                   statusFilter === st
-                    ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-2xs'
+                    ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-sm'
                     : 'bg-white text-[#1F2937] border-[#D7E5E8] hover:border-[#3A7D7C]'
                 }`}
               >
@@ -273,8 +273,91 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Orders Table */}
-        <div className="bg-white rounded-2xl border border-[#D7E5E8] shadow-xs overflow-hidden">
+        {/* MOBILE CARD VIEW (For Small Screens - No Horizontal Scroll!) */}
+        <div className="block md:hidden space-y-3">
+          {loading ? (
+            <div className="bg-white p-8 text-center rounded-2xl border border-[#D7E5E8] text-xs text-[#64748B]">
+              Loading orders pipeline...
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="bg-white p-8 text-center rounded-2xl border border-[#D7E5E8]">
+              <ShoppingBag className="w-10 h-10 mx-auto mb-2 text-[#64748B]/40" />
+              <p className="font-bold text-[#1F2937] text-sm">No Orders Found</p>
+              <p className="text-xs text-[#64748B] mt-1">Try adjusting the filter status or search term.</p>
+            </div>
+          ) : (
+            filteredOrders.map((ord) => (
+              <div
+                key={ord.id}
+                onClick={() => setSelectedOrder(ord)}
+                className="bg-white rounded-2xl border border-[#D7E5E8] p-4 shadow-xs space-y-3 cursor-pointer hover:border-[#3A7D7C] transition-all"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <span className="font-mono font-bold text-sm text-[#3A7D7C]">{ord.order_number}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] inline-flex items-center gap-1 uppercase tracking-wider border ${getBadgeStyle(ord.order_status)}`}>
+                    {ord.order_status === 'DELIVERED' && <CheckCircle2 className="w-3 h-3" />}
+                    {ord.order_status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-[#64748B] block">Customer</span>
+                    <span className="font-extrabold text-[#1F2937] block truncate">{ord.customer_name}</span>
+                    <span className="font-mono text-[11px] text-[#64748B]">{ord.customer_phone}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase text-[#64748B] block">Total Amount</span>
+                    <span className="font-mono font-black text-sm text-[#1F2937]">₹{parseFloat(ord.total_amount).toFixed(2)}</span>
+                    <span className="text-[10px] font-bold text-slate-600 block">{ord.payment_method}</span>
+                  </div>
+                </div>
+
+                {ord.delivery_area && (
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                    <span className="font-medium text-slate-700 truncate max-w-[180px]">📍 {ord.delivery_area}</span>
+                    <span className="font-bold text-[#3A7D7C] text-[10px] bg-white px-2 py-0.5 rounded border border-[#D7E5E8] shrink-0">
+                      {ord.distance_km} km away
+                    </span>
+                  </div>
+                )}
+
+                {/* Quick Action Button for Mobile */}
+                <div onClick={(e) => e.stopPropagation()} className="pt-1">
+                  {ord.order_status === 'PENDING' && (
+                    <button
+                      onClick={() => handleUpdateStatus(ord.id, 'ACCEPTED')}
+                      className="w-full py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black text-xs rounded-xl shadow-xs transition-colors"
+                    >
+                      ✓ Accept Order
+                    </button>
+                  )}
+
+                  {ord.order_status === 'ACCEPTED' && (
+                    <button
+                      onClick={() => handleUpdateStatus(ord.id, 'SENT_TO_KITCHEN')}
+                      className="w-full py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <ChefHat className="w-4 h-4" /> 🍳 Send to Kitchen
+                    </button>
+                  )}
+
+                  {ord.order_status === 'READY_FOR_PICKUP' && (
+                    <button
+                      onClick={() => setSelectedOrder(ord)}
+                      className="w-full py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Bike className="w-4 h-4" /> 🚴 Assign Rider
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (For Medium & Large Screens) */}
+        <div className="hidden md:block bg-white rounded-2xl border border-[#D7E5E8] shadow-xs overflow-hidden">
           <div className="table-scrollbar pb-2">
             <table className="w-full min-w-[950px] text-left text-xs text-[#1F2937]">
               <thead className="bg-slate-50 text-[#64748B] font-bold uppercase tracking-wider text-[11px] border-b border-[#D7E5E8]">
