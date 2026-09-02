@@ -367,13 +367,13 @@ export default function RestaurantOnboarding() {
                   type="button"
                   onClick={() => setStep(s.number)}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl text-xs font-bold transition-all text-left border ${isCurrent
-                      ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-2xs'
-                      : 'bg-white text-[#1F2937] border-[#D7E5E8] hover:bg-slate-50 hover:border-[#3A7D7C]/40'
+                    ? 'bg-[#3A7D7C] text-white border-[#3A7D7C] shadow-2xs'
+                    : 'bg-white text-[#1F2937] border-[#D7E5E8] hover:bg-slate-50 hover:border-[#3A7D7C]/40'
                     }`}
                 >
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${isCurrent
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-100 text-[#64748B] border border-[#D7E5E8]'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-100 text-[#64748B] border border-[#D7E5E8]'
                     }`}>
                     {s.number}
                   </div>
@@ -494,11 +494,10 @@ export default function RestaurantOnboarding() {
                           setSaving(false);
                         }
                       }}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer space-y-2 relative ${
-                        isSelected
-                          ? 'border-[#3A7D7C] bg-[#EAF4F7]/50 shadow-md ring-2 ring-[#3A7D7C]/20'
-                          : 'border-[#D7E5E8] bg-white hover:border-[#3A7D7C]/40 hover:shadow-xs'
-                      }`}
+                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer space-y-2 relative ${isSelected
+                        ? 'border-[#3A7D7C] bg-[#EAF4F7]/50 shadow-md ring-2 ring-[#3A7D7C]/20'
+                        : 'border-[#D7E5E8] bg-white hover:border-[#3A7D7C]/40 hover:shadow-xs'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
