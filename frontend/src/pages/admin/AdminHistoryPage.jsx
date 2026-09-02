@@ -558,8 +558,75 @@ export default function AdminHistoryPage() {
           </div>
         </div>
 
-        {/* History Table Container */}
-        <div className="bg-white border border-[#D7E5E8] rounded-2xl shadow-xs overflow-hidden">
+        {/* MOBILE CARDS LIST (No horizontal scrolling on phones) */}
+        <div className="block md:hidden space-y-3">
+          {loading ? (
+            <div className="bg-white p-8 text-center rounded-2xl border border-[#D7E5E8] text-xs text-[#64748B]">
+              Loading past data archive...
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="bg-white p-8 text-center rounded-2xl border border-[#D7E5E8]">
+              <History className="w-10 h-10 mx-auto mb-2 text-[#64748B]/40" />
+              <p className="font-bold text-[#1F2937] text-sm">No History Records Found</p>
+              <p className="text-xs text-[#64748B] mt-1">Try adjusting the date range or filter status.</p>
+            </div>
+          ) : (
+            filteredOrders.map((order) => (
+              <div
+                key={`mob-${order.source_type}-${order.id}`}
+                onClick={() => setSelectedOrder(order)}
+                className="bg-white rounded-2xl border border-[#D7E5E8] p-4 shadow-2xs space-y-3 cursor-pointer hover:border-[#3A7D7C] transition-all"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    {order.source_type === 'ONLINE' ? (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8] flex items-center gap-1">
+                        <Globe className="w-2.5 h-2.5" /> ONLINE
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                        <UtensilsCrossed className="w-2.5 h-2.5" /> DINE-IN
+                      </span>
+                    )}
+                    <span className="font-bold text-[#3A7D7C] font-mono text-xs">{order.order_number}</span>
+                  </div>
+                  {getStatusBadge(order.order_status)}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-[#64748B] block">Customer / Ref</span>
+                    <span className="font-extrabold text-[#1F2937] block truncate">{order.customer_name || 'Guest'}</span>
+                    <span className="text-[10px] text-[#64748B] block truncate">
+                      {order.source_type === 'ONLINE' ? (order.delivery_address || 'Delivery') : (order.table_number ? `Table #${order.table_number}` : 'Counter')}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold uppercase text-[#64748B] block">Total Amount</span>
+                    <span className="font-mono font-black text-sm text-[#1F2937]">₹{parseFloat(order.total_amount || 0).toLocaleString()}</span>
+                    <span className="text-[10px] font-bold text-slate-600 block">{order.payment_method || 'CASH'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-[#64748B]">
+                  <span>🕒 {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedOrder(order);
+                    }}
+                    className="px-3 py-1 bg-[#EAF4F7] text-[#3A7D7C] font-extrabold rounded-lg border border-[#D7E5E8]"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* History Table Container (DESKTOP) */}
+        <div className="hidden md:block bg-white border border-[#D7E5E8] rounded-2xl shadow-xs overflow-hidden">
           {/* Scroll & Swipe Helper Toolbar */}
           <div className="px-4 py-2.5 bg-slate-50 border-b border-[#D7E5E8] flex items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-[#64748B] font-medium">
