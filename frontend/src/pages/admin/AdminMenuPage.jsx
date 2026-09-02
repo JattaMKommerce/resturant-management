@@ -263,8 +263,89 @@ export default function AdminMenuPage() {
           </select>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl border border-[#D7E5E8] shadow-xs overflow-hidden">
+        {/* MOBILE COMPACT LIST VIEW (For Phone Screens - Super Readable & Space-Efficient!) */}
+        <div className="block md:hidden space-y-3">
+          {loading ? (
+            <div className="p-8 bg-white rounded-2xl border border-[#D7E5E8] text-center text-xs text-[#64748B]">
+              Loading menu items...
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="p-8 bg-white rounded-2xl border border-[#D7E5E8] text-center text-xs text-[#64748B] font-bold">
+              No menu items found.
+            </div>
+          ) : (
+            filteredItems.map((item) => (
+              <div
+                key={`mob-menu-${item.id}`}
+                className="bg-white rounded-2xl border border-[#D7E5E8] p-3.5 shadow-2xs space-y-2.5"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Left Thumbnail */}
+                  <img
+                    src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'}
+                    alt={item.name}
+                    className="w-14 h-14 rounded-xl object-cover border border-[#D7E5E8] shrink-0"
+                  />
+
+                  {/* Middle Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-extrabold text-[#1F2937] text-sm truncate">{item.name}</span>
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase border ${
+                        item.is_veg === 1 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                      }`}>
+                        {item.is_veg === 1 ? 'Veg 🟢' : 'Non-Veg 🔴'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-0.5 text-[11px]">
+                      <span className="font-bold text-[#3A7D7C] bg-[#EAF4F7] px-2 py-0.2 rounded border border-[#D7E5E8]">
+                        {item.category_name}
+                      </span>
+                      <span className="font-mono font-black text-xs text-[#1F2937]">
+                        ₹{item.discounted_price ? item.discounted_price : item.price}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Bar: Quick Toggle + Actions */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <button
+                    onClick={() => handleToggleAvailability(item)}
+                    className={`px-3 py-1 rounded-xl text-[11px] font-extrabold transition-all border cursor-pointer ${
+                      item.is_available === 1
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-rose-50 text-rose-800 border-rose-200'
+                    }`}
+                  >
+                    {item.is_available === 1 ? '✓ Available (ON)' : '❌ Out of Stock (OFF)'}
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenEdit(item)}
+                      className="p-1.5 text-[#3A7D7C] hover:bg-[#EAF4F7] border border-[#D7E5E8] rounded-xl transition-colors cursor-pointer"
+                      title="Edit Item"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl transition-colors cursor-pointer"
+                      title="Delete Item"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* DESKTOP TABLE VIEW (For Medium & Large Screens) */}
+        <div className="hidden md:block bg-white rounded-2xl border border-[#D7E5E8] shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-[#1F2937]">
               <thead className="bg-slate-50 text-[#64748B] font-bold uppercase tracking-wider text-[11px] border-b border-[#D7E5E8]">
