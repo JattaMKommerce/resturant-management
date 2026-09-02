@@ -177,7 +177,8 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'restaurants', 'upi_id', "VARCHAR(100) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'restaurants', 'upi_name', "VARCHAR(150) DEFAULT NULL");
 
-      // Custom Subdomain & Random Alphanumeric Slug Migrations
+      // Custom Subdomain & Template Choice Migrations
+      await addColumnIfNotExists(conn, 'restaurants', 'template_id', "VARCHAR(50) NOT NULL DEFAULT 'royal_heritage'");
       await addColumnIfNotExists(conn, 'restaurants', 'random_slug', "VARCHAR(20) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
       await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_slug', "VARCHAR(100) DEFAULT NULL");

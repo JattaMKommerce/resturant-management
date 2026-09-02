@@ -32,7 +32,10 @@ const getMediaUrl = (url) => {
   return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+import { getTemplateById } from '../../config/templates';
+
 export default function AccommodationCustomerTab({ restaurant, slug }) {
+  const template = getTemplateById(restaurant?.template_id);
   const [rooms, setRooms] = useState([]);
   const [amenities, setAmenities] = useState([
     'High-Speed Wi-Fi',
@@ -127,11 +130,11 @@ export default function AccommodationCustomerTab({ restaurant, slug }) {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* HERO HOTEL BRANDING CARD */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-[#1F4D4C] text-white p-6 sm:p-10 shadow-2xl border border-white/10">
+      <div className={`relative rounded-3xl overflow-hidden bg-gradient-to-br ${template.previewBg} text-white p-6 sm:p-10 shadow-2xl border border-white/10`}>
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-              <Star className="w-3.5 h-3.5 fill-emerald-300" /> Premium Hotel Stay
+            <span className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase flex items-center gap-1.5 ${template.badgeStyle}`}>
+              <Star className="w-3.5 h-3.5 fill-current" /> {template.category}
             </span>
             <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-white/10 text-white/90 border border-white/10 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-amber-300" /> 24/7 Front Desk Active

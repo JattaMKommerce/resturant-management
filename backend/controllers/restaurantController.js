@@ -334,7 +334,8 @@ async function updateRestaurantSettings(req, res) {
       latitude, longitude, opening_time, closing_time, opening_hours,
       delivery_radius_km, min_order_amount, delivery_fee, tax_percentage,
       is_online_ordering_enabled, is_cod_enabled, is_online_payment_enabled,
-      razorpay_key_id, razorpay_key_secret, razorpay_enabled, upi_id, upi_name
+      razorpay_key_id, razorpay_key_secret, razorpay_enabled, upi_id, upi_name,
+      template_id
     } = req.body;
 
     const restId = await resolveTargetRestaurantId(req);
@@ -402,7 +403,8 @@ async function updateRestaurantSettings(req, res) {
         razorpay_key_secret = COALESCE(?, razorpay_key_secret),
         razorpay_enabled = COALESCE(?, razorpay_enabled),
         upi_id = COALESCE(?, upi_id),
-        upi_name = COALESCE(?, upi_name)
+        upi_name = COALESCE(?, upi_name),
+        template_id = COALESCE(?, template_id)
     `;
 
     const params = [
@@ -423,7 +425,8 @@ async function updateRestaurantSettings(req, res) {
       razorpay_key_secret !== undefined ? (razorpay_key_secret ? razorpay_key_secret.trim() : null) : null,
       boolRzpEnabled !== undefined ? (boolRzpEnabled ? 1 : 0) : null,
       upi_id !== undefined ? (upi_id ? upi_id.trim() : null) : null,
-      upi_name !== undefined ? (upi_name ? upi_name.trim() : null) : null
+      upi_name !== undefined ? (upi_name ? upi_name.trim() : null) : null,
+      template_id || null
     ];
 
     if (req.body.remove_logo === '1' || req.body.remove_logo === 'true' || req.body.remove_logo === true) {

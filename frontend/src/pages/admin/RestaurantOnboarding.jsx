@@ -4,8 +4,8 @@ import api from '../../api/axios';
 import {
   Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe,
   CheckCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle, Upload, Sparkles,
-  Trash2, Clock, ShieldCheck, Star, CreditCard, Lock
 } from 'lucide-react';
+import { WEBSITE_TEMPLATES } from '../../config/templates';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
 
@@ -260,7 +260,7 @@ export default function RestaurantOnboarding() {
         setRemoveLogo(false);
         setRemoveCover(false);
         await loadData();
-        setStep(4);
+        setStep(5);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save branding.');
@@ -321,12 +321,13 @@ export default function RestaurantOnboarding() {
   const stepsList = [
     { number: 1, title: 'Restaurant Details', icon: Building },
     { number: 2, title: 'Location & Radius', icon: MapPin },
-    { number: 3, title: 'Branding & About', icon: ImageIcon },
-    { number: 4, title: 'Menu Categories', icon: Layers },
-    { number: 5, title: 'Menu Items', icon: Utensils },
-    { number: 6, title: 'Website Preview', icon: Eye },
-    { number: 7, title: 'Subdomain Branding', icon: Star },
-    { number: 8, title: 'Publish Website', icon: Globe },
+    { number: 3, title: 'Choose Website Theme', icon: Sparkles },
+    { number: 4, title: 'Branding & About', icon: ImageIcon },
+    { number: 5, title: 'Menu Categories', icon: Layers },
+    { number: 6, title: 'Menu Items', icon: Utensils },
+    { number: 7, title: 'Website Preview', icon: Eye },
+    { number: 8, title: 'Subdomain Branding', icon: Star },
+    { number: 9, title: 'Publish Website', icon: Globe },
   ];
 
   return (
@@ -461,10 +462,77 @@ export default function RestaurantOnboarding() {
             </form>
           )}
 
-          {/* STEP 3: Branding & Image Upload */}
+          {/* STEP 3: Choose Website Template Theme */}
           {step === 3 && (
+            <div className="space-y-5 text-xs">
+              <div>
+                <h2 className="text-base font-extrabold text-[#1F2937] mb-1 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#3A7D7C]" />
+                  <span>Step 3: Select Your Customer Website Theme</span>
+                </h2>
+                <p className="text-[#64748B] text-xs font-medium">
+                  Choose from 5 high-converting website templates optimized for 30-second room bookings & fast food ordering.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {WEBSITE_TEMPLATES.map((tmpl) => {
+                  const isSelected = (selectedTemplateId || restaurant?.template_id || 'royal_heritage') === tmpl.id;
+                  return (
+                    <div
+                      key={tmpl.id}
+                      onClick={async () => {
+                        setSelectedTemplateId(tmpl.id);
+                        try {
+                          setSaving(true);
+                          await api.put('/admin/restaurant/settings', { template_id: tmpl.id });
+                          await loadData();
+                        } catch (e) {
+                          alert('Failed to select template.');
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer space-y-2 relative ${
+                        isSelected
+                          ? 'border-[#3A7D7C] bg-[#EAF4F7]/50 shadow-md ring-2 ring-[#3A7D7C]/20'
+                          : 'border-[#D7E5E8] bg-white hover:border-[#3A7D7C]/40 hover:shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                          {tmpl.badge}
+                        </span>
+                        {isSelected && (
+                          <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#3A7D7C] text-white flex items-center gap-1">
+                            <CheckCircle className="w-3.5 h-3.5" /> Selected Theme
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="font-extrabold text-sm text-[#1F2937]">{tmpl.name}</h4>
+                        <p className="text-[11px] font-semibold text-[#3A7D7C]">{tmpl.category}</p>
+                        <p className="text-xs text-[#64748B] mt-1">{tmpl.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setStep(2)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
+                <button type="button" onClick={() => setStep(4)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                  Continue to Branding <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Branding & Image Upload */}
+          {step === 4 && (
             <form onSubmit={handleSaveBranding} className="space-y-5 text-xs">
-              <h2 className="text-base font-bold text-[#1F2937] mb-2">Step 3: Branding & Visual Assets</h2>
+              <h2 className="text-base font-bold text-[#1F2937] mb-2">Step 4: Branding & Visual Assets</h2>
 
               {imageError && (
                 <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -774,21 +842,21 @@ export default function RestaurantOnboarding() {
               )}
 
               <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setStep(6)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
-                <button type="button" onClick={() => setStep(8)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                <button type="button" onClick={() => setStep(7)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
+                <button type="button" onClick={() => setStep(9)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
                   Proceed to Publish <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 8: Publish Website */}
-          {step === 8 && (
+          {/* STEP 9: Publish Website */}
+          {step === 9 && (
             <div className="space-y-4 text-xs text-center py-8">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto border border-emerald-200">
                 <Globe className="w-7 h-7" />
               </div>
-              <h2 className="text-lg font-bold text-[#1F2937]">Step 8: Publish Website Live</h2>
+              <h2 className="text-lg font-bold text-[#1F2937]">Step 9: Publish Website Live</h2>
               <p className="text-[#64748B]">Your storefront setup is ready! Click below to publish your website live and start receiving customer orders.</p>
               <button onClick={handlePublish} disabled={saving} className="px-8 py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white text-sm rounded-xl shadow-2xs transition-colors cursor-pointer">
                 {saving ? 'Publishing...' : '🚀 Publish Live Website'}

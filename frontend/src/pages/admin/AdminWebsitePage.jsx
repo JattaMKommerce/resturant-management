@@ -186,6 +186,82 @@ export default function AdminWebsitePage() {
           </div>
         </div>
 
+        {/* 5 WEBSITE TEMPLATES SELECTION CARD */}
+        <div className="bg-white rounded-2xl border border-[#D7E5E8] p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-base text-[#1F2937] flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#3A7D7C]" />
+                <span>Choose Customer Website Theme (5 Curated Templates)</span>
+              </h3>
+              <p className="text-xs text-[#64748B] font-medium mt-0.5">
+                Constrained, high-converting templates optimized for fast 30-second room bookings & food ordering
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            {[
+              { id: 'royal_heritage', name: 'Royal Grand Heritage', cat: '5-Star Luxury & Palace', badge: '👑 Most Popular', color: 'bg-amber-900 border-amber-500', desc: 'Deep navy, gold accents, royal font pairings, and gold amenity badges.' },
+              { id: 'azure_coastal', name: 'Azure Coastal Resort', cat: 'Beachfront & Spa', badge: '🌊 Beachfront', color: 'bg-cyan-900 border-cyan-400', desc: 'Ocean cyan, tropical backdrop imagery, floating pool & Wi-Fi badges.' },
+              { id: 'boutique_eco', name: 'Boutique Eco-Lodge', cat: 'Nature & Retreat', badge: '🌿 Eco Stay', color: 'bg-emerald-900 border-emerald-500', desc: 'Sage green, organic stone textures, and 1-tap WhatsApp booking.' },
+              { id: 'gourmet_dining', name: 'Gourmet Fine Dining', cat: 'Restaurant + Hotel Hybrid', badge: '🍽️ Hotel + Dining', color: 'bg-rose-950 border-rose-500', desc: 'Ruby burgundy, 2-in-1 Food & Stay switcher bar, interactive culinary grid.' },
+              { id: 'express_business', name: 'Express Business Hotel', cat: 'Corporate Transit', badge: '⚡ Express Booking', color: 'bg-indigo-950 border-indigo-500', desc: 'Indigo slate, 30-second room reservation widget, express check-in desk.' }
+            ].map((tmpl) => {
+              const isSelected = (restaurant?.template_id || 'royal_heritage') === tmpl.id;
+              return (
+                <div
+                  key={tmpl.id}
+                  onClick={async () => {
+                    try {
+                      setActionLoading(true);
+                      await api.put('/admin/restaurant/settings', { template_id: tmpl.id });
+                      await loadData();
+                    } catch (e) {
+                      alert('Failed to change website template.');
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }}
+                  className={`rounded-2xl p-4 border-2 transition-all cursor-pointer space-y-3 relative overflow-hidden ${
+                    isSelected
+                      ? 'border-[#3A7D7C] bg-[#EAF4F7]/40 shadow-md ring-2 ring-[#3A7D7C]/20'
+                      : 'border-[#D7E5E8] bg-white hover:border-[#3A7D7C]/50 hover:shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {tmpl.badge}
+                    </span>
+                    {isSelected && (
+                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#3A7D7C] text-white flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Active Theme
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-extrabold text-sm text-[#1F2937]">{tmpl.name}</h4>
+                    <p className="text-[11px] font-semibold text-[#3A7D7C]">{tmpl.cat}</p>
+                    <p className="text-xs text-[#64748B] mt-1 line-clamp-2">{tmpl.desc}</p>
+                  </div>
+
+                  <button
+                    disabled={actionLoading}
+                    className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-[#3A7D7C] hover:text-white'
+                    }`}
+                  >
+                    {isSelected ? 'Currently Selected' : 'Apply Template'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Custom Subdomain Add-On Upgrade Card (₹99 / Month) */}
         {!slugInfo.isCustom ? (
           <div className="bg-gradient-to-r from-[#EAF4F7] to-amber-50 rounded-2xl border-2 border-[#3A7D7C]/30 p-5 sm:p-6 shadow-xs space-y-4">
