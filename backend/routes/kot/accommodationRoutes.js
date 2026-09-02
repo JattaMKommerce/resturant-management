@@ -5,6 +5,25 @@ const { authenticateToken, requireRoles } = require('../../middleware/kotAuth');
 
 router.use(authenticateToken);
 
+// Room Reservation Leads / Inquiries (must be placed before parameterized /:id route)
+router.get(
+  '/inquiries/list',
+  requireRoles('ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'),
+  accommodationController.getRoomInquiries
+);
+
+router.patch(
+  '/inquiries/:id/status',
+  requireRoles('ADMIN', 'MANAGER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'),
+  accommodationController.updateInquiryStatus
+);
+
+router.delete(
+  '/inquiries/:id',
+  requireRoles('ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'),
+  accommodationController.deleteInquiry
+);
+
 // Aggregate stats (must be placed before parameterized /:id route)
 router.get(
   '/stats/summary',

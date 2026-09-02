@@ -223,4 +223,23 @@ router.delete('/notifications/:id', authenticateToken, notificationController.de
 router.post('/admin/restaurant/purchase-custom-subdomain', ...adminAuth, restaurantController.purchaseCustomSubdomain);
 router.post('/admin/superadmin/restaurant/:id/toggle-custom-subdomain', authenticateToken, authorizeRoles('SUPER_ADMIN'), superAdminController.toggleCustomSubdomain);
 
+// Website Room Reservation Leads & Accommodation Management
+const accommodationController = require('../controllers/kot/accommodationController');
+router.get('/admin/room-inquiries', ...adminAuth, accommodationController.getRoomInquiries);
+router.patch('/admin/room-inquiries/:id/status', ...adminAuth, accommodationController.updateInquiryStatus);
+router.delete('/admin/room-inquiries/:id', ...adminAuth, accommodationController.deleteInquiry);
+
+// Upload Multiple Images (Room Photos & Media)
+router.post('/admin/upload-images', ...adminAuth, upload.array('images', 10), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No image files uploaded.' });
+    }
+    const imageUrls = req.files.map(f => `/uploads/${f.filename}`);
+    res.json({ success: true, imageUrls, message: `${imageUrls.length} images uploaded successfully.` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

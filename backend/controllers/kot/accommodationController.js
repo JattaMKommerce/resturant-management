@@ -212,9 +212,22 @@ function formatRoomRow(row) {
   const fallbackImage = DEFAULT_ROOM_IMAGES[row.room_type] || DEFAULT_ROOM_IMAGES['Deluxe Room'];
   const image_url = row.image_url && row.image_url.trim() !== '' ? row.image_url : fallbackImage;
 
+  let imagesList = [];
+  if (row.images) {
+    try {
+      imagesList = typeof row.images === 'string' ? JSON.parse(row.images) : row.images;
+    } catch (e) {
+      imagesList = String(row.images).split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  if (!Array.isArray(imagesList) || imagesList.length === 0) {
+    imagesList = [image_url];
+  }
+
   return {
     ...row,
     image_url,
+    images: imagesList,
     amenities: Array.isArray(amenitiesList) ? amenitiesList : [],
     rate_per_night: parseFloat(row.rate_per_night || 2500),
     capacity: parseInt(row.capacity || 2, 10),
@@ -412,7 +425,8 @@ async function createRoom(req, res, next) {
       room_size = '320 sq.ft',
       amenities,
       description,
-      image_url
+      image_url,
+      images
     } = req.body;
 
     if (!room_number || String(room_number).trim() === '') {
@@ -432,10 +446,11 @@ async function createRoom(req, res, next) {
 
     const fallbackImage = DEFAULT_ROOM_IMAGES[room_type] || DEFAULT_ROOM_IMAGES['Deluxe Room'];
     const finalImage = image_url && image_url.trim() !== '' ? image_url.trim() : fallbackImage;
+    const imagesJson = Array.isArray(images) ? JSON.stringify(images) : (typeof images === 'string' && images ? images : JSON.stringify([finalImage]));
 
     const [result] = await connection.query(
-      `INSERT INTO rooms (room_number, floor, room_type, status, rate_per_night, capacity, bed_type, room_size, amenities, description, image_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO rooms (room_number, floor, room_type, status, rate_per_night, capacity, bed_type, room_size, amenities, description, image_url, images)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         cleanRoomNumber,
         floor,
@@ -447,7 +462,8 @@ async function createRoom(req, res, next) {
         room_size,
         amenitiesJson,
         description || `${room_type} located on ${floor}.`,
-        finalImage
+        finalImage,
+        imagesJson
       ]
     );
 
@@ -489,6 +505,7 @@ async function updateRoom(req, res, next) {
       amenities,
       description,
       image_url,
+      images,
       status
     } = req.body;
 
@@ -510,6 +527,11 @@ async function updateRoom(req, res, next) {
       amenitiesJson = Array.isArray(amenities) ? JSON.stringify(amenities) : String(amenities);
     }
 
+    let imagesJson = undefined;
+    if (images !== undefined) {
+      imagesJson = Array.isArray(images) ? JSON.stringify(images) : String(images);
+    }
+
     await pool.query(
       `UPDATE rooms 
        SET room_number = COALESCE(?, room_number),
@@ -522,7 +544,8 @@ async function updateRoom(req, res, next) {
            room_size = COALESCE(?, room_size),
            amenities = COALESCE(?, amenities),
            description = COALESCE(?, description),
-           image_url = COALESCE(?, image_url)
+           image_url = COALESCE(?, image_url),
+           images = COALESCE(?, images)
        WHERE id = ?`,
       [
         room_number ? String(room_number).trim() : null,
@@ -536,6 +559,7 @@ async function updateRoom(req, res, next) {
         amenitiesJson,
         description,
         image_url,
+        imagesJson,
         id
       ]
     );
@@ -1299,6 +1323,68 @@ async function getRoomStats(req, res, next) {
   }
 }
 
+// Room Reservation Leads / Inquiries Management
+async function getRoomInquiries(req, res, next) {
+  try {
+    await ensureRoomSchema();
+
+    // Ensure room_bookings table exists with extra columns
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS room_bookings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        restaurant_id INT NOT NULL,
+        room_id INT DEFAULT NULL,
+        room_number VARCHAR(50) DEFAULT NULL,
+        room_type VARCHAR(100) DEFAULT NULL,
+        price_per_night DECIMAL(10,2) DEFAULT NULL,
+        guest_name VARCHAR(100),
+        guest_phone VARCHAR(30),
+        check_in_date DATE,
+        check_out_date DATE,
+        notes TEXT,
+        status VARCHAR(30) DEFAULT 'PENDING_INQUIRY',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).catch(() => {});
+
+    await pool.query(`ALTER TABLE room_bookings ADD COLUMN room_id INT DEFAULT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE room_bookings ADD COLUMN room_number VARCHAR(50) DEFAULT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE room_bookings ADD COLUMN price_per_night DECIMAL(10,2) DEFAULT NULL`).catch(() => {});
+
+    const [rows] = await pool.query(
+      `SELECT rb.*, r.room_number as live_room_number, r.room_type as live_room_type, r.rate_per_night as base_price, r.image_url
+       FROM room_bookings rb
+       LEFT JOIN rooms r ON rb.room_id = r.id
+       ORDER BY rb.id DESC`
+    );
+
+    return sendSuccess(res, { inquiries: rows }, 'Room inquiries retrieved');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateInquiryStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    await pool.query(`UPDATE room_bookings SET status = ? WHERE id = ?`, [status, id]);
+    return sendSuccess(res, { id, status }, 'Inquiry status updated successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteInquiry(req, res, next) {
+  try {
+    const { id } = req.params;
+    await pool.query(`DELETE FROM room_bookings WHERE id = ?`, [id]);
+    return sendSuccess(res, { id }, 'Inquiry deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getRooms,
   getRoomById,
@@ -1319,5 +1405,8 @@ module.exports = {
   getAllFolios,
   addFolioCharge,
   settleFolio,
+  getRoomInquiries,
+  updateInquiryStatus,
+  deleteInquiry,
   ensureRoomSchema
 };

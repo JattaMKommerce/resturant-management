@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import api from '../../api/axios';
 import {
   Hotel,
   BedDouble,
@@ -23,6 +23,14 @@ import {
   Tv,
   Bath
 } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
+
+const getMediaUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) return url;
+  return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export default function AccommodationCustomerTab({ restaurant, slug }) {
   const [rooms, setRooms] = useState([]);
@@ -49,14 +57,16 @@ export default function AccommodationCustomerTab({ restaurant, slug }) {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  const activeSlug = slug || restaurant?.slug || restaurant?.random_slug || 'default';
+
   useEffect(() => {
     fetchRooms();
-  }, [slug]);
+  }, [activeSlug]);
 
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/restaurants/${slug}/rooms`);
+      const res = await api.get(`/restaurants/${activeSlug}/rooms`);
       if (res.data && res.data.success) {
         setRooms(res.data.rooms || []);
         if (res.data.hotel_amenities && res.data.hotel_amenities.length > 0) {
@@ -88,19 +98,27 @@ export default function AccommodationCustomerTab({ restaurant, slug }) {
 
     setSubmitting(true);
     try {
-      const res = await api.post(`/restaurants/${slug}/room-inquiry`, {
+      const payload = {
         ...form,
-        room_type: selectedRoom ? selectedRoom.room_type : form.room_type
-      });
+        room_id: selectedRoom?.id || null,
+        room_number: selectedRoom?.room_number || null,
+        room_type: selectedRoom ? selectedRoom.room_type || `Room ${selectedRoom.room_number}` : form.room_type,
+        price_per_night: selectedRoom?.base_price || selectedRoom?.rate_per_night || null
+      };
+
+      const res = await api.post(`/restaurants/${activeSlug}/room-inquiry`, payload);
       if (res.data && res.data.success) {
-        setSuccessMsg(res.data.message || '🎉 Inquiry submitted! Front desk will contact you shortly.');
+        setSuccessMsg(res.data.message || '🎉 Your room reservation request has been sent! Front Desk will call/WhatsApp you shortly to confirm.');
         setTimeout(() => {
           setSuccessMsg(null);
           setShowModal(false);
-        }, 3000);
+        }, 4000);
+      } else {
+        alert(res.data?.message || 'Failed to send room inquiry.');
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to send room inquiry.');
+      console.error('Room inquiry submit error:', err);
+      alert(err.response?.data?.message || err.message || 'Failed to send room inquiry.');
     } finally {
       setSubmitting(false);
     }
@@ -266,7 +284,7 @@ export default function AccommodationCustomerTab({ restaurant, slug }) {
                 <div>
                   <div className="relative h-48 w-full overflow-hidden bg-slate-100">
                     <img
-                      src={room.image_url || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80'}
+                      src={getMediaUrl(room.image_url) || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=800&q=80'}
                       alt={room.room_type || room.room_number}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />

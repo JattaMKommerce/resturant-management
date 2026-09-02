@@ -29,7 +29,9 @@ import {
   UserPlus,
   Hotel,
   Wrench,
-  UserCheck
+  UserCheck,
+  MessageSquare,
+  Store
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -88,6 +90,8 @@ export default function UnifiedSidebar({
 
   // 3. HOTEL ACCOMMODATION SECTION
   const accommodationNavItems = [
+    { name: 'Website Leads', path: '/admin/accommodation/leads', icon: MessageSquare },
+    { name: 'Room Store Settings', path: '/admin/accommodation/store', icon: Store },
     { name: '20 Hotels Catalog', path: '/admin/accommodation/hotels', icon: Hotel },
     { name: 'Dashboard', path: '/admin/accommodation/dashboard', icon: LayoutDashboard },
     { name: 'Rooms Grid', path: '/admin/accommodation/rooms', icon: BedDouble },

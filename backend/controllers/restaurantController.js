@@ -96,7 +96,14 @@ async function getDefaultRestaurant(req, res) {
 
 async function getPublishedRestaurants(req, res) {
   try {
-    const rows = await query(
+    const rows = await query("SELECT * FROM restaurants WHERE status = 'ACTIVE' AND website_status = 'PUBLISHED' ORDER BY id ASC");
+    res.json({ success: true, restaurants: rows });
+  } catch (err) {
+    console.error('getPublishedRestaurants Error:', err);
+    res.status(500).json({ success: false, message: 'Server error retrieving restaurants.' });
+  }
+}
+
 // Public Room Catalog for Customer Website
 async function getPublicRoomsBySlug(req, res) {
   try {
@@ -143,43 +150,78 @@ async function getPublicRoomsBySlug(req, res) {
 async function submitRoomInquiry(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
-    const { guest_name, guest_phone, room_type, check_in_date, check_out_date, notes } = req.body;
+    const { guest_name, guest_phone, room_id, room_number, room_type, price_per_night, check_in_date, check_out_date, notes } = req.body;
 
     if (!guest_name || !guest_phone) {
       return res.status(400).json({ success: false, message: 'Name and Phone number are required.' });
     }
 
-    const restRows = await query(
-      `SELECT r.id FROM restaurants r 
-       WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
-      [slug, slug, slug]
-    );
-
-    if (restRows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+    let restId = null;
+    if (slug && slug !== 'undefined' && slug !== 'null') {
+      const restRows = await query(
+        `SELECT r.id FROM restaurants r 
+         WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
+        [slug, slug, slug]
+      );
+      if (restRows.length > 0) restId = restRows[0].id;
     }
 
-    const restId = restRows[0].id;
+    if (!restId) {
+      const defaultRows = await query(
+        `SELECT r.id FROM restaurants r ORDER BY (r.website_status = 'PUBLISHED') DESC, r.id ASC LIMIT 1`
+      );
+      if (defaultRows.length > 0) restId = defaultRows[0].id;
+    }
+
+    if (!restId) {
+      return res.status(404).json({ success: false, message: 'No active hotel or restaurant found.' });
+    }
 
     await query(
       `CREATE TABLE IF NOT EXISTS room_bookings (
          id INT AUTO_INCREMENT PRIMARY KEY,
          restaurant_id INT NOT NULL,
+         room_id INT DEFAULT NULL,
+         room_number VARCHAR(50) DEFAULT NULL,
+         room_type VARCHAR(100) DEFAULT NULL,
+         price_per_night DECIMAL(10,2) DEFAULT NULL,
          guest_name VARCHAR(100),
          guest_phone VARCHAR(30),
-         room_type VARCHAR(50),
-         check_in_date DATE,
-         check_out_date DATE,
+         check_in_date VARCHAR(100) DEFAULT NULL,
+         check_out_date VARCHAR(100) DEFAULT NULL,
          notes TEXT,
          status VARCHAR(30) DEFAULT 'PENDING_INQUIRY',
          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`
     ).catch(() => {});
 
+    // Ensure columns exist on older tables & handle date format flexibility
+    await query(`ALTER TABLE room_bookings ADD COLUMN room_id INT DEFAULT NULL`).catch(() => {});
+    await query(`ALTER TABLE room_bookings ADD COLUMN room_number VARCHAR(50) DEFAULT NULL`).catch(() => {});
+    await query(`ALTER TABLE room_bookings ADD COLUMN price_per_night DECIMAL(10,2) DEFAULT NULL`).catch(() => {});
+    await query(`ALTER TABLE room_bookings MODIFY COLUMN check_in_date VARCHAR(100) DEFAULT NULL`).catch(() => {});
+    await query(`ALTER TABLE room_bookings MODIFY COLUMN check_out_date VARCHAR(100) DEFAULT NULL`).catch(() => {});
+
+    const parsedRoomId = room_id ? (parseInt(room_id, 10) || null) : null;
+    const parsedPrice = price_per_night ? (parseFloat(price_per_night) || null) : null;
+    const dateIn = check_in_date ? String(check_in_date).trim() : null;
+    const dateOut = check_out_date ? String(check_out_date).trim() : null;
+
     await query(
-      `INSERT INTO room_bookings (restaurant_id, guest_name, guest_phone, room_type, check_in_date, check_out_date, notes, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING_INQUIRY', NOW())`,
-      [restId, guest_name, guest_phone, room_type || 'Deluxe Room', check_in_date || null, check_out_date || null, notes || '']
+      `INSERT INTO room_bookings (restaurant_id, room_id, room_number, room_type, price_per_night, guest_name, guest_phone, check_in_date, check_out_date, notes, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_INQUIRY', NOW())`,
+      [
+        restId,
+        parsedRoomId,
+        room_number ? String(room_number) : null,
+        room_type ? String(room_type) : 'Deluxe Room',
+        parsedPrice,
+        String(guest_name),
+        String(guest_phone),
+        dateIn,
+        dateOut,
+        notes ? String(notes) : ''
+      ]
     );
 
     res.json({
@@ -188,7 +230,7 @@ async function submitRoomInquiry(req, res) {
     });
   } catch (err) {
     console.error('submitRoomInquiry Error:', err);
-    res.status(500).json({ success: false, message: 'Failed to submit room inquiry.' });
+    res.status(500).json({ success: false, message: err.message || 'Failed to submit room inquiry.' });
   }
 }
 
