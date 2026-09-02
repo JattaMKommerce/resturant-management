@@ -51,6 +51,7 @@ export default function RestaurantOnboarding() {
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [customSlugInput, setCustomSlugInput] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('royal_heritage');
 
   // Subdomain Pricing & Skip Modals
   const [showPricingModal, setShowPricingModal] = useState(false);
