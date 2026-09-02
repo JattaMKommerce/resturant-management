@@ -179,38 +179,6 @@ export default function UnifiedSidebar({
 
       {/* Navigation Scrollable Body */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
-        
-        {/* SUITE MODE BADGE / SWITCHER */}
-        <div className={`p-3 rounded-2xl border transition-all ${
-          productMode === 'RESTAURANT_ACCOMMODATION'
-            ? 'bg-[#E8F1F2] border-[#3A7D7C]/30 text-[#3A7D7C]'
-            : 'bg-amber-50 border-amber-200 text-amber-900'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-black">
-              <span>{productMode === 'RESTAURANT_ACCOMMODATION' ? '🍽️🏨 Full Suite (Restaurant + Hotel)' : '🍽️ Restaurant (Online + POS)'}</span>
-            </div>
-          </div>
-          <p className="text-[10px] opacity-80 mt-1 font-semibold leading-tight">
-            {productMode === 'RESTAURANT_ACCOMMODATION'
-              ? 'Active: Food Ordering + POS + 20 Hotels Accommodation'
-              : 'Active: Food Ordering + Offline POS & KOT (Hotel Hidden)'}
-          </p>
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-black/10">
-            <button
-              onClick={toggleProductMode}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-[10px] rounded-lg shadow-2xs border border-slate-200 cursor-pointer"
-            >
-              🔄 Switch Mode
-            </button>
-            <button
-              onClick={() => navigate('/select-product')}
-              className="px-2 py-1 text-[10px] font-bold text-[#3A7D7C] hover:underline cursor-pointer"
-            >
-              🛍️ Select Plan
-            </button>
-          </div>
-        </div>
 
         {/* SECTION 1: ONLINE HOTEL & STORE MANAGEMENT */}
         <div className="space-y-1">
