@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import { useCart } from '../../context/CartContext';
 import AccommodationCustomerTab from '../../components/customer/AccommodationCustomerTab';
 import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel } from 'lucide-react';
+import { getTemplateById } from '../../config/templates';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
 
@@ -178,6 +179,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
     );
   }
 
+  const template = getTemplateById(restaurant?.template_id);
   const subtotal = getSubtotal();
   const itemCount = getItemCount();
   const isOpen = isRestaurantOpen();
@@ -195,7 +197,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased">
+    <div className={`min-h-screen ${template.bgClass} font-sans antialiased transition-colors duration-300`}>
       
       {/* DRAFT PREVIEW MODE BANNER */}
       {isDraft && (
@@ -206,11 +208,11 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       )}
 
       {/* Hero Section */}
-      <div className="relative h-56 sm:h-72 md:h-80 overflow-hidden bg-slate-900">
+      <div className={`relative h-56 sm:h-72 md:h-80 overflow-hidden bg-gradient-to-br ${template.previewBg}`}>
         <img
           src={coverImg}
           alt={restaurant.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover opacity-80"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8">
@@ -221,6 +223,11 @@ export default function RestaurantMenuPage({ overrideSlug }) {
               className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-contain bg-white p-1 border-2 sm:border-4 border-white shadow-xl flex-shrink-0"
             />
             <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${template.badgeStyle}`}>
+                  {template.category}
+                </span>
+              </div>
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white truncate">{restaurant.name}</h1>
               {restaurant.tagline && <p className="text-orange-200 text-sm sm:text-base mt-1">{restaurant.tagline}</p>}
               <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-white/80">
@@ -269,9 +276,9 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       )}
 
       {/* 2-IN-1 MODE SWITCHER HEADER BAR (FOOD vs ACCOMMODATION) */}
-      <div className="bg-white border-b border-[#D7E5E8] sticky top-0 z-40 shadow-xs">
+      <div className="bg-slate-900/80 border-b border-white/10 backdrop-blur-md sticky top-0 z-40 shadow-md">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-center sm:justify-start">
-          <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/80 shadow-inner w-full sm:w-auto">
+          <div className="bg-slate-950/60 p-1.5 rounded-2xl flex items-center gap-1.5 border border-white/10 shadow-inner w-full sm:w-auto">
             <button
               onClick={() => {
                 setMainTab('dining');
@@ -279,8 +286,8 @@ export default function RestaurantMenuPage({ overrideSlug }) {
               }}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 mainTab === 'dining'
-                  ? 'bg-[#3A7D7C] text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  ? `${template.buttonStyle}`
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <Utensils className="w-4 h-4" />
@@ -294,8 +301,8 @@ export default function RestaurantMenuPage({ overrideSlug }) {
               }}
               className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                 mainTab === 'stay'
-                  ? 'bg-[#3A7D7C] text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  ? `${template.buttonStyle}`
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <BedDouble className="w-4 h-4" />
@@ -318,17 +325,17 @@ export default function RestaurantMenuPage({ overrideSlug }) {
                 placeholder="Search dishes, cuisines, ingredients..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-2xl text-sm focus:outline-none focus:border-[#3A7D7C] shadow-xs transition-all"
+                className={`w-full pl-12 pr-4 py-3 ${template.cardClass} rounded-2xl text-sm focus:outline-none focus:border-amber-400 shadow-xs transition-all`}
               />
             </div>
 
         {/* Category Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-          <button onClick={() => setActiveCategory(null)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${!activeCategory ? 'bg-[#3A7D7C] text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-[#D7E5E8]'}`}>
+          <button onClick={() => setActiveCategory(null)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${!activeCategory ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
             All
           </button>
           {categories.map(cat => (
-            <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeCategory === cat.id ? 'bg-[#3A7D7C] text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-100 border border-[#D7E5E8]'}`}>
+            <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeCategory === cat.id ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
               {cat.name}
             </button>
           ))}
@@ -342,8 +349,8 @@ export default function RestaurantMenuPage({ overrideSlug }) {
         ) : (
           Object.entries(groupedItems).map(([catName, items]) => (
             <div key={catName} className="mb-8">
-              <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-5 bg-[#3A7D7C] rounded-full"></span>
+              <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <span className="w-1.5 h-5 bg-amber-400 rounded-full"></span>
                 {catName}
                 <span className="text-xs font-normal text-slate-400 ml-1">({items.length})</span>
               </h2>
@@ -356,49 +363,49 @@ export default function RestaurantMenuPage({ overrideSlug }) {
                   const itemImg = getMediaUrl(item.image_url, null);
 
                   return (
-                    <div key={item.id} className="bg-white rounded-2xl border border-[#D7E5E8] shadow-xs hover:shadow-sm transition-all flex overflow-hidden">
+                    <div key={item.id} className={`${template.cardClass} rounded-2xl border shadow-md hover:shadow-lg transition-all flex overflow-hidden`}>
                       {/* Left: Info */}
                       <div className="flex-1 p-4 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`w-3.5 h-3.5 flex items-center justify-center rounded-xs border ${item.is_veg ? 'border-emerald-600' : 'border-rose-600'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${item.is_veg ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
+                            <span className={`w-3.5 h-3.5 flex items-center justify-center rounded-xs border ${item.is_veg ? 'border-emerald-500' : 'border-rose-500'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${item.is_veg ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                             </span>
-                            {item.is_bestseller ? <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">★ Bestseller</span> : null}
-                            {item.is_recommended ? <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">Chef's Pick</span> : null}
+                            {item.is_bestseller ? <span className="text-[10px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">★ Bestseller</span> : null}
+                            {item.is_recommended ? <span className="text-[10px] font-bold text-sky-300 bg-sky-500/20 px-2 py-0.5 rounded-md border border-sky-500/30">Chef's Pick</span> : null}
                           </div>
-                          <h3 className="font-bold text-slate-800 text-sm">{item.name}</h3>
+                          <h3 className="font-bold text-white text-sm">{item.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="font-extrabold text-slate-900 text-sm">₹{price}</span>
+                            <span className="font-extrabold text-amber-400 text-sm">₹{price}</span>
                             {hasDiscount && <span className="text-xs text-slate-400 line-through">₹{originalPrice}</span>}
                           </div>
-                          {item.description && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{item.description}</p>}
+                          {item.description && <p className="text-xs text-slate-300 mt-1.5 line-clamp-2">{item.description}</p>}
                         </div>
-                        {!item.is_available && <p className="text-[11px] text-rose-500 font-bold mt-2">Currently unavailable</p>}
+                        {!item.is_available && <p className="text-[11px] text-rose-400 font-bold mt-2">Currently unavailable</p>}
                       </div>
                       
                       {/* Right: Image + Add */}
-                      <div className="w-32 sm:w-36 relative flex-shrink-0 bg-slate-50">
+                      <div className="w-32 sm:w-36 relative flex-shrink-0 bg-slate-900">
                         {itemImg ? (
                           <img src={itemImg} alt={item.name} className="w-full h-full object-cover min-h-[120px]" />
                         ) : (
-                          <div className="w-full h-full min-h-[120px] bg-gradient-to-br from-[#EAF4F7] to-slate-100 flex items-center justify-center">
+                          <div className="w-full h-full min-h-[120px] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
                             <span className="text-3xl">🍽️</span>
                           </div>
                         )}
                         {item.is_available && canOrder ? (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
                             {qty === 0 ? (
-                              <button onClick={() => handleAddToCart(item)} className="px-5 py-1.5 bg-white border border-[#3A7D7C] text-[#3A7D7C] hover:bg-[#3A7D7C] hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm">
+                              <button onClick={() => handleAddToCart(item)} className={`px-5 py-1.5 rounded-xl text-xs font-bold transition-all ${template.buttonStyle}`}>
                                 ADD
                               </button>
                             ) : (
-                              <div className="flex items-center gap-1 bg-[#3A7D7C] text-white rounded-xl shadow-md">
-                                <button onClick={() => updateQuantity(item.id, qty - 1)} className="px-2 py-1 hover:bg-[#2F6665] rounded-l-xl transition-all">
+                              <div className={`flex items-center gap-1 ${template.buttonStyle} rounded-xl shadow-md`}>
+                                <button onClick={() => updateQuantity(item.id, qty - 1)} className="px-2 py-1 hover:opacity-80 rounded-l-xl transition-all">
                                   <Minus className="w-3.5 h-3.5" />
                                 </button>
                                 <span className="font-bold text-xs px-2">{qty}</span>
-                                <button onClick={() => updateQuantity(item.id, qty + 1)} className="px-2 py-1 hover:bg-[#2F6665] rounded-r-xl transition-all">
+                                <button onClick={() => updateQuantity(item.id, qty + 1)} className="px-2 py-1 hover:opacity-80 rounded-r-xl transition-all">
                                   <Plus className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -419,14 +426,14 @@ export default function RestaurantMenuPage({ overrideSlug }) {
 
       {/* Floating Cart Bar */}
       {itemCount > 0 && canOrder && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none">
           <div className="max-w-5xl mx-auto pointer-events-auto">
             <button
               onClick={() => navigate(`/restaurant/${slug}/checkout`)}
-              className="w-full flex items-center justify-between bg-[#3A7D7C] hover:bg-[#2F6665] text-white px-6 py-4 rounded-2xl shadow-xl transition-all active:scale-[0.98]"
+              className={`w-full flex items-center justify-between ${template.buttonStyle} px-6 py-4 rounded-2xl shadow-2xl transition-all active:scale-[0.98]`}
             >
               <div className="flex items-center gap-3">
-                <div className="bg-white/20 rounded-xl p-2">
+                <div className="bg-black/20 rounded-xl p-2">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <span className="font-bold text-sm">{itemCount} {itemCount === 1 ? 'item' : 'items'} in cart</span>
