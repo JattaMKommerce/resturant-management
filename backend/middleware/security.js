@@ -14,7 +14,7 @@ const securityHeaders = helmet({
     useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com", "https://*.jattamkommerce.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com", "https://cdn.razorpay.com", "https://*.razorpay.com", "https://*.jattamkommerce.com"],
       connectSrc: ["'self'", "wss:", "ws:", "https:", "http:", "https://*.jattamkommerce.com", "wss://*.jattamkommerce.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],

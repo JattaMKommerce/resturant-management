@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { getTemplateById } from '../../config/templates';
 import {
   Hotel,
   BedDouble,
@@ -31,8 +32,6 @@ const getMediaUrl = (url) => {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) return url;
   return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
-
-import { getTemplateById } from '../../config/templates';
 
 export default function AccommodationCustomerTab({ restaurant, slug }) {
   const template = getTemplateById(restaurant?.template_id);
