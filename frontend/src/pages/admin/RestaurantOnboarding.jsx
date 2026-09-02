@@ -106,6 +106,7 @@ export default function RestaurantOnboarding() {
 
         if (r.logo_url) setLogoPreview(getMediaUrl(r.logo_url));
         if (r.cover_url) setCoverPreview(getMediaUrl(r.cover_url));
+        setSelectedTemplateId(r.template_id || 'royal_heritage');
       }
       if (progRes.data.success) setProgress(progRes.data);
       if (catRes.data.success) setCategories(catRes.data.categories || []);
@@ -486,10 +487,12 @@ export default function RestaurantOnboarding() {
                         setSelectedTemplateId(tmpl.id);
                         try {
                           setSaving(true);
-                          await api.put('/admin/restaurant/settings', { template_id: tmpl.id });
+                          const fd = new FormData();
+                          fd.append('template_id', tmpl.id);
+                          await api.put('/admin/restaurant/settings', fd);
                           await loadData();
                         } catch (e) {
-                          alert('Failed to select template.');
+                          console.error('Failed to select template:', e);
                         } finally {
                           setSaving(false);
                         }

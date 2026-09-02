@@ -215,10 +215,12 @@ export default function AdminWebsitePage() {
                   onClick={async () => {
                     try {
                       setActionLoading(true);
-                      await api.put('/admin/restaurant/settings', { template_id: tmpl.id });
+                      const fd = new FormData();
+                      fd.append('template_id', tmpl.id);
+                      await api.put('/admin/restaurant/settings', fd);
                       await loadData();
                     } catch (e) {
-                      alert('Failed to change website template.');
+                      console.error('Failed to change website template:', e);
                     } finally {
                       setActionLoading(false);
                     }
