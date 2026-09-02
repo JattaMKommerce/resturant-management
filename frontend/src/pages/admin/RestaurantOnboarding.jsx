@@ -82,14 +82,15 @@ export default function RestaurantOnboarding() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError('');
       const [restRes, progRes, catRes, menuRes] = await Promise.all([
-        api.get('/admin/restaurant'),
-        api.get('/admin/restaurant/setup-progress'),
-        api.get('/admin/categories'),
-        api.get('/admin/menu')
+        api.get('/admin/restaurant').catch(err => err.response || { data: { success: false } }),
+        api.get('/admin/restaurant/setup-progress').catch(err => err.response || { data: { success: false } }),
+        api.get('/admin/categories').catch(err => err.response || { data: { success: false } }),
+        api.get('/admin/menu').catch(err => err.response || { data: { success: false } })
       ]);
 
-      if (restRes.data.success) {
+      if (restRes.data && restRes.data.success) {
         const r = restRes.data.restaurant;
         setRestaurant(r);
         setCustomSlugInput(r.custom_subdomain_slug || r.slug || '');
@@ -107,10 +108,16 @@ export default function RestaurantOnboarding() {
         if (r.logo_url) setLogoPreview(getMediaUrl(r.logo_url));
         if (r.cover_url) setCoverPreview(getMediaUrl(r.cover_url));
         setSelectedTemplateId(r.template_id || 'royal_heritage');
+      } else if (restRes.status === 401) {
+        setError('Session expired. Redirecting to login...');
+        localStorage.removeItem('hotel_token');
+        localStorage.removeItem('hotel_user');
+        setTimeout(() => navigate('/admin/login'), 1500);
+        return;
       }
-      if (progRes.data.success) setProgress(progRes.data);
-      if (catRes.data.success) setCategories(catRes.data.categories || []);
-      if (menuRes.data.success) setMenuItems(menuRes.data.items || []);
+      if (progRes.data && progRes.data.success) setProgress(progRes.data);
+      if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
+      if (menuRes.data && menuRes.data.success) setMenuItems(menuRes.data.items || []);
 
     } catch (err) {
       console.error('Onboarding load error:', err);
