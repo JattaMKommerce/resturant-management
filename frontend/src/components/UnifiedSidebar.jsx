@@ -48,14 +48,18 @@ export default function UnifiedSidebar({
 
   const activeSlug = currentSlug || restaurant?.slug || user?.restaurant_slug || 'grand-palace';
 
-  const productMode = user?.suite_mode || localStorage.getItem('hotel_product_mode') || 'RESTAURANT_ACCOMMODATION';
+  const [localMode, setLocalMode] = useState(() => {
+    return user?.suite_mode || localStorage.getItem('hotel_product_mode') || 'RESTAURANT_ACCOMMODATION';
+  });
+
+  const productMode = user?.suite_mode || localMode;
 
   const toggleProductMode = async () => {
     const nextMode = productMode === 'RESTAURANT_ONLY' ? 'RESTAURANT_ACCOMMODATION' : 'RESTAURANT_ONLY';
+    setLocalMode(nextMode);
+    localStorage.setItem('hotel_product_mode', nextMode);
     if (updateSuiteMode) {
       await updateSuiteMode(nextMode);
-    } else {
-      localStorage.setItem('hotel_product_mode', nextMode);
     }
   };
 
@@ -177,28 +181,35 @@ export default function UnifiedSidebar({
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 custom-scrollbar">
         
         {/* SUITE MODE BADGE / SWITCHER */}
-        <div className={`p-2.5 rounded-2xl border transition-all ${
+        <div className={`p-3 rounded-2xl border transition-all ${
           productMode === 'RESTAURANT_ACCOMMODATION'
-            ? 'bg-[#E8F1F2]/80 border-[#D7E5E8] text-[#3A7D7C]'
-            : 'bg-amber-50/80 border-amber-200 text-amber-900'
+            ? 'bg-[#E8F1F2] border-[#3A7D7C]/30 text-[#3A7D7C]'
+            : 'bg-amber-50 border-amber-200 text-amber-900'
         }`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[11px] font-black">
-              <span>{productMode === 'RESTAURANT_ACCOMMODATION' ? '🍽️🏨 Full Suite' : '🍽️ Restaurant'}</span>
+            <div className="flex items-center gap-1.5 text-xs font-black">
+              <span>{productMode === 'RESTAURANT_ACCOMMODATION' ? '🍽️🏨 Full Suite (Restaurant + Hotel)' : '🍽️ Restaurant (Online + POS)'}</span>
             </div>
+          </div>
+          <p className="text-[10px] opacity-80 mt-1 font-semibold leading-tight">
+            {productMode === 'RESTAURANT_ACCOMMODATION'
+              ? 'Active: Food Ordering + POS + 20 Hotels Accommodation'
+              : 'Active: Food Ordering + Offline POS & KOT (Hotel Hidden)'}
+          </p>
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-black/10">
             <button
               onClick={toggleProductMode}
-              className="text-[10px] font-bold underline hover:opacity-80 transition-opacity"
-              title="Toggle Product Mode"
+              className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 font-extrabold text-[10px] rounded-lg shadow-2xs border border-slate-200 cursor-pointer"
             >
-              Switch Mode
+              🔄 Switch Mode
+            </button>
+            <button
+              onClick={() => navigate('/select-product')}
+              className="px-2 py-1 text-[10px] font-bold text-[#3A7D7C] hover:underline cursor-pointer"
+            >
+              🛍️ Select Plan
             </button>
           </div>
-          <p className="text-[10px] opacity-75 mt-0.5 font-medium leading-tight">
-            {productMode === 'RESTAURANT_ACCOMMODATION'
-              ? 'Restaurant + Accommodation Active'
-              : 'Restaurant Only Active (Hotel Hidden)'}
-          </p>
         </div>
 
         {/* SECTION 1: ONLINE HOTEL & STORE MANAGEMENT */}

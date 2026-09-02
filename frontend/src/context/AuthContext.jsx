@@ -106,6 +106,15 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const updateSuiteMode = (mode) => {
+    localStorage.setItem('hotel_product_mode', mode);
+    setUser(prev => {
+      const updated = { ...(prev || {}), suite_mode: mode };
+      localStorage.setItem('hotel_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const logout = () => {
     localStorage.removeItem('hotel_token');
     localStorage.removeItem('hotel_user');
@@ -121,7 +130,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user, restaurant, restaurants, guestInfo,
-      setRestaurant, updateRestaurant, loading,
+      setRestaurant, updateRestaurant, updateSuiteMode, loading,
       login, register, registerRestaurant, logout
     }}>
       {children}
