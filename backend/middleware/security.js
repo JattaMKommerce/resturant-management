@@ -10,7 +10,19 @@ const isProduction = process.env.NODE_ENV === 'production';
 const securityHeaders = helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: isProduction ? undefined : false
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://checkout.razorpay.com", "https://*.jattamkommerce.com"],
+      connectSrc: ["'self'", "wss:", "ws:", "https:", "http:", "https://*.jattamkommerce.com", "wss://*.jattamkommerce.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+      frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com"],
+      objectSrc: ["'none'"]
+    }
+  }
 });
 
 /**
