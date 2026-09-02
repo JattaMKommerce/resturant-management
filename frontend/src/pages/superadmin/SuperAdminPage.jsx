@@ -945,52 +945,72 @@ export default function SuperAdminPage() {
               <table className="w-full text-left text-xs text-[#1F2937]">
                 <thead className="bg-[#EAF4F7] text-[#1F2937] uppercase text-[10px] tracking-wider border-b border-[#D7E5E8]">
                   <tr>
-                    <th className="p-4">Restaurant</th>
-                    <th className="p-4">Default / Custom Slug</th>
-                    <th className="p-4">Custom Subdomain (₹99/mo)</th>
-                    <th className="p-4">Contact</th>
-                    <th className="p-4">City</th>
+                    <th className="p-4">Restaurant / Hotel</th>
+                    <th className="p-4">Admin Owner</th>
+                    <th className="p-4">Purchased Plan Tier</th>
+                    <th className="p-4">Default / Custom URL</th>
+                    <th className="p-4">Subdomain Add-On (₹99/mo)</th>
                     <th className="p-4">Status</th>
                     <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#D7E5E8]">
-                  {restaurants.map(r => (
-                    <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-4 font-bold text-[#1F2937]">{r.name}</td>
-                      <td className="p-4 font-mono text-[#64748B]">
-                        <div className="font-bold text-[#3A7D7C]">{r.custom_subdomain_enabled ? (r.custom_subdomain_slug || r.slug) : (r.random_slug || r.slug)}</div>
-                        <div className="text-[10px] text-[#94A3B8]">Slug: {r.slug}</div>
-                      </td>
-                      <td className="p-4">
-                        <button
-                          onClick={() => handleToggleCustomSubdomain(r.id, r.custom_subdomain_enabled, r.custom_subdomain_slug || r.slug)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${r.custom_subdomain_enabled
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                              : 'bg-slate-100 text-slate-600 border-[#D7E5E8] hover:bg-slate-200'
-                            }`}
-                        >
-                          {r.custom_subdomain_enabled ? '⭐ Active (Click to Lock)' : '🔒 Off (Click to Unlock ₹99/mo)'}
-                        </button>
-                      </td>
-                      <td className="p-4 text-[#64748B]">{r.email || r.phone || '-'}</td>
-                      <td className="p-4">{r.city || '-'}</td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${r.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                  {restaurants.map(r => {
+                    const matchedSub = hotelSubscriptions.find(s => s.restaurant_id === r.id);
+                    const planName = matchedSub?.plan_name || (r.suite_mode === 'RESTAURANT_ONLY' ? 'Restaurant Only (Online + POS)' : 'Full Suite (Restaurant + Accommodation)');
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-4 font-bold text-[#1F2937]">
+                          <div className="text-sm">{r.name}</div>
+                          <div className="text-[10px] text-[#64748B] font-normal">{r.city || 'India'} • ID: #{r.id}</div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-bold text-[#1F2937]">{r.admin_names || 'Admin Owner'}</div>
+                          <div className="text-[11px] text-[#64748B]">{r.admin_emails || r.email || r.phone || '-'}</div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 w-fit ${
+                            r.suite_mode === 'RESTAURANT_ONLY' || planName.includes('Restaurant Only')
+                              ? 'bg-amber-50 text-amber-900 border-amber-300'
+                              : 'bg-emerald-50 text-emerald-900 border-emerald-300'
                           }`}>
-                          {r.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={() => toggleRestaurantStatus(r.id, r.status)}
-                          className="px-3 py-1 bg-white border border-[#D7E5E8] hover:bg-slate-50 rounded-lg text-xs font-bold cursor-pointer"
-                        >
-                          {r.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                            {r.suite_mode === 'RESTAURANT_ONLY' || planName.includes('Restaurant Only')
+                              ? '🍽️ Restaurant Only (₹999/mo)'
+                              : '🍽️🏨 Full Suite (₹3,999/mo)'}
+                          </span>
+                        </td>
+                        <td className="p-4 font-mono text-[#64748B]">
+                          <div className="font-bold text-[#3A7D7C]">{r.custom_subdomain_enabled ? (r.custom_subdomain_slug || r.slug) : (r.random_slug || r.slug)}</div>
+                          <div className="text-[10px] text-[#94A3B8]">Slug: {r.slug}</div>
+                        </td>
+                        <td className="p-4">
+                          <button
+                            onClick={() => handleToggleCustomSubdomain(r.id, r.custom_subdomain_enabled, r.custom_subdomain_slug || r.slug)}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${r.custom_subdomain_enabled
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                : 'bg-slate-100 text-slate-600 border-[#D7E5E8] hover:bg-slate-200'
+                              }`}
+                          >
+                            {r.custom_subdomain_enabled ? '⭐ Active (Click to Lock)' : '🔒 Off (Click to Unlock ₹99/mo)'}
+                          </button>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${r.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                            }`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => toggleRestaurantStatus(r.id, r.status)}
+                            className="px-3 py-1 bg-white border border-[#D7E5E8] hover:bg-slate-50 rounded-lg text-xs font-bold cursor-pointer"
+                          >
+                            {r.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
