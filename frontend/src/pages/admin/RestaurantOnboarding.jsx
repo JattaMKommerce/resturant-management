@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import {
   Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe,
   CheckCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle, Upload, Sparkles,
+  Trash2, Clock, ShieldCheck, Star, CreditCard, Lock
 } from 'lucide-react';
 import { WEBSITE_TEMPLATES } from '../../config/templates';
 
