@@ -76,7 +76,8 @@ export default function CheckoutPage({ overrideSlug }) {
     setPlacing(true);
     try {
       const payload = {
-        restaurantSlug: slug,
+        restaurantId: restaurant?.id,
+        restaurantSlug: restaurant?.slug || restaurant?.random_slug || slug,
         customerName: formData.customerName,
         customerPhone: formData.customerPhone,
         deliveryAddress: formData.deliveryAddress,

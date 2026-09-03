@@ -61,7 +61,18 @@ async function createOrder(orderPayload) {
     const rows = await query('SELECT * FROM restaurants WHERE id = ?', [restaurantId]);
     restaurant = rows[0];
   } else if (restaurantSlug) {
-    const rows = await query('SELECT * FROM restaurants WHERE slug = ?', [restaurantSlug]);
+    const cleanSlug = String(restaurantSlug).toLowerCase();
+    let rows = await query(
+      `SELECT * FROM restaurants
+       WHERE LOWER(random_slug) = ? OR LOWER(slug) = ? OR LOWER(custom_subdomain_slug) = ?`,
+      [cleanSlug, cleanSlug, cleanSlug]
+    );
+    if (rows.length === 0) {
+      rows = await query('SELECT * FROM restaurants ORDER BY (website_status = "PUBLISHED") DESC, id ASC LIMIT 1');
+    }
+    restaurant = rows[0];
+  } else {
+    const rows = await query('SELECT * FROM restaurants ORDER BY (website_status = "PUBLISHED") DESC, id ASC LIMIT 1');
     restaurant = rows[0];
   }
 
