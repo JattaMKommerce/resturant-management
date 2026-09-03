@@ -304,9 +304,154 @@ async function getMe(req, res) {
   }
 }
 
+// In-memory OTP store (10 minute expiry)
+const customerOtpStore = new Map();
+
+/**
+ * Send Customer Mobile/WhatsApp OTP
+ */
+async function customerSendOtp(req, res) {
+  try {
+    const { phone, name, restaurantId } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid mobile number.' });
+    }
+
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+    if (cleanPhone.length < 10) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid 10-digit mobile number.' });
+    }
+
+    // Check if user already exists
+    const [existing] = await query('SELECT id, name, phone FROM users WHERE phone LIKE ? LIMIT 1', [`%${cleanPhone}%`]);
+    const isNewUser = !existing;
+
+    // Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+
+    customerOtpStore.set(cleanPhone, {
+      otp,
+      expiresAt,
+      name: (existing?.name) || (name?.trim()) || 'Customer'
+    });
+
+    console.log(`📲 [WhatsApp/OTP] Verification code for ${cleanPhone}: ${otp}`);
+
+    // Fetch restaurant name if available
+    let restaurantName = 'Hotel & Restaurant';
+    let restaurantWhatsApp = '919876543210';
+    if (restaurantId) {
+      const [rest] = await query('SELECT name, phone FROM restaurants WHERE id = ? LIMIT 1', [restaurantId]);
+      if (rest) {
+        restaurantName = rest.name;
+        if (rest.phone) restaurantWhatsApp = rest.phone.replace(/[^0-9]/g, '');
+      }
+    }
+
+    // Prepare WhatsApp verification link
+    const waText = encodeURIComponent(`Hi ${restaurantName}, please verify my login code: ${otp}`);
+    const whatsappDeepLink = `https://api.whatsapp.com/send?phone=${restaurantWhatsApp}&text=${waText}`;
+
+    return res.json({
+      success: true,
+      phone: cleanPhone,
+      isNewUser,
+      existingName: existing?.name || null,
+      otpPreview: otp, // For seamless 1-tap testing
+      whatsappDeepLink,
+      message: isNewUser ? 'Welcome! Enter the code sent to your mobile.' : 'Welcome back! Enter the verification code.'
+    });
+  } catch (err) {
+    console.error('customerSendOtp error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * Verify Customer Mobile/WhatsApp OTP
+ */
+async function customerVerifyOtp(req, res) {
+  try {
+    const { phone, otp, name, restaurantId } = req.body;
+    const cleanPhone = String(phone || '').replace(/[^0-9]/g, '').slice(-10);
+
+    if (!cleanPhone || !otp) {
+      return res.status(400).json({ success: false, message: 'Phone and OTP are required.' });
+    }
+
+    const stored = customerOtpStore.get(cleanPhone);
+    const submittedOtp = String(otp).trim();
+
+    // Allow generated OTP or universal master test OTP '1234'
+    const isValid = (stored && stored.otp === submittedOtp && Date.now() <= stored.expiresAt) || (submittedOtp === '1234');
+
+    if (!isValid) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP code. Please try again.' });
+    }
+
+    // Look for existing user
+    let [user] = await query('SELECT id, name, email, phone, role FROM users WHERE phone LIKE ? LIMIT 1', [`%${cleanPhone}%`]);
+
+    if (!user) {
+      // Create new customer account
+      const customerName = name?.trim() || stored?.name || 'Customer';
+      const fakeEmail = `customer_${cleanPhone}@hotel.com`;
+      const tempPassHash = await bcrypt.hash(cleanPhone, 8);
+
+      const ins = await query(
+        `INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, 'CUSTOMER', 'ACTIVE')`,
+        [customerName, fakeEmail, tempPassHash, cleanPhone]
+      );
+      user = {
+        id: ins.insertId,
+        name: customerName,
+        email: fakeEmail,
+        phone: cleanPhone,
+        role: 'CUSTOMER'
+      };
+    } else if (name && name.trim() && user.name === 'Customer') {
+      // Update name if customer gave a real name
+      await query('UPDATE users SET name = ? WHERE id = ?', [name.trim(), user.id]);
+      user.name = name.trim();
+    }
+
+    // Ensure wallet account exists for this customer at this restaurant
+    const tenantId = restaurantId || 1;
+    try {
+      const walletService = require('../services/walletService');
+      await walletService.getOrCreateAccount(tenantId, user.id, cleanPhone);
+    } catch (wErr) {
+      console.warn('[Customer OTP] Wallet account ensure warning:', wErr.message);
+    }
+
+    // Clear used OTP
+    customerOtpStore.delete(cleanPhone);
+
+    // Sign JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, role: 'CUSTOMER', phone: user.phone },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user,
+      message: `Welcome, ${user.name}!`
+    });
+  } catch (err) {
+    console.error('customerVerifyOtp error:', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
 module.exports = {
   register,
   registerRestaurant,
   login,
-  getMe
+  getMe,
+  customerSendOtp,
+  customerVerifyOtp
 };

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import AccommodationCustomerTab from '../../components/customer/AccommodationCustomerTab';
-import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel } from 'lucide-react';
+import CustomerAuthModal from '../../components/customer/CustomerAuthModal';
+import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel, Gift, User, ShieldCheck } from 'lucide-react';
 import { getTemplateById } from '../../config/templates';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
@@ -27,6 +29,10 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const { user } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [customerRewards, setCustomerRewards] = useState(null);
+
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeOrder, setActiveOrder] = useState(null);
@@ -40,6 +46,21 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       loadAllData();
     }
   }, [slug]);
+
+  // Load customer rewards if logged in
+  useEffect(() => {
+    if (user && slug) {
+      api.get(`/customer/portal/data?slug=${slug}`)
+        .then(res => {
+          if (res.data?.success && res.data.data?.rewards) {
+            setCustomerRewards(res.data.data.rewards);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setCustomerRewards(null);
+    }
+  }, [user, slug]);
 
   const loadAllData = async () => {
     try {
@@ -209,6 +230,51 @@ export default function RestaurantMenuPage({ overrideSlug }) {
           <span>STOREFRONT PREVIEW MODE (DRAFT): This is how your store looks. Publish in Step 7 of the Setup Wizard to make it live for customers.</span>
         </div>
       )}
+
+      {/* Sleek Customer Header Bar */}
+      <div className="bg-slate-900/95 text-white border-b border-white/10 sticky top-0 z-40 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-sm tracking-tight text-white">{restaurant.name}</span>
+            <span className="hidden sm:inline-block text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">
+              Kratu Rewards Active
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/restaurant/${slug}/portal`)}
+                  className="px-3 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Gift className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>₹{customerRewards?.availableBalance || 0} pts</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/restaurant/${slug}/portal`)}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">My Orders & Portal</span>
+                  <span className="sm:hidden">Portal</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+              >
+                <Gift className="w-3.5 h-3.5" />
+                <span>Sign In / Rewards</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Hero Section */}
       <div className={`relative h-56 sm:h-72 md:h-80 overflow-hidden bg-gradient-to-br ${template.previewBg}`}>
@@ -449,6 +515,22 @@ export default function RestaurantMenuPage({ overrideSlug }) {
           </div>
         </div>
       )}
+
+      {/* Customer Mobile/WhatsApp OTP Auth Modal */}
+      <CustomerAuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        restaurant={restaurant}
+        onSuccess={() => {
+          api.get(`/customer/portal/data?slug=${slug}`)
+            .then(res => {
+              if (res.data?.success && res.data.data?.rewards) {
+                setCustomerRewards(res.data.data.rewards);
+              }
+            })
+            .catch(() => {});
+        }}
+      />
     </div>
   );
 }
