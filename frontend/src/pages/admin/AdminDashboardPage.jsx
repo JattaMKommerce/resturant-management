@@ -4,7 +4,7 @@ import {
   ShoppingBag, IndianRupee, Bike, Clock, CheckCircle2, ChefHat, 
   PackageCheck, TrendingUp, AlertCircle, ArrowRight, ExternalLink, Sparkles, Globe, Settings, RefreshCw,
   BedDouble, Receipt, Search, Phone, MessageSquare, Check, X, ChevronRight,
-  CalendarCheck, ArrowUpRight, Wrench, Tag, Activity, Sparkle
+  CalendarCheck, ArrowUpRight, Wrench, Tag, Activity, Sparkle, Zap
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
