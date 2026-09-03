@@ -7,6 +7,7 @@ import RestaurantMenuPage from './pages/customer/RestaurantMenuPage';
 import CheckoutPage from './pages/customer/CheckoutPage';
 import OrderTrackingPage from './pages/customer/OrderTrackingPage';
 import CustomerPortalPage from './pages/customer/CustomerPortalPage';
+import CustomerAuthPage from './pages/customer/CustomerAuthPage';
 
 // Customer Offline Public Pages (QR Digital Menu & Table Tracking)
 import CustomerQRMenuPage from './pages/public/CustomerQRMenuPage';
@@ -219,6 +220,9 @@ export default function App() {
             <Route path="/checkout" element={<CheckoutPage overrideSlug={activeSubdomain} />} />
             <Route path="/order/:orderId" element={<OrderTrackingPage overrideSlug={activeSubdomain} />} />
             <Route path="/portal" element={<CustomerPortalPage overrideSlug={activeSubdomain} />} />
+            <Route path="/auth" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
+            <Route path="/login" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
+            <Route path="/signup" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
           </>
         ) : (
           <Route path="/" element={<ProductSelectionPage />} />
@@ -231,6 +235,9 @@ export default function App() {
         <Route path="/restaurant/:slug/checkout" element={<CheckoutPage />} />
         <Route path="/restaurant/:slug/order/:orderId" element={<OrderTrackingPage />} />
         <Route path="/restaurant/:slug/portal" element={<CustomerPortalPage />} />
+        <Route path="/restaurant/:slug/auth" element={<CustomerAuthPage />} />
+        <Route path="/restaurant/:slug/login" element={<CustomerAuthPage />} />
+        <Route path="/restaurant/:slug/signup" element={<CustomerAuthPage />} />
 
         {/* Public Customer Offline QR Menu & Live Dine-In Tracking */}
         <Route path="/order/table/:token" element={<CustomerQRMenuPage />} />

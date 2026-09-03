@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import AccommodationCustomerTab from '../../components/customer/AccommodationCustomerTab';
 import CustomerAuthModal from '../../components/customer/CustomerAuthModal';
+import CustomerAuthPage from './CustomerAuthPage';
 import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel, Gift, User, ShieldCheck } from 'lucide-react';
 import { getTemplateById } from '../../config/templates';
 
@@ -32,6 +33,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const { user } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [customerRewards, setCustomerRewards] = useState(null);
+  const [guestBypass, setGuestBypass] = useState(false);
 
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,6 +202,17 @@ export default function RestaurantMenuPage({ overrideSlug }) {
         <h2 className="text-2xl font-bold text-slate-700 mb-2">Restaurant Unavailable</h2>
         <p className="text-slate-500 text-sm max-w-sm">This restaurant is currently paused. Please check back later.</p>
       </div>
+    );
+  }
+
+  // FIRST STEP GATEKEEPER: Show Login or Sign Up page first if customer is not signed in
+  if (!user && !guestBypass) {
+    return (
+      <CustomerAuthPage
+        overrideSlug={slug}
+        onSkip={() => setGuestBypass(true)}
+        onSuccessRedirect={() => setGuestBypass(true)}
+      />
     );
   }
 
