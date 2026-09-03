@@ -383,6 +383,18 @@ async function customerVerifyOtp(req, res) {
     const stored = customerOtpStore.get(cleanPhone);
     const submittedOtp = String(otp).trim();
 
+    console.log(`🔍 [Verify OTP Attempt] Phone: ${cleanPhone} | Submitted: "${submittedOtp}" | Stored: "${stored?.otp}" | Expired: ${stored ? (Date.now() > stored.expiresAt) : 'No store'}`);
+
+    // If already verified within last 60 seconds (prevents double-submit race condition)
+    if (stored && stored.lastToken && stored.verifiedAt && (Date.now() - stored.verifiedAt < 60000)) {
+      return res.json({
+        success: true,
+        token: stored.lastToken,
+        user: stored.lastUser,
+        message: `Welcome, ${stored.lastUser?.name || 'Customer'}!`
+      });
+    }
+
     // Allow generated OTP or universal master test OTP '1234'
     const isValid = (stored && stored.otp === submittedOtp && Date.now() <= stored.expiresAt) || (submittedOtp === '1234');
 
@@ -425,15 +437,19 @@ async function customerVerifyOtp(req, res) {
       console.warn('[Customer OTP] Wallet account ensure warning:', wErr.message);
     }
 
-    // Clear used OTP
-    customerOtpStore.delete(cleanPhone);
-
     // Sign JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: 'CUSTOMER', phone: user.phone },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
+
+    // Save for idempotency window (prevent duplicate submit race conditions)
+    if (stored) {
+      stored.lastToken = token;
+      stored.lastUser = user;
+      stored.verifiedAt = Date.now();
+    }
 
     return res.json({
       success: true,

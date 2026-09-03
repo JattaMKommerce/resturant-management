@@ -127,9 +127,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
       digitRefs[index + 1].current.focus();
     }
 
-    if (newDigits.every(d => d !== '')) {
-      verifyCode(newDigits.join(''));
-    }
+    // Do not auto-submit on typing 4th digit so the user has full control and time
   };
 
   const handleKeyDown = (index, e) => {
@@ -138,13 +136,18 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
     }
   };
 
+  const verifyingRef = useRef(false);
+
   const verifyCode = async (codeToVerify) => {
+    if (verifyingRef.current) return;
+
     const code = codeToVerify || otpDigits.join('');
     if (code.length < 4) {
-      setError('Please enter the full 4-digit code.');
+      setError('Please enter all 4 digits of the verification code.');
       return;
     }
 
+    verifyingRef.current = true;
     setVerifying(true);
     setError(null);
     try {
@@ -160,7 +163,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
         localStorage.setItem('hotel_token', res.data.token);
         localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
         setUser(res.data.user);
-        setSuccessMsg(res.data.message || 'Verification successful!');
+        setSuccessMsg(res.data.message || 'Verification successful! Welcome.');
 
         setTimeout(() => {
           if (onSuccessRedirect) {
@@ -168,11 +171,12 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
           } else {
             navigate(`/restaurant/${slug}`);
           }
-        }, 500);
+        }, 600);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired OTP code.');
     } finally {
+      verifyingRef.current = false;
       setVerifying(false);
     }
   };
@@ -401,11 +405,11 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                     onClick={() => {
                       const digits = otpPreview.split('');
                       setOtpDigits(digits);
-                      verifyCode(otpPreview);
+                      setError(null);
                     }}
                     className="font-mono font-bold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/40 px-3 py-1.5 rounded-xl border border-emerald-500/40 transition-colors cursor-pointer"
                   >
-                    ⚡ Fast-Fill ({otpPreview})
+                    ⚡ Auto-Fill Code ({otpPreview})
                   </button>
                 </div>
               )}
