@@ -41,28 +41,54 @@ function authenticateToken(req, res, next) {
  * Middleware to restrict route access to specific roles
  */
 function authorizeRoles(...allowedRoles) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
+    const rawRole = String(req.user.role || '').toUpperCase();
+
     // SUPER_ADMIN has global authorization across management & admin routes
-    if (req.user.role === 'SUPER_ADMIN') {
+    if (rawRole === 'SUPER_ADMIN') {
       return next();
     }
 
-    // Map legacy 'ADMIN' role to 'RESTAURANT_ADMIN' for backward compatibility
-    const userRole = req.user.role === 'ADMIN' ? 'RESTAURANT_ADMIN' : req.user.role;
-    const mappedAllowed = allowedRoles.map(r => r === 'ADMIN' ? 'RESTAURANT_ADMIN' : r);
-
-    if (!mappedAllowed.includes(userRole) && !mappedAllowed.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Access denied. Requires one of the following roles: ${allowedRoles.join(', ')}`
-      });
+    const normalizedAllowed = allowedRoles.map(r => String(r).toUpperCase());
+    // If ADMIN or RESTAURANT_ADMIN is allowed, also include MANAGER
+    if (normalizedAllowed.includes('ADMIN') || normalizedAllowed.includes('RESTAURANT_ADMIN')) {
+      if (!normalizedAllowed.includes('RESTAURANT_ADMIN')) normalizedAllowed.push('RESTAURANT_ADMIN');
+      if (!normalizedAllowed.includes('ADMIN')) normalizedAllowed.push('ADMIN');
+      if (!normalizedAllowed.includes('MANAGER')) normalizedAllowed.push('MANAGER');
     }
 
-    next();
+    let effectiveRole = rawRole;
+    if (rawRole === 'ADMIN') effectiveRole = 'RESTAURANT_ADMIN';
+
+    if (normalizedAllowed.includes(effectiveRole) || normalizedAllowed.includes(rawRole)) {
+      return next();
+    }
+
+    // Automatic restaurant owner verification from database:
+    // If the route requires admin/manager, verify if user is assigned to any restaurant
+    if (normalizedAllowed.includes('ADMIN') || normalizedAllowed.includes('RESTAURANT_ADMIN') || normalizedAllowed.includes('MANAGER')) {
+      try {
+        const adminCheck = await query(
+          'SELECT id FROM restaurant_admins WHERE user_id = ? UNION SELECT id FROM restaurants WHERE admin_user_id = ?',
+          [req.user.id, req.user.id]
+        );
+        if (adminCheck.length > 0) {
+          req.user.role = 'RESTAURANT_ADMIN';
+          return next();
+        }
+      } catch (dbErr) {
+        console.warn('authorizeRoles DB check error:', dbErr.message);
+      }
+    }
+
+    return res.status(403).json({
+      success: false,
+      message: `Access denied. Requires one of the following roles: ${allowedRoles.join(', ')}`
+    });
   };
 }
 

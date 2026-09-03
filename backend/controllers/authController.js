@@ -211,37 +211,38 @@ async function login(req, res) {
       }
     }
 
-    // Fetch assigned restaurant(s) for admin, kitchen, waiter users via restaurant_admins table
+    // Fetch assigned restaurant(s) and auto-repair owner role if needed
     let restaurant = null;
     let restaurants = [];
-    if (['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'KITCHEN', 'CHEF', 'WAITER'].includes(user.role)) {
-      const restRows = await query(
-        `SELECT r.* FROM restaurants r
-         LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
-         WHERE ra.user_id = ? OR r.id = 1
-         ORDER BY (ra.user_id = ?) DESC, ra.is_primary DESC LIMIT 1`,
-        [user.id, user.id]
-      );
-      if (restRows.length > 0) {
-        restaurant = restRows[0];
-        restaurants = restRows;
+    const restRows = await query(
+      `SELECT r.* FROM restaurants r
+       LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
+       WHERE ra.user_id = ? OR r.admin_user_id = ?
+       ORDER BY (r.admin_user_id = ?) DESC, ra.is_primary DESC`,
+      [user.id, user.id, user.id]
+    );
+    if (restRows.length > 0) {
+      restaurant = restRows[0];
+      restaurants = restRows;
+      if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(user.role)) {
+        await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
+        user.role = 'RESTAURANT_ADMIN';
       }
     }
+
+    const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;
 
     const tokenPayload = {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role: effectiveRole,
       restaurant_id: restaurant ? restaurant.id : 1
     };
 
     const token = jwt.sign(tokenPayload, JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
-
-    // Determine effective role for frontend
-    const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;
 
     res.json({
       success: true,
@@ -274,17 +275,19 @@ async function getMe(req, res) {
     let restaurant = null;
     let restaurants = [];
 
-    if (user.role === 'ADMIN' || user.role === 'RESTAURANT_ADMIN') {
-      const restRows = await query(
-        `SELECT r.* FROM restaurants r
-         JOIN restaurant_admins ra ON ra.restaurant_id = r.id
-         WHERE ra.user_id = ?
-         ORDER BY ra.is_primary DESC`,
-        [user.id]
-      );
-      if (restRows.length > 0) {
-        restaurant = restRows[0];
-        restaurants = restRows;
+    const restRows = await query(
+      `SELECT r.* FROM restaurants r
+       LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
+       WHERE ra.user_id = ? OR r.admin_user_id = ?
+       ORDER BY (r.admin_user_id = ?) DESC, ra.is_primary DESC`,
+      [user.id, user.id, user.id]
+    );
+    if (restRows.length > 0) {
+      restaurant = restRows[0];
+      restaurants = restRows;
+      if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(user.role)) {
+        await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
+        user.role = 'RESTAURANT_ADMIN';
       }
     }
 

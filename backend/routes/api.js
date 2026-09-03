@@ -129,7 +129,7 @@ router.get('/superadmin/orders', ...superAuth, superAdminController.getAllPlatfo
 // 9. RESTAURANT ADMIN ROUTES (With Tenant Isolation & SaaS Subscription Enforcement)
 // ═══════════════════════════════════════════════
 const { enforceSubscriptionAccess } = require('../middleware/subscriptionAuth');
-const adminAuth = [authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'), resolveRestaurantAccess, enforceSubscriptionAccess];
+const adminAuth = [authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN'), resolveRestaurantAccess, enforceSubscriptionAccess];
 
 // Dashboard
 router.get('/admin/dashboard/kpis', ...adminAuth, orderController.getDashboardKPIs);
