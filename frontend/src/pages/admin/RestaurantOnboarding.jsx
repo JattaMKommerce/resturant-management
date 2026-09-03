@@ -4,7 +4,8 @@ import api from '../../api/axios';
 import {
   Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe,
   CheckCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle, Upload, Sparkles,
-  Trash2, Clock, ShieldCheck, Star, CreditCard, Lock
+  Trash2, Clock, ShieldCheck, Star, CreditCard, Lock, Navigation, Crosshair,
+  Sliders
 } from 'lucide-react';
 import { WEBSITE_TEMPLATES } from '../../config/templates';
 
@@ -30,6 +31,10 @@ export default function RestaurantOnboarding() {
   // Form states
   const [detailsForm, setDetailsForm] = useState({ name: '', phone: '', email: '', address: '', area: '', city: '', state: '', postal_code: '', min_order_amount: '199', delivery_fee: '49', delivery_radius_km: '10' });
   const [locationForm, setLocationForm] = useState({ latitude: '12.9716', longitude: '77.5946' });
+  const [locationAddressWords, setLocationAddressWords] = useState('');
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('');
+  const [showManualCoords, setShowManualCoords] = useState(false);
   const [brandingForm, setBrandingForm] = useState({ tagline: '', description: '', about: '' });
 
   // Branding Images State
@@ -104,6 +109,8 @@ export default function RestaurantOnboarding() {
           delivery_radius_km: r.delivery_radius_km || '10'
         });
         setLocationForm({ latitude: r.latitude || '12.9716', longitude: r.longitude || '77.5946' });
+        const existingWords = [r.address, r.area, r.city, r.state, r.postal_code].filter(Boolean).join(', ');
+        if (existingWords) setLocationAddressWords(existingWords);
         setBrandingForm({ tagline: r.tagline || '', description: r.description || '', about: r.about || '' });
 
         if (r.logo_url) setLogoPreview(getMediaUrl(r.logo_url));
@@ -227,11 +234,86 @@ export default function RestaurantOnboarding() {
     }
   };
 
+  const handleDetectLiveLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('Geolocation is not supported by your browser.');
+      return;
+    }
+    setDetectingLocation(true);
+    setLocationStatus('Acquiring live GPS coordinates...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        setLocationForm({ latitude: lat, longitude: lng });
+        setLocationStatus('Fetching street, road & landmark address...');
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+          const data = await res.json();
+          if (data && data.address) {
+            const addr = data.address;
+            const parts = [
+              addr.amenity || addr.building || addr.shop || '',
+              addr.road || addr.pedestrian || addr.street || '',
+              addr.neighbourhood || addr.suburb || addr.residential || '',
+              addr.city || addr.town || addr.village || addr.county || '',
+              addr.state || '',
+              addr.postcode || ''
+            ].filter(Boolean);
+
+            const fullWords = parts.join(', ') || data.display_name;
+            setLocationAddressWords(fullWords);
+            setLocationStatus('Live location locked successfully! ✅');
+
+            setDetailsForm(prev => ({
+              ...prev,
+              address: prev.address || addr.road || addr.building || fullWords,
+              area: prev.area || addr.neighbourhood || addr.suburb || '',
+              city: prev.city || addr.city || addr.town || '',
+              state: prev.state || addr.state || '',
+              postal_code: prev.postal_code || addr.postcode || ''
+            }));
+          } else {
+            setLocationAddressWords(`GPS: ${lat}, ${lng}`);
+            setLocationStatus('GPS Coordinates detected! ✅');
+          }
+        } catch (e) {
+          console.error('Reverse geocode error:', e);
+          setLocationAddressWords(`GPS: ${lat}, ${lng}`);
+          setLocationStatus('Coordinates detected (Offline) ✅');
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      (err) => {
+        setDetectingLocation(false);
+        let msg = 'Could not acquire location.';
+        if (err.code === 1) msg = 'Location permission denied. Please allow location access in your browser.';
+        else if (err.code === 2) msg = 'Location unavailable.';
+        else if (err.code === 3) msg = 'Location request timed out.';
+        setLocationStatus(msg);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   const handleSaveLocation = async (e) => {
     e.preventDefault();
-    setSaving(true); setError('');
+    setSaving(true);
+    setError('');
     try {
-      await api.put('/admin/restaurant/settings', { id: restaurant.id, ...locationForm });
+      const fd = new FormData();
+      fd.append('latitude', locationForm.latitude);
+      fd.append('longitude', locationForm.longitude);
+      if (detailsForm.delivery_radius_km) {
+        fd.append('delivery_radius_km', detailsForm.delivery_radius_km);
+      }
+      if (locationAddressWords) {
+        fd.append('address', locationAddressWords);
+      }
+      await api.put('/admin/restaurant/settings', fd);
       await loadData();
       setStep(3);
     } catch (err) {
@@ -361,7 +443,7 @@ export default function RestaurantOnboarding() {
         </button>
       </div>
 
-      <div className="flex-1 max-w-6xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="flex-1 max-w-6xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
 
         {/* Step Sidebar */}
         <div className="md:col-span-4 bg-white border border-[#D7E5E8] rounded-2xl p-5 h-fit space-y-3 shadow-xs">
@@ -396,7 +478,7 @@ export default function RestaurantOnboarding() {
         </div>
 
         {/* Form Content Area */}
-        <div className="md:col-span-8 bg-white border border-[#D7E5E8] rounded-2xl p-6 shadow-xs">
+        <div className="md:col-span-8 bg-white border border-[#D7E5E8] rounded-2xl p-6 shadow-xs h-fit">
 
           {error && (
             <div className="p-3 mb-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 font-bold">
@@ -447,21 +529,124 @@ export default function RestaurantOnboarding() {
             </form>
           )}
 
-          {/* STEP 2: Location */}
+          {/* STEP 2: Location & Delivery Radius */}
           {step === 2 && (
             <form onSubmit={handleSaveLocation} className="space-y-4 text-xs">
-              <h2 className="text-base font-bold text-[#1F2937] mb-2">Step 2: Location & Delivery Radius</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[#1F2937] font-bold mb-1">Latitude</label>
-                  <input type="text" value={locationForm.latitude} onChange={e => setLocationForm({ ...locationForm, latitude: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
-                </div>
-                <div>
-                  <label className="block text-[#1F2937] font-bold mb-1">Longitude</label>
-                  <input type="text" value={locationForm.longitude} onChange={e => setLocationForm({ ...locationForm, longitude: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
-                </div>
+              <div>
+                <h2 className="text-base font-bold text-[#1F2937] mb-1 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-[#3A7D7C]" />
+                  <span>Step 2: Location & Delivery Radius</span>
+                </h2>
+                <p className="text-[#64748B] text-xs">
+                  Detect your hotel/restaurant's exact live location in words (road, landmark, building) and set your delivery coverage radius.
+                </p>
               </div>
-              <p className="text-[#64748B]">Coordinates are used for Haversine server-side delivery distance validation.</p>
+
+              {/* Live Location Fetch Card */}
+              <div className="p-4 bg-gradient-to-br from-slate-50 to-[#EAF4F7]/40 rounded-2xl border border-[#D7E5E8] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="font-bold text-xs text-[#1F2937] flex items-center gap-1.5">
+                    <Navigation className="w-4 h-4 text-[#3A7D7C]" /> Exact Property Location in Words
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDetectLiveLocation}
+                    disabled={detectingLocation}
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl text-xs shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {detectingLocation ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Detecting Live GPS...
+                      </>
+                    ) : (
+                      <>
+                        <Crosshair className="w-3.5 h-3.5" /> 📍 Fetch Live Location
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Location In Words Input / Textarea */}
+                <div>
+                  <textarea
+                    rows={3}
+                    value={locationAddressWords}
+                    onChange={(e) => setLocationAddressWords(e.target.value)}
+                    placeholder="Click 'Fetch Live Location' or enter your building name, road/street name, area, and city in words (e.g. Near TB Dam, M.G. Road, Hospet, Karnataka)..."
+                    className="w-full p-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] text-xs font-medium focus:outline-none focus:border-[#3A7D7C] shadow-2xs leading-relaxed"
+                  />
+                </div>
+
+                {/* Status or GPS Locked Feedback */}
+                {locationStatus && (
+                  <p className={`text-[11px] font-semibold flex items-center gap-1.5 ${
+                    locationStatus.includes('✅') || locationStatus.includes('successfully') ? 'text-emerald-700' : 'text-slate-600'
+                  }`}>
+                    {locationStatus}
+                  </p>
+                )}
+
+                {/* Coordinates Info with manual toggle */}
+                <div className="pt-2 border-t border-[#D7E5E8]/60 flex items-center justify-between text-[11px] text-[#64748B]">
+                  <span className="flex items-center gap-1 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                    GPS: {locationForm.latitude || '12.9716'}, {locationForm.longitude || '77.5946'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualCoords(!showManualCoords)}
+                    className="text-[#3A7D7C] font-bold hover:underline"
+                  >
+                    {showManualCoords ? 'Hide Lat/Lng' : 'Edit Coordinates Manually'}
+                  </button>
+                </div>
+
+                {showManualCoords && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <label className="block text-[#64748B] font-bold text-[10px] mb-1">Latitude</label>
+                      <input
+                        type="text"
+                        value={locationForm.latitude}
+                        onChange={e => setLocationForm({ ...locationForm, latitude: e.target.value })}
+                        className="w-full p-2 bg-white border border-[#D7E5E8] rounded-lg font-mono text-xs text-[#1F2937]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#64748B] font-bold text-[10px] mb-1">Longitude</label>
+                      <input
+                        type="text"
+                        value={locationForm.longitude}
+                        onChange={e => setLocationForm({ ...locationForm, longitude: e.target.value })}
+                        className="w-full p-2 bg-white border border-[#D7E5E8] rounded-lg font-mono text-xs text-[#1F2937]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Radius Setting */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-[#1F2937] flex items-center gap-1.5">
+                    <Sliders className="w-4 h-4 text-[#3A7D7C]" /> Delivery Radius Coverage
+                  </label>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#3A7D7C] text-white font-extrabold text-[11px]">
+                    {detailsForm.delivery_radius_km || 10} km
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  value={detailsForm.delivery_radius_km || 10}
+                  onChange={e => setDetailsForm({ ...detailsForm, delivery_radius_km: e.target.value })}
+                  className="w-full accent-[#3A7D7C] cursor-pointer"
+                />
+                <p className="text-[11px] text-[#64748B]">
+                  Customers located within <strong className="text-[#1F2937]">{detailsForm.delivery_radius_km || 10} km</strong> of your property can place delivery orders online.
+                </p>
+              </div>
 
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => setStep(1)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
