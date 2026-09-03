@@ -263,7 +263,7 @@ router.get('/admin/ledger', authenticateToken, authorizeRoles('ADMIN', 'RESTAURA
 
 /**
  * GET /api/v1/wallet/admin/customers/search
- * Search customers by phone or name with live balance preview
+ * Search customers by phone, email, or name with live balance preview
  */
 router.get('/admin/customers/search', authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER'), async (req, res) => {
   try {
@@ -271,19 +271,18 @@ router.get('/admin/customers/search', authenticateToken, authorizeRoles('ADMIN',
     const q = (req.query.q || '').trim();
 
     if (!q || q.length < 2) {
-      // Return top recent 10 customers with rewards balance
+      // Return recent 15 registered users & customers
       const recents = await query(
         `SELECT DISTINCT 
-           COALESCE(u.id, o.customer_id) as customer_id,
-           COALESCE(u.name, o.customer_name, 'Guest Customer') as customer_name,
-           COALESCE(u.phone, o.customer_phone) as customer_phone,
+           u.id as customer_id,
+           u.name as customer_name,
+           u.phone as customer_phone,
+           u.email as customer_email,
            COALESCE(w.cached_available_balance, 0) as available_rewards
-         FROM orders o
-         LEFT JOIN users u ON o.customer_id = u.id
-         LEFT JOIN wallet_accounts w ON (w.customer_id = u.id OR w.customer_phone = o.customer_phone) AND w.tenant_id = ?
-         WHERE o.restaurant_id = ? AND (o.customer_phone IS NOT NULL OR u.phone IS NOT NULL)
-         ORDER BY o.id DESC LIMIT 10`,
-        [tenantId, tenantId]
+         FROM users u
+         LEFT JOIN wallet_accounts w ON w.customer_id = u.id AND w.tenant_id = ?
+         ORDER BY u.id DESC LIMIT 15`,
+        [tenantId]
       );
       return res.json({ success: true, data: recents });
     }
@@ -291,20 +290,21 @@ router.get('/admin/customers/search', authenticateToken, authorizeRoles('ADMIN',
     const likeQuery = `%${q}%`;
     const results = await query(
       `SELECT DISTINCT 
-         COALESCE(u.id, o.customer_id) as customer_id,
-         COALESCE(u.name, o.customer_name, 'Customer') as customer_name,
-         COALESCE(u.phone, o.customer_phone) as customer_phone,
+         u.id as customer_id,
+         u.name as customer_name,
+         u.phone as customer_phone,
+         u.email as customer_email,
          COALESCE(w.cached_available_balance, 0) as available_rewards
-       FROM orders o
-       LEFT JOIN users u ON o.customer_id = u.id
-       LEFT JOIN wallet_accounts w ON (w.customer_id = u.id OR w.customer_phone = o.customer_phone) AND w.tenant_id = ?
-       WHERE o.restaurant_id = ? AND (o.customer_name LIKE ? OR o.customer_phone LIKE ? OR u.name LIKE ? OR u.phone LIKE ?)
-       ORDER BY o.id DESC LIMIT 15`,
-      [tenantId, tenantId, likeQuery, likeQuery, likeQuery, likeQuery]
+       FROM users u
+       LEFT JOIN wallet_accounts w ON w.customer_id = u.id AND w.tenant_id = ?
+       WHERE (u.name LIKE ? OR u.phone LIKE ? OR u.email LIKE ?)
+       ORDER BY u.id DESC LIMIT 20`,
+      [tenantId, likeQuery, likeQuery, likeQuery]
     );
 
     return res.json({ success: true, data: results });
   } catch (err) {
+    console.error('Customer search error:', err);
     return res.status(500).json({ success: false, message: err.message });
   }
 });

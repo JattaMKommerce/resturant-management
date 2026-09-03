@@ -515,24 +515,27 @@ export default function WalletManagementPage() {
                               </span>
                             </button>
                           ))
-                        ) : customerSearchQuery.trim().length >= 7 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedCustomer({
-                                customer_name: 'Customer',
-                                customer_phone: customerSearchQuery.trim(),
-                                available_rewards: 0
-                              });
-                              setIsSearchOpen(false);
-                            }}
-                            className="w-full p-3 text-left hover:bg-emerald-50 text-xs text-emerald-800 font-bold flex items-center gap-2 cursor-pointer"
-                          >
-                            <span>➕ Gift to new mobile number: <strong>{customerSearchQuery.trim()}</strong></span>
-                          </button>
+                        ) : customerSearchQuery.trim().length >= 2 ? (
+                          <div className="p-2 space-y-1">
+                            <p className="px-2 py-1 text-[11px] text-slate-400 italic">No existing customer found</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCustomer({
+                                  customer_name: customerSearchQuery.trim(),
+                                  customer_phone: customerSearchQuery.trim(),
+                                  available_rewards: 0
+                                });
+                                setIsSearchOpen(false);
+                              }}
+                              className="w-full p-2.5 text-left bg-emerald-50 hover:bg-emerald-100 rounded-xl text-xs text-emerald-900 font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <span>➕ Gift rewards to: <strong>"{customerSearchQuery.trim()}"</strong></span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="p-3 text-center text-xs text-slate-400 italic">
-                            {searchingCustomers ? 'Searching...' : 'Type at least 2 letters or digits to search'}
+                            {searchingCustomers ? 'Searching...' : 'Type a name or phone number to search'}
                           </div>
                         )}
                       </div>
