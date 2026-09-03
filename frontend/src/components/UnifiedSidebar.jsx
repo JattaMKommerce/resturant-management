@@ -31,9 +31,12 @@ import {
   Wrench,
   UserCheck,
   MessageSquare,
-  Store
+  Store,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
+import { playServiceChime } from '../utils/audio';
 
 export default function UnifiedSidebar({
   restaurant,
@@ -66,10 +69,44 @@ export default function UnifiedSidebar({
   const [onlineOpen, setOnlineOpen] = useState(true);
   const [offlineOpen, setOfflineOpen] = useState(true);
   const [accommodationOpen, setAccommodationOpen] = useState(true);
+  const [unclaimedCount, setUnclaimedCount] = useState(0);
+
+  // Poll for unclaimed orders (>5m) and play urgent alarm when an order crosses threshold
+  useEffect(() => {
+    let isMounted = true;
+    const checkUnclaimed = async () => {
+      try {
+        const res = await api.get('/admin/orders/unclaimed');
+        if (res.data?.success && isMounted) {
+          const count = res.data.count || 0;
+          setUnclaimedCount(prev => {
+            if (count > prev && count > 0) {
+              playServiceChime('unclaimed_order_alert');
+            }
+            return count;
+          });
+        }
+      } catch (e) {}
+    };
+
+    checkUnclaimed();
+    const interval = setInterval(checkUnclaimed, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // 1. ONLINE STORE SECTION
   const onlineNavItems = [
     { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true },
+    {
+      name: 'Unclaimed Orders (>5m)',
+      path: `/admin/${activeSlug}/unclaimed`,
+      icon: AlertTriangle,
+      badge: unclaimedCount > 0 ? `${unclaimedCount} Urgent` : null,
+      badgeClass: 'bg-rose-600 text-white animate-pulse shadow-sm shadow-rose-500/50'
+    },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History },
     { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users },
@@ -214,6 +251,12 @@ export default function UnifiedSidebar({
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'inline'}`}>{item.name}</span>
+
+                    {item.badge && (
+                      <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isCollapsed ? 'lg:hidden' : 'inline-block'} ${item.badgeClass || 'bg-rose-600 text-white'}`}>
+                        {item.badge}
+                      </span>
+                    )}
 
                     {/* Collapsed Tooltip */}
                     {isCollapsed && (

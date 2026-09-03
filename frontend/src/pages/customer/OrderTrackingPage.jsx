@@ -290,24 +290,68 @@ export default function OrderTrackingPage({ overrideSlug }) {
           </div>
         </div>
 
-        {/* DRIVER PARTNER INFO BADGE (PHASE 2) */}
-        {order.driver_name && (
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-md shadow-orange-500/20">
+        {/* SQUARE DELIVERY DRIVER DETAILS BOX */}
+        {order.driver_name ? (
+          <div className="bg-white p-6 rounded-3xl border-2 border-emerald-500 shadow-md flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-extrabold text-2xl shadow-lg shadow-emerald-500/30 shrink-0">
+                <Bike className="w-9 h-9" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                    Verified Delivery Partner ✓
+                  </span>
+                </div>
+                <h4 className="font-black text-slate-900 text-base mt-1 truncate">
+                  {order.driver_name}
+                </h4>
+                {order.driver_phone && (
+                  <p className="text-xs font-bold text-slate-600 mt-0.5 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    {order.driver_phone}
+                  </p>
+                )}
+                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                  <span>🏍️ {order.vehicle_type || 'Motorbike'}</span>
+                  {order.vehicle_number && (
+                    <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                      {order.vehicle_number}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Direct 1-Tap Call Driver Button */}
+            {order.driver_phone && (
+              <a
+                href={`tel:${order.driver_phone}`}
+                className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+              >
+                <Phone className="w-4 h-4 animate-bounce" />
+                Call Driver
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 animate-pulse">
                 <Bike className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Your Delivery Partner</span>
-                <h4 className="font-extrabold text-slate-900 text-sm">{order.driver_name}</h4>
-                <p className="text-xs text-slate-500">{order.vehicle_type || 'Motorbike'} • {order.vehicle_number || 'KA Vehicle'}</p>
+                <h4 className="font-extrabold text-slate-900 text-sm">
+                  Finding Delivery Partner...
+                </h4>
+                <p className="text-xs text-slate-500">
+                  We are assigning the nearest rider to deliver your hot meal.
+                </p>
               </div>
             </div>
-            <div className="text-right">
-              <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                On Duty ✓
-              </span>
-            </div>
+            <span className="px-3 py-1 rounded-xl bg-amber-100 text-amber-800 text-[11px] font-black shrink-0 animate-pulse">
+              Matching Rider...
+            </span>
           </div>
         )}
 

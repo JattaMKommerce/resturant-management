@@ -437,6 +437,137 @@ async function getUnifiedHistory(req, res) {
   }
 }
 
+/**
+ * Get active orders waiting >5 minutes without an assigned delivery driver
+ */
+async function getUnclaimedOrders(req, res) {
+  try {
+    let restId = req.query.restaurant_id || req.adminRestaurantId;
+    if (!restId) {
+      const [firstRest] = await query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
+      restId = firstRest ? firstRest.id : 1;
+    }
+
+    if (!req.isSuperAdmin && !validateRestaurantAccess(restId, req)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    const orders = await query(
+      `SELECT o.*, r.name as restaurant_name, r.phone as restaurant_phone,
+              TIMESTAMPDIFF(MINUTE, o.created_at, NOW()) as waiting_minutes,
+              TIMESTAMPDIFF(SECOND, o.created_at, NOW()) as waiting_seconds
+       FROM orders o
+       JOIN restaurants r ON o.restaurant_id = r.id
+       WHERE o.restaurant_id = ?
+         AND o.assigned_driver_id IS NULL
+         AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
+         AND o.created_at <= NOW() - INTERVAL 5 MINUTE
+         AND o.created_at >= NOW() - INTERVAL 24 HOUR
+       ORDER BY o.created_at ASC`,
+      [restId]
+    );
+
+    for (let order of orders) {
+      order.items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+    }
+
+    res.json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (err) {
+    console.error('getUnclaimedOrders Error:', err);
+    res.status(500).json({ success: false, message: 'Server error retrieving unclaimed orders.' });
+  }
+}
+
+/**
+ * Admin self-delivers an order (in-house delivery escalation)
+ */
+async function adminSelfDeliverOrder(req, res) {
+  try {
+    const { id } = req.params;
+
+    const [order] = await query('SELECT o.*, r.phone as rest_phone, r.name as rest_name FROM orders o JOIN restaurants r ON o.restaurant_id = r.id WHERE o.id = ?', [id]);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+
+    if (!req.isSuperAdmin && !validateRestaurantAccess(order.restaurant_id, req)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    await query(
+      `UPDATE orders SET
+         order_status = 'OUT_FOR_DELIVERY',
+         delivery_notes = COALESCE(CONCAT(delivery_notes, ' | Hotel In-House Delivery Staff'), 'Hotel In-House Delivery Staff')
+       WHERE id = ?`,
+      [id]
+    );
+
+    await query(
+      `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id)
+       VALUES (?, 'OUT_FOR_DELIVERY', 'Hotel Admin escalated and assigned for In-House Self-Delivery.', ?)`,
+      [id, req.user?.id || null]
+    );
+
+    res.json({
+      success: true,
+      message: 'Order claimed for Hotel In-House delivery. Status updated to Out for Delivery.'
+    });
+  } catch (err) {
+    console.error('adminSelfDeliverOrder Error:', err);
+    res.status(500).json({ success: false, message: 'Server error updating delivery.' });
+  }
+}
+
+/**
+ * Admin manually assigns a specific driver
+ */
+async function adminAssignDriverToOrder(req, res) {
+  try {
+    const { id } = req.params;
+    const { driver_id } = req.body;
+    if (!driver_id) {
+      return res.status(400).json({ success: false, message: 'Driver ID is required.' });
+    }
+
+    const [order] = await query('SELECT * FROM orders WHERE id = ?', [id]);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found.' });
+    }
+
+    if (!req.isSuperAdmin && !validateRestaurantAccess(order.restaurant_id, req)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
+    const [driver] = await query('SELECT * FROM delivery_drivers WHERE id = ?', [driver_id]);
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver not found.' });
+    }
+
+    await query(
+      `UPDATE orders SET assigned_driver_id = ?, order_status = 'DRIVER_ACCEPTED' WHERE id = ?`,
+      [driver.id, id]
+    );
+
+    await query(
+      `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id)
+       VALUES (?, 'DRIVER_ACCEPTED', ?, ?)`,
+      [id, `Assigned to driver ${driver.full_name || 'Rider'} directly by Admin.`, req.user?.id || null]
+    );
+
+    res.json({
+      success: true,
+      message: `Order assigned to ${driver.full_name || 'Driver'} successfully.`
+    });
+  } catch (err) {
+    console.error('adminAssignDriverToOrder Error:', err);
+    res.status(500).json({ success: false, message: 'Server error assigning driver.' });
+  }
+}
+
 module.exports = {
   placeOrder,
   getOrderById,
@@ -445,5 +576,8 @@ module.exports = {
   updateOrderStatus,
   assignDriver,
   getDashboardKPIs,
-  getUnifiedHistory
+  getUnifiedHistory,
+  getUnclaimedOrders,
+  adminSelfDeliverOrder,
+  adminAssignDriverToOrder
 };

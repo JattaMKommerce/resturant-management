@@ -357,19 +357,29 @@ export default function CustomerOrderTrackingPage() {
       )}
 
       {/* Driver Profile & Contact Card (If Assigned) */}
-      {(order.assigned_driver_name || order.driver_name || order.driver_phone) && (
-        <div className="bg-white border-2 border-sky-200 rounded-3xl p-5 mb-6 shadow-md shadow-sky-100 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-500/30">
-              <Bike className="w-6 h-6 stroke-[2.2]" />
+      {(order.assigned_driver_name || order.driver_name || order.driver_phone) ? (
+        <div className="bg-white border-2 border-emerald-500 rounded-3xl p-5 mb-6 shadow-md shadow-emerald-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0 w-full sm:w-auto">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30">
+              <Bike className="w-8 h-8 stroke-[2.2]" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h4 className="font-extrabold text-sm text-[#1F2937] truncate">{order.assigned_driver_name || order.driver_name || 'Delivery Partner'}</h4>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-800">Rider</span>
+                <h4 className="font-extrabold text-sm text-[#1F2937] truncate">
+                  {order.assigned_driver_name || order.driver_name || 'Delivery Partner'}
+                </h4>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Verified Rider ✓
+                </span>
               </div>
+              {order.driver_phone && (
+                <p className="text-xs font-bold text-slate-600 mt-0.5 flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-emerald-600" />
+                  {order.driver_phone}
+                </p>
+              )}
               <p className="text-xs font-medium text-[#64748B] mt-0.5">
-                {order.driver_vehicle ? `Vehicle: ${order.driver_vehicle}` : 'Heading to your doorstep'}
+                🏍️ {order.driver_vehicle || order.vehicle_type || 'Motorbike'} {order.vehicle_number ? `• ${order.vehicle_number}` : ''}
               </p>
             </div>
           </div>
@@ -377,12 +387,27 @@ export default function CustomerOrderTrackingPage() {
           {order.driver_phone && (
             <a
               href={`tel:${order.driver_phone}`}
-              className="p-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
-              title="Call Delivery Partner"
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shrink-0 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
             >
-              <Phone className="w-4 h-4 fill-current" />
+              <Phone className="w-4 h-4 fill-current animate-bounce" />
+              Call Driver
             </a>
           )}
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 mb-6 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 animate-pulse">
+              <Bike className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800">Matching Delivery Partner...</p>
+              <p className="text-[11px] text-slate-400">Nearest rider will be assigned shortly.</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 animate-pulse">
+            Assigning...
+          </span>
         </div>
       )}
 

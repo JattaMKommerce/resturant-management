@@ -202,6 +202,34 @@ export function playServiceChime(type = 'call_waiter') {
         osc.start(startTime);
         osc.stop(startTime + 1.0);
       });
+
+    } else if (type === 'unclaimed_order_alert' || type === 'urgent_alarm') {
+      // 🚨 URGENT UNCLAIMED ORDER ALARM (>5m with no rider)
+      // Rapid alternating urgent pulse: A5 (880Hz) and D6 (1174.66Hz)
+      const pulses = [
+        { freq: 880.00, time: 0.00, dur: 0.18, gain: 0.45 },
+        { freq: 1174.66, time: 0.18, dur: 0.22, gain: 0.50 },
+        { freq: 880.00, time: 0.42, dur: 0.18, gain: 0.45 },
+        { freq: 1174.66, time: 0.60, dur: 0.45, gain: 0.55 }
+      ];
+
+      pulses.forEach((p) => {
+        const startTime = now + p.time;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(p.freq, startTime);
+
+        gain.gain.setValueAtTime(p.gain, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + p.dur);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(startTime);
+        osc.stop(startTime + p.dur);
+      });
     }
   } catch (e) {
     console.warn('Audio chime playback blocked or unsupported:', e.message);
