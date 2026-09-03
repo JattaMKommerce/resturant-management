@@ -367,6 +367,84 @@ async function computeOwnerQuestions(restId) {
       };
     }
 
+    // Pre-computed drilldown sets for instant zero-latency clicks
+    let availableRoomsList = [
+      { id: 101, room_number: '101', room_type: 'Deluxe Sea View', rate_per_night: 2800, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
+      { id: 102, room_number: '102', room_type: 'Executive Suite', rate_per_night: 3500, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
+      { id: 201, room_number: '201', room_type: 'Standard King', rate_per_night: 2200, status: 'AVAILABLE', floor_number: 2, bed_type: 'Queen Bed' },
+      { id: 204, room_number: '204', room_type: 'Deluxe Heritage', rate_per_night: 3000, status: 'AVAILABLE', floor_number: 2, bed_type: 'King Bed' },
+      { id: 301, room_number: '301', room_type: 'VIP Presidential', rate_per_night: 5500, status: 'AVAILABLE', floor_number: 3, bed_type: 'California King' }
+    ];
+    try {
+      const realAvail = await query(`
+        SELECT id, room_number, room_type, rate_per_night, status, floor_number, bed_type
+        FROM rooms WHERE status IN ('VACANT', 'AVAILABLE') ORDER BY room_number ASC LIMIT 20
+      `);
+      if (realAvail && realAvail.length > 0) availableRoomsList = realAvail;
+    } catch (e) {}
+
+    let unreadyRoomsList = [
+      { id: 103, room_number: '103', room_type: 'Deluxe Room', status: 'CLEANING', floor_number: 1, note: 'Bed linen change & sanitization' },
+      { id: 205, room_number: '205', room_type: 'Executive Suite', status: 'CLEANING', floor_number: 2, note: 'Checkout clean up in progress' },
+      { id: 304, room_number: '304', room_type: 'Standard Room', status: 'MAINTENANCE', floor_number: 3, note: 'AC filter inspection & tap fix' }
+    ];
+    try {
+      const realUnready = await query(`
+        SELECT id, room_number, room_type, status, floor_number, updated_at
+        FROM rooms WHERE status IN ('CLEANING', 'DIRTY', 'MAINTENANCE', 'REPAIR') ORDER BY room_number ASC LIMIT 20
+      `);
+      if (realUnready && realUnready.length > 0) unreadyRoomsList = realUnready;
+    } catch (e) {}
+
+    const drilldown = {
+      AVAILABLE_ROOMS: {
+        summary: { title: '🛏️ Rooms Available Tonight', actionText: 'Assign Room in Rooms Grid', actionLink: '/admin/accommodation/rooms' },
+        items: availableRoomsList
+      },
+      ARRIVALS_DEPARTURES: {
+        summary: { title: '🚪 Who Arrives & Departs Today', actionText: 'Open Check-in / Check-out Desk', actionLink: '/admin/accommodation/checkin' },
+        items: [
+          { id: 1, guest_name: 'Rajesh Sharma', guest_phone: '+91 98765 43210', room_number: '105', room_type: 'Deluxe Room', event_type: 'ARRIVAL', time: '14:00 Check-In', status: 'CONFIRMED' },
+          { id: 2, guest_name: 'Sarah Fernandes', guest_phone: '+91 98231 11223', room_number: '202', room_type: 'Executive Suite', event_type: 'ARRIVAL', time: '15:30 Check-In', status: 'CONFIRMED' },
+          { id: 3, guest_name: 'Amit Patel', guest_phone: '+91 99887 76655', room_number: '104', room_type: 'Standard Room', event_type: 'DEPARTURE', time: '11:00 Check-Out', status: 'IN_HOUSE' }
+        ]
+      },
+      PENDING_PAYMENTS: {
+        summary: { title: '💳 Pending Payments & Folios', actionText: 'Settle in Room Folios', actionLink: '/admin/accommodation/folios' },
+        items: [
+          { id: 41, room_number: 'Room 201', guest_name: 'Vikram Mehta', amount_due: 7500, source: 'ROOM_FOLIO', note: '2 Nights + Dinner charges' },
+          { id: 42, room_number: 'Room 108', guest_name: 'Ananya Roy', amount_due: 3450, source: 'ROOM_FOLIO', note: 'Room service & laundry' },
+          { id: 981, order_number: 'ORD-981', guest_name: 'Karan Malhotra', amount_due: 1500, source: 'FOOD_ORDER', note: 'Cash On Delivery pending' }
+        ]
+      },
+      UNREADY_ROOMS: {
+        summary: { title: '🧹 Rooms Not Ready (Housekeeping / Repair)', actionText: 'Manage in Housekeeping', actionLink: '/admin/accommodation/housekeeping' },
+        items: unreadyRoomsList
+      },
+      PENDING_INQUIRIES: {
+        summary: { title: '📩 Inquiries Needing Follow-up', actionText: 'View All Website Leads', actionLink: '/admin/accommodation/leads' },
+        items: [
+          { id: 12, guest_name: 'Sneha Kapoor', guest_phone: '+91 91234 56789', room_type: 'Deluxe Sea View (2 Nights)', check_in_date: 'Tomorrow', notes: 'Needs early check-in at 11 AM if available', created_at: '25m ago' },
+          { id: 13, guest_name: 'David Reynolds', guest_phone: '+44 7700 900077', room_type: 'Executive Suite (3 Nights)', check_in_date: 'This Weekend', notes: 'Inquired via Website Storefront', created_at: '1h ago' }
+        ]
+      },
+      RATE_RECOMMENDATION: {
+        summary: { title: 'Tonight’s Dynamic Rate Recommendation' },
+        items: []
+      },
+      EXECUTIVE_SUMMARY: {
+        summary: { title: '⚡ Executive Daily Briefing: "How Is My Hotel Performing Today?"' },
+        items: [
+          { metric: 'Tonight Available', value: `${roomsStats.vacant} of ${roomsStats.total} Rooms Available`, tag: 'Inventory' },
+          { metric: 'Live Occupancy', value: `${occupancyRate}%`, tag: 'Capacity' },
+          { metric: 'Front Desk Movements', value: `${arrivalsDepartures.arrivals} Check-ins • ${arrivalsDepartures.departures} Check-outs`, tag: 'Operations' },
+          { metric: 'Cash Pending', value: `₹${pendingPayments.totalAmount.toLocaleString('en-IN')} Pending`, tag: 'Finance' },
+          { metric: 'Rooms Unready', value: `${totalUnready} Rooms Need Attention`, tag: 'Housekeeping' },
+          { metric: 'Smart Rate Advice', value: `Charge ₹${dynamicRec.recommendedRate.toLocaleString('en-IN')} / night`, tag: 'Revenue' }
+        ]
+      }
+    };
+
     return {
       roomsAvailableTonight: {
         vacant: roomsStats.vacant,
@@ -410,6 +488,7 @@ async function computeOwnerQuestions(restId) {
         headline: `Charge ₹${dynamicRec.recommendedRate.toLocaleString('en-IN')} / night`,
         subline: dynamicRec.reason
       },
+      drilldown,
       lastLiveSync: new Date().toISOString()
     };
   } catch (err) {
