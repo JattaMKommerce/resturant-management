@@ -131,8 +131,11 @@ router.get('/superadmin/orders', ...superAuth, superAdminController.getAllPlatfo
 const { enforceSubscriptionAccess } = require('../middleware/subscriptionAuth');
 const adminAuth = [authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN'), resolveRestaurantAccess, enforceSubscriptionAccess];
 
-// Dashboard
+// Dashboard & Slide 03 Question-First Hotel Intelligence
 router.get('/admin/dashboard/kpis', ...adminAuth, orderController.getDashboardKPIs);
+router.get('/admin/dashboard/owner-questions', ...adminAuth, orderController.getOwnerQuestionsLive);
+router.get('/admin/dashboard/question-drilldown', ...adminAuth, orderController.getOwnerQuestionDrilldown);
+router.post('/admin/dashboard/quick-action', ...adminAuth, orderController.executeDashboardQuickAction);
 
 // Restaurant management (specific routes BEFORE :id parameterized routes)
 router.get('/admin/restaurant', ...adminAuth, restaurantController.getAdminRestaurant);
