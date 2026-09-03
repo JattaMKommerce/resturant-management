@@ -527,27 +527,31 @@ export default function WalletManagementPage() {
                               </span>
                             </button>
                           ))
-                        ) : customerSearchQuery.trim().length >= 2 ? (
+                        ) : customerSearchQuery.replace(/[^0-9]/g, '').length >= 7 ? (
                           <div className="p-2 space-y-1">
-                            <p className="px-2 py-1 text-[11px] text-slate-400 italic">No existing customer found</p>
                             <button
                               type="button"
                               onClick={() => {
+                                const cleanNum = customerSearchQuery.trim();
                                 setSelectedCustomer({
-                                  customer_name: customerSearchQuery.trim(),
-                                  customer_phone: customerSearchQuery.trim(),
+                                  customer_name: `Customer (${cleanNum})`,
+                                  customer_phone: cleanNum,
                                   available_rewards: 0
                                 });
                                 setIsSearchOpen(false);
                               }}
                               className="w-full p-2.5 text-left bg-emerald-50 hover:bg-emerald-100 rounded-xl text-xs text-emerald-900 font-bold flex items-center gap-2 cursor-pointer transition-colors"
                             >
-                              <span>➕ Gift rewards to: <strong>"{customerSearchQuery.trim()}"</strong></span>
+                              <span>➕ Gift rewards to mobile: <strong>"{customerSearchQuery.trim()}"</strong></span>
                             </button>
                           </div>
                         ) : (
-                          <div className="p-3 text-center text-xs text-slate-400 italic">
-                            {searchingCustomers ? 'Searching...' : 'Type a name or phone number to search'}
+                          <div className="p-3 text-center text-xs text-slate-500">
+                            {customerSearchQuery.trim().length >= 2 ? (
+                              <span>No customer found. Please select from the list or enter a 10-digit mobile number.</span>
+                            ) : (
+                              <span className="text-slate-400 italic">Type a name or phone number to search</span>
+                            )}
                           </div>
                         )}
                       </div>

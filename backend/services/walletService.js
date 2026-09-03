@@ -759,21 +759,30 @@ class WalletService {
       let customerId = null;
       let customerPhone = null;
 
-      // Check if identifier is numeric customerId or phone number
+      // Check if identifier is numeric customerId, phone number, or name
       const strId = String(customerIdentifier || '').trim();
+      const cleanDigits = strId.replace(/[^0-9]/g, '');
+
       if (!isNaN(strId) && strId.length > 0 && strId.length < 7) {
         customerId = parseInt(strId, 10);
-      } else if (strId.length >= 7) {
-        // Phone number
+      } else if (cleanDigits.length >= 7) {
+        // Valid phone number
         customerPhone = strId;
-        const clean = strId.replace(/[^0-9]/g, '').slice(-10);
-        const [userMatch] = await query(`SELECT id, phone, name FROM users WHERE phone LIKE ? LIMIT 1`, [`%${clean}%`]);
+        const clean10 = cleanDigits.slice(-10);
+        const [userMatch] = await query(`SELECT id, phone, name FROM users WHERE phone LIKE ? LIMIT 1`, [`%${clean10}%`]);
         if (userMatch) {
           customerId = userMatch.id;
           customerPhone = userMatch.phone;
         }
       } else {
-        customerId = customerIdentifier;
+        // Name search in users table
+        const [userMatch] = await query(`SELECT id, phone, name FROM users WHERE name LIKE ? LIMIT 1`, [`%${strId}%`]);
+        if (userMatch) {
+          customerId = userMatch.id;
+          customerPhone = userMatch.phone;
+        } else {
+          throw new Error(`Customer "${strId}" not found. Please select a customer from the dropdown list or enter a 10-digit mobile number.`);
+        }
       }
 
       const account = await this.getOrCreateAccount(tenantId, customerId, customerPhone);
