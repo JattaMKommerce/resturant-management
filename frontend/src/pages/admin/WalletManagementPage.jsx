@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Gift, ShieldCheck, TrendingUp, AlertTriangle, CheckCircle2, Clock, 
   RotateCcw, DollarSign, Settings, Search, RefreshCw, Layers, ArrowUpRight,
-  Receipt, User, Check, Zap, Sliders
+  Receipt, User, Check, Zap, Sliders, X
 } from 'lucide-react';
 
 export default function WalletManagementPage() {
@@ -46,6 +46,18 @@ export default function WalletManagementPage() {
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Filter
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -446,7 +458,7 @@ export default function WalletManagementPage() {
             </div>
 
             <form onSubmit={handleManualAdjustment} className="space-y-3.5">
-              <div className="relative">
+              <div ref={searchContainerRef} className="relative">
                 <label className="block text-xs font-bold text-slate-700 mb-1">Customer (Name or Mobile Number)</label>
                 
                 {selectedCustomer ? (
@@ -478,7 +490,7 @@ export default function WalletManagementPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Type mobile number or name (e.g. 9876543210 or Rahul)"
+                      placeholder="Name or mobile number..."
                       value={customerSearchQuery}
                       onChange={(e) => {
                         setCustomerSearchQuery(e.target.value);
