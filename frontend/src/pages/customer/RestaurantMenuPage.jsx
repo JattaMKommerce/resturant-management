@@ -46,24 +46,27 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       setLoading(true);
       setError(null);
       setLockedInfo(null);
-      const [restRes, catRes, menuRes] = await Promise.all([
-        api.get(`/restaurants/${slug}`),
-        api.get(`/restaurants/${slug}/categories`).catch(() => ({ data: { categories: [] } })),
-        api.get(`/restaurants/${slug}/menu`).catch(() => ({ data: { items: [] } }))
-      ]);
+      const restRes = await api.get(`/restaurants/${slug}`);
 
-      if (restRes.data.success && restRes.data.restaurant) {
-        setRestaurant(restRes.data.restaurant);
+      if (restRes.data && restRes.data.success && restRes.data.restaurant) {
+        const r = restRes.data.restaurant;
+        setRestaurant(r);
+        const targetSlug = r.slug || r.random_slug || slug;
+
+        const [catRes, menuRes] = await Promise.all([
+          api.get(`/restaurants/${targetSlug}/categories`).catch(() => ({ data: { categories: [] } })),
+          api.get(`/restaurants/${targetSlug}/menu`).catch(() => ({ data: { items: [] } }))
+        ]);
+
+        if (catRes.data && catRes.data.categories) {
+          setCategories(catRes.data.categories);
+        }
+
+        if (menuRes.data && menuRes.data.items) {
+          setMenuItems(menuRes.data.items);
+        }
       } else {
         setError('Restaurant not found.');
-      }
-
-      if (catRes.data && catRes.data.categories) {
-        setCategories(catRes.data.categories);
-      }
-
-      if (menuRes.data && menuRes.data.items) {
-        setMenuItems(menuRes.data.items);
       }
 
       try {

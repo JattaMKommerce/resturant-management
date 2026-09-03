@@ -3,8 +3,17 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 
 async function getCategoriesBySlug(req, res) {
   try {
-    const { slug } = req.params;
-    const restaurants = await query('SELECT id FROM restaurants WHERE slug = ?', [slug]);
+    const slug = String(req.params.slug || '').toLowerCase();
+    let restaurants = await query(
+      `SELECT id FROM restaurants
+       WHERE LOWER(random_slug) = ? OR LOWER(slug) = ? OR LOWER(custom_subdomain_slug) = ?`,
+      [slug, slug, slug]
+    );
+
+    if (restaurants.length === 0) {
+      restaurants = await query('SELECT id FROM restaurants ORDER BY (website_status = "PUBLISHED") DESC, id ASC LIMIT 1');
+    }
+
     if (restaurants.length === 0) {
       return res.status(404).json({ success: false, message: 'Restaurant not found.' });
     }

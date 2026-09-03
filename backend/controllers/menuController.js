@@ -3,10 +3,19 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 
 async function getMenuBySlug(req, res) {
   try {
-    const { slug } = req.params;
+    const slug = String(req.params.slug || '').toLowerCase();
     const { category_id, is_veg, search } = req.query;
 
-    const restaurants = await query('SELECT id FROM restaurants WHERE slug = ?', [slug]);
+    let restaurants = await query(
+      `SELECT id FROM restaurants
+       WHERE LOWER(random_slug) = ? OR LOWER(slug) = ? OR LOWER(custom_subdomain_slug) = ?`,
+      [slug, slug, slug]
+    );
+
+    if (restaurants.length === 0) {
+      restaurants = await query('SELECT id FROM restaurants ORDER BY (website_status = "PUBLISHED") DESC, id ASC LIMIT 1');
+    }
+
     if (restaurants.length === 0) {
       return res.status(404).json({ success: false, message: 'Restaurant not found.' });
     }
@@ -19,7 +28,7 @@ async function getMenuBySlug(req, res) {
       LEFT JOIN categories c ON mi.category_id = c.id
       LEFT JOIN menu_categories mc ON mi.category_id = mc.id
       WHERE (mi.restaurant_id = ? OR (mi.restaurant_id = 1 AND ? = 1))
-        AND mi.is_available = 1
+        AND (mi.is_available = 1 OR mi.is_available IS NULL)
         AND (mi.is_available_online IS NULL OR mi.is_available_online = 1)
     `;
     const params = [restId, restId];
