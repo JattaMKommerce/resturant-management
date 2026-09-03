@@ -41,9 +41,10 @@ async function getCustomerPortalData(req, res) {
     // Fetch orders for this restaurant
     const orders = await query(
       `SELECT o.*, 
-              d.name as driver_name, d.phone as driver_phone, d.vehicle_number as driver_vehicle
+              du.name as driver_name, du.phone as driver_phone, d.vehicle_number as driver_vehicle
        FROM orders o
-       LEFT JOIN delivery_drivers d ON o.delivery_driver_id = d.id
+       LEFT JOIN delivery_drivers d ON o.assigned_driver_id = d.id
+       LEFT JOIN users du ON d.user_id = du.id
        WHERE (o.customer_id = ? OR o.customer_phone = ?) AND o.restaurant_id = ?
        ORDER BY o.id DESC LIMIT 30`,
       [customerId, user.phone, tenantId]
