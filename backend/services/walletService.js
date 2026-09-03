@@ -79,24 +79,38 @@ class WalletService {
   /**
    * Helper: Get or create wallet account
    */
-  async getOrCreateAccount(tenantId, customerId, customerPhone = null) {
-    let [account] = await query(
-      `SELECT * FROM wallet_accounts WHERE tenant_id = ? AND customer_id = ? AND balance_type = 'PROMOTIONAL_REWARD' LIMIT 1`,
-      [tenantId, customerId]
-    );
+  async getOrCreateAccount(tenantId, customerId = null, customerPhone = null) {
+    let account = null;
+
+    if (customerId) {
+      const [acc] = await query(
+        `SELECT * FROM wallet_accounts WHERE tenant_id = ? AND customer_id = ? AND balance_type = 'PROMOTIONAL_REWARD' LIMIT 1`,
+        [tenantId, customerId]
+      );
+      account = acc;
+    }
+
+    if (!account && customerPhone) {
+      const cleanPhone = String(customerPhone).replace(/[^0-9]/g, '').slice(-10);
+      const [acc] = await query(
+        `SELECT * FROM wallet_accounts WHERE tenant_id = ? AND customer_phone LIKE ? AND balance_type = 'PROMOTIONAL_REWARD' LIMIT 1`,
+        [tenantId, `%${cleanPhone}%`]
+      );
+      account = acc;
+    }
 
     if (!account) {
       const res = await query(
         `INSERT INTO wallet_accounts 
           (tenant_id, customer_id, customer_phone, balance_type, cached_available_balance, cached_pending_balance, status)
          VALUES (?, ?, ?, 'PROMOTIONAL_REWARD', 0.00, 0.00, 'ACTIVE')`,
-        [tenantId, customerId, customerPhone]
+        [tenantId, customerId || null, customerPhone || null]
       );
       account = {
         id: res.insertId,
         tenant_id: tenantId,
-        customer_id: customerId,
-        customer_phone: customerPhone,
+        customer_id: customerId || null,
+        customer_phone: customerPhone || null,
         balance_type: 'PROMOTIONAL_REWARD',
         cached_available_balance: 0.00,
         cached_pending_balance: 0.00,
@@ -737,12 +751,32 @@ class WalletService {
    * 12. REQUEST MANUAL ADJUSTMENT (Slide 12)
    * Staff manual credit with admin authorization and complete audit trail.
    */
-  async requestAdjustment(tenantId, customerId, amount, reason, adminUser) {
+  async requestAdjustment(tenantId, customerIdentifier, amount, reason, adminUser) {
     try {
       const parsedAmount = parseFloat(amount);
       if (parsedAmount <= 0) throw new Error('Invalid adjustment amount');
 
-      const account = await this.getOrCreateAccount(tenantId, customerId);
+      let customerId = null;
+      let customerPhone = null;
+
+      // Check if identifier is numeric customerId or phone number
+      const strId = String(customerIdentifier || '').trim();
+      if (!isNaN(strId) && strId.length > 0 && strId.length < 7) {
+        customerId = parseInt(strId, 10);
+      } else if (strId.length >= 7) {
+        // Phone number
+        customerPhone = strId;
+        const clean = strId.replace(/[^0-9]/g, '').slice(-10);
+        const [userMatch] = await query(`SELECT id, phone, name FROM users WHERE phone LIKE ? LIMIT 1`, [`%${clean}%`]);
+        if (userMatch) {
+          customerId = userMatch.id;
+          customerPhone = userMatch.phone;
+        }
+      } else {
+        customerId = customerIdentifier;
+      }
+
+      const account = await this.getOrCreateAccount(tenantId, customerId, customerPhone);
       const lotRes = await query(
         `INSERT INTO credit_lots 
           (wallet_account_id, tenant_id, original_amount, remaining_amount, status, valid_from, expires_at, source_event)

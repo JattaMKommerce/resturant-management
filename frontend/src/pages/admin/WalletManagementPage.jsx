@@ -36,9 +36,16 @@ export default function WalletManagementPage() {
   const [auditing, setAuditing] = useState(false);
 
   // Manual Adjustment State (Slide 12)
-  const [adjustData, setAdjustData] = useState({ customerId: '', amount: '', reason: '' });
+  const [adjustData, setAdjustData] = useState({ customerId: '', customerPhone: '', amount: '', reason: '' });
   const [adjusting, setAdjusting] = useState(false);
   const [adjustSuccess, setAdjustSuccess] = useState(null);
+
+  // Smart Customer Search State
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Filter
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -107,21 +114,46 @@ export default function WalletManagementPage() {
     setAuditing(false);
   };
 
+  // Live search customers whenever query changes
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        setSearchingCustomers(true);
+        const res = await api.get(`/wallet/admin/customers/search?restaurantId=${tenantId}&q=${encodeURIComponent(customerSearchQuery)}`);
+        if (res.data.success) {
+          setCustomerSearchResults(res.data.data || []);
+        }
+      } catch (err) {
+        console.error('Customer search error:', err);
+      } finally {
+        setSearchingCustomers(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [customerSearchQuery, tenantId]);
+
   const handleManualAdjustment = async (e) => {
     e.preventDefault();
-    if (!adjustData.customerId || !adjustData.amount) return;
+    const targetIdentifier = selectedCustomer?.customer_id || selectedCustomer?.customer_phone || customerSearchQuery.trim();
+    if (!targetIdentifier || !adjustData.amount) {
+      alert('Please select or enter a customer mobile number or name.');
+      return;
+    }
     setAdjusting(true);
     setAdjustSuccess(null);
     try {
       const res = await api.post('/wallet/admin/adjust', {
         restaurantId: tenantId,
-        customerId: parseInt(adjustData.customerId),
+        customerId: selectedCustomer?.customer_id || null,
+        customerPhone: selectedCustomer?.customer_phone || (isNaN(targetIdentifier) || targetIdentifier.length >= 7 ? targetIdentifier : null),
         amount: parseFloat(adjustData.amount),
         reason: adjustData.reason
       });
       if (res.data.success) {
-        setAdjustSuccess(`Successfully granted ₹${adjustData.amount} courtesy rewards!`);
-        setAdjustData({ customerId: '', amount: '', reason: '' });
+        setAdjustSuccess(`Successfully granted ₹${adjustData.amount} courtesy rewards to ${selectedCustomer?.customer_name || targetIdentifier}!`);
+        setAdjustData({ customerId: '', customerPhone: '', amount: '', reason: '' });
+        setSelectedCustomer(null);
+        setCustomerSearchQuery('');
         loadAllData();
         setTimeout(() => setAdjustSuccess(null), 4000);
       }
@@ -414,16 +446,99 @@ export default function WalletManagementPage() {
             </div>
 
             <form onSubmit={handleManualAdjustment} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Customer User ID</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 2"
-                  value={adjustData.customerId}
-                  onChange={(e) => setAdjustData({ ...adjustData, customerId: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                  required
-                />
+              <div className="relative">
+                <label className="block text-xs font-bold text-slate-700 mb-1">Customer (Name or Mobile Number)</label>
+                
+                {selectedCustomer ? (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+                        {selectedCustomer.customer_name?.charAt(0) || 'C'}
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs text-slate-900 block">{selectedCustomer.customer_name}</span>
+                        <span className="text-[11px] text-slate-500 block font-mono">
+                          {selectedCustomer.customer_phone || `ID #${selectedCustomer.customer_id}`} • Balance: ₹{selectedCustomer.available_rewards || 0}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setCustomerSearchQuery('');
+                      }}
+                      className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Type mobile number or name (e.g. 9876543210 or Rahul)"
+                      value={customerSearchQuery}
+                      onChange={(e) => {
+                        setCustomerSearchQuery(e.target.value);
+                        setIsSearchOpen(true);
+                      }}
+                      onFocus={() => setIsSearchOpen(true)}
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      required
+                    />
+
+                    {/* Live search dropdown */}
+                    {isSearchOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 max-h-56 overflow-y-auto divide-y divide-slate-100">
+                        {customerSearchResults.length > 0 ? (
+                          customerSearchResults.map((cust, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCustomer(cust);
+                                setCustomerSearchQuery(cust.customer_name || cust.customer_phone);
+                                setIsSearchOpen(false);
+                              }}
+                              className="w-full p-2.5 text-left hover:bg-amber-50/70 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                            >
+                              <div>
+                                <span className="font-bold text-xs text-slate-800 block">{cust.customer_name}</span>
+                                <span className="text-[11px] text-slate-500 font-mono block">
+                                  {cust.customer_phone || `ID #${cust.customer_id}`}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                ₹{cust.available_rewards || 0} pts
+                              </span>
+                            </button>
+                          ))
+                        ) : customerSearchQuery.trim().length >= 7 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCustomer({
+                                customer_name: 'Customer',
+                                customer_phone: customerSearchQuery.trim(),
+                                available_rewards: 0
+                              });
+                              setIsSearchOpen(false);
+                            }}
+                            className="w-full p-3 text-left hover:bg-emerald-50 text-xs text-emerald-800 font-bold flex items-center gap-2 cursor-pointer"
+                          >
+                            <span>➕ Gift to new mobile number: <strong>{customerSearchQuery.trim()}</strong></span>
+                          </button>
+                        ) : (
+                          <div className="p-3 text-center text-xs text-slate-400 italic">
+                            {searchingCustomers ? 'Searching...' : 'Type at least 2 letters or digits to search'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

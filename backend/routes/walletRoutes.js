@@ -262,17 +262,71 @@ router.get('/admin/ledger', authenticateToken, authorizeRoles('ADMIN', 'RESTAURA
 });
 
 /**
+ * GET /api/v1/wallet/admin/customers/search
+ * Search customers by phone or name with live balance preview
+ */
+router.get('/admin/customers/search', authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER'), async (req, res) => {
+  try {
+    const tenantId = req.query.restaurantId || req.user?.restaurant_id || 1;
+    const q = (req.query.q || '').trim();
+
+    if (!q || q.length < 2) {
+      // Return top recent 10 customers with rewards balance
+      const recents = await query(
+        `SELECT DISTINCT 
+           COALESCE(u.id, o.customer_id) as customer_id,
+           COALESCE(u.name, o.customer_name, 'Guest Customer') as customer_name,
+           COALESCE(u.phone, o.customer_phone) as customer_phone,
+           COALESCE(w.cached_available_balance, 0) as available_rewards
+         FROM orders o
+         LEFT JOIN users u ON o.customer_id = u.id
+         LEFT JOIN wallet_accounts w ON (w.customer_id = u.id OR w.customer_phone = o.customer_phone) AND w.tenant_id = ?
+         WHERE o.restaurant_id = ? AND (o.customer_phone IS NOT NULL OR u.phone IS NOT NULL)
+         ORDER BY o.id DESC LIMIT 10`,
+        [tenantId, tenantId]
+      );
+      return res.json({ success: true, data: recents });
+    }
+
+    const likeQuery = `%${q}%`;
+    const results = await query(
+      `SELECT DISTINCT 
+         COALESCE(u.id, o.customer_id) as customer_id,
+         COALESCE(u.name, o.customer_name, 'Customer') as customer_name,
+         COALESCE(u.phone, o.customer_phone) as customer_phone,
+         COALESCE(w.cached_available_balance, 0) as available_rewards
+       FROM orders o
+       LEFT JOIN users u ON o.customer_id = u.id
+       LEFT JOIN wallet_accounts w ON (w.customer_id = u.id OR w.customer_phone = o.customer_phone) AND w.tenant_id = ?
+       WHERE o.restaurant_id = ? AND (o.customer_name LIKE ? OR o.customer_phone LIKE ? OR u.name LIKE ? OR u.phone LIKE ?)
+       ORDER BY o.id DESC LIMIT 15`,
+      [tenantId, tenantId, likeQuery, likeQuery, likeQuery, likeQuery]
+    );
+
+    return res.json({ success: true, data: results });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
  * POST /api/v1/wallet/admin/adjust
  * Staff manual credit adjustment with admin verification (Slide 12)
+ * Supports customerId OR customerPhone!
  */
 router.post('/admin/adjust', authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN'), async (req, res) => {
   try {
     const tenantId = req.body.restaurantId || req.user?.restaurant_id || 1;
-    const { customerId, amount, reason } = req.body;
+    const { customerId, customerPhone, amount, reason } = req.body;
+    const identifier = customerPhone || customerId;
+
+    if (!identifier) {
+      return res.status(400).json({ success: false, message: 'Please provide a customer name, phone number, or ID.' });
+    }
 
     const result = await walletService.requestAdjustment(
       tenantId,
-      customerId,
+      identifier,
       amount,
       reason || 'Staff customer service adjustment',
       req.user
