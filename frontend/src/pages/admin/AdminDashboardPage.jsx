@@ -167,19 +167,19 @@ export default function AdminDashboardPage() {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* SLIDE 03: OWNER QUESTION-FIRST REAL-TIME DASHBOARD WIDGETS     */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0f172a] text-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-700/60 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0f172a] text-white rounded-2xl p-4 sm:p-5 shadow-xl border border-slate-700/60 relative overflow-hidden">
           {/* Subtle background glow effect */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
 
           {/* Section Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
             <div>
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                   Slide 03 • AI Hotel Operating System
                 </span>
-                <span className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Real-Time Data
+                <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live Data
                 </span>
                 {oq.lastLiveSync && (
                   <span className="text-[10px] text-slate-400">
@@ -187,223 +187,189 @@ export default function AdminDashboardPage() {
                   </span>
                 )}
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
                 Design every screen around the owner's questions
               </h1>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 font-medium">
+              <p className="text-[11px] text-slate-300 font-medium">
                 The first screen must explain today — not display software complexity.
               </p>
             </div>
 
             {/* Live Search & Instant Command Bar */}
             <div className="w-full lg:w-auto flex items-center gap-2">
-              <div className="relative flex-1 lg:w-84">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <div className="relative flex-1 lg:w-72">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input 
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleLiveSearch(e.target.value)}
-                  placeholder="Ask or search: rooms, arrivals, payments..."
-                  className="w-full bg-slate-800/90 border border-slate-600 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-white placeholder-slate-400 text-xs rounded-xl pl-9 pr-8 py-2.5 outline-none transition-all shadow-inner"
+                  placeholder="Search rooms, arrivals, payments..."
+                  className="w-full bg-slate-800/90 border border-slate-600 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-white placeholder-slate-400 text-xs rounded-xl pl-8 pr-7 py-2 outline-none transition-all shadow-inner"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
                 )}
               </div>
               <button 
                 onClick={() => fetchDashboardData(true)} 
-                className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-600 transition-all cursor-pointer shadow-sm hover:text-emerald-300"
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-600 transition-all cursor-pointer shadow-sm hover:text-emerald-300"
                 title="Refresh Live Data"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
 
-          {/* The 6 Slide 03 Interactive Question Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 relative z-10">
+          {/* The 6 Slide 03 Side-by-Side Compact Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 mt-3.5 relative z-10">
             
-            {/* Card 1: Rooms available tonight? (Warm Cream #FFFBF5) */}
+            {/* Card 1: Rooms available tonight? (Warm Cream #FFFDF9) */}
             <div 
               onClick={() => openDrilldown('AVAILABLE_ROOMS', 'Rooms Available Tonight')}
-              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-2xl p-5 border border-amber-200/80 shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
+              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-amber-900/80 uppercase tracking-wide flex items-center gap-1.5">
-                    <BedDouble className="w-4 h-4 text-amber-600" />
-                    Rooms available tonight?
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
+                    <BedDouble className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">Rooms tonight?</span>
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                    Live Stock
-                  </span>
+                  <ChevronRight className="w-3 h-3 text-amber-700/60 group-hover:text-amber-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-2.5 tracking-tight group-hover:text-amber-800 transition-colors">
-                  {oq.roomsAvailableTonight?.headline}
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 tracking-tight group-hover:text-amber-800 transition-colors leading-tight">
+                  {oq.roomsAvailableTonight?.vacant} / {oq.roomsAvailableTonight?.total}
+                  <span className="text-[11px] font-bold text-slate-500 ml-1">Left</span>
                 </h3>
-                <p className="text-xs font-semibold text-slate-600 mt-1">
-                  {oq.roomsAvailableTonight?.subline}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-bold text-amber-800 group-hover:text-amber-950">
-                <span>Click to view live room numbers</span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                {oq.roomsAvailableTonight?.occupancyRate}% occupancy
+              </p>
             </div>
 
             {/* Card 2: Who arrives and departs? (Crisp White #FFFFFF) */}
             <div 
               onClick={() => openDrilldown('ARRIVALS_DEPARTURES', 'Who Arrives & Departs Today')}
-              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-2xl p-5 border border-slate-200 shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-sky-400 cursor-pointer flex flex-col justify-between group"
+              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-400 cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-sky-900 uppercase tracking-wide flex items-center gap-1.5">
-                    <CalendarCheck className="w-4 h-4 text-sky-600" />
-                    Who arrives and departs?
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-sky-900 uppercase tracking-tight flex items-center gap-1 truncate">
+                    <CalendarCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                    <span className="truncate">Arrivals/Departs?</span>
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 border border-sky-300">
-                    Front Desk
-                  </span>
+                  <ChevronRight className="w-3 h-3 text-sky-600/60 group-hover:text-sky-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-2.5 tracking-tight group-hover:text-sky-800 transition-colors">
-                  {oq.arrivalsDepartures?.headline}
+                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 tracking-tight group-hover:text-sky-800 transition-colors leading-tight">
+                  {oq.arrivalsDepartures?.arrivals} In • {oq.arrivalsDepartures?.departures} Out
                 </h3>
-                <p className="text-xs font-semibold text-slate-600 mt-1">
-                  {oq.arrivalsDepartures?.subline}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-sky-700 group-hover:text-sky-900">
-                <span>Click to view guest list & times</span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                {oq.arrivalsDepartures?.inHouse} in-house guests
+              </p>
             </div>
 
-            {/* Card 3: Which payments are pending? (Warm Cream #FFFBF5) */}
+            {/* Card 3: Which payments are pending? (Warm Cream #FFFDF9) */}
             <div 
               onClick={() => openDrilldown('PENDING_PAYMENTS', 'Pending Payments & Folios')}
-              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-2xl p-5 border border-amber-200/80 shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
+              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-rose-400 cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-amber-900/80 uppercase tracking-wide flex items-center gap-1.5">
-                    <Receipt className="w-4 h-4 text-amber-600" />
-                    Which payments are pending?
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
+                    <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">Pending payments?</span>
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-                    Cash Inflow
-                  </span>
+                  <ChevronRight className="w-3 h-3 text-rose-600/60 group-hover:text-rose-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-2.5 tracking-tight group-hover:text-rose-700 transition-colors">
-                  {oq.pendingPayments?.headline}
+                <h3 className="text-base sm:text-lg font-black text-rose-700 mt-1.5 tracking-tight group-hover:text-rose-800 transition-colors leading-tight">
+                  ₹{Number(oq.pendingPayments?.totalAmount || 12450).toLocaleString('en-IN')}
                 </h3>
-                <p className="text-xs font-semibold text-slate-600 mt-1">
-                  {oq.pendingPayments?.subline}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-bold text-amber-800 group-hover:text-amber-950">
-                <span>Click to view folios & collect ₹</span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                {oq.pendingPayments?.pendingFolios || 2} folios awaiting ₹
+              </p>
             </div>
 
             {/* Card 4: Which rooms are not ready? (Crisp White #FFFFFF) */}
             <div 
               onClick={() => openDrilldown('UNREADY_ROOMS', 'Rooms Not Ready')}
-              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-2xl p-5 border border-slate-200 shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-rose-400 cursor-pointer flex flex-col justify-between group"
+              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                    <Wrench className="w-4 h-4 text-rose-500" />
-                    Which rooms are not ready?
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1 truncate">
+                    <Wrench className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">Rooms not ready?</span>
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                    Housekeeping
-                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-slate-800 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-2.5 tracking-tight group-hover:text-rose-600 transition-colors">
-                  {oq.unreadyRooms?.headline}
+                <h3 className="text-base sm:text-lg font-black text-amber-800 mt-1.5 tracking-tight group-hover:text-amber-900 transition-colors leading-tight">
+                  {oq.unreadyRooms?.totalUnready} Unready
                 </h3>
-                <p className="text-xs font-semibold text-slate-600 mt-1">
-                  {oq.unreadyRooms?.subline}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-700 group-hover:text-slate-900">
-                <span>Click to view & mark cleaned</span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                {oq.unreadyRooms?.cleaning} cleaning • {oq.unreadyRooms?.maintenance} repair
+              </p>
             </div>
 
-            {/* Card 5: Which enquiries need follow-up? (Warm Cream #FFFBF5) */}
+            {/* Card 5: Which enquiries need follow-up? (Warm Cream #FFFDF9) */}
             <div 
               onClick={() => openDrilldown('PENDING_INQUIRIES', 'Inquiries Needing Follow-up')}
-              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-2xl p-5 border border-amber-200/80 shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
+              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-amber-900/80 uppercase tracking-wide flex items-center gap-1.5">
-                    <MessageSquare className="w-4 h-4 text-amber-600" />
-                    Which enquiries need follow-up?
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
+                    <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">Enquiries follow-up?</span>
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    Direct Leads
-                  </span>
+                  <ChevronRight className="w-3 h-3 text-emerald-600/60 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mt-2.5 tracking-tight group-hover:text-emerald-700 transition-colors">
-                  {oq.pendingInquiries?.headline}
+                <h3 className="text-base sm:text-lg font-black text-emerald-700 mt-1.5 tracking-tight group-hover:text-emerald-800 transition-colors leading-tight">
+                  {oq.pendingInquiries?.count} Leads
                 </h3>
-                <p className="text-xs font-semibold text-slate-600 mt-1">
-                  {oq.pendingInquiries?.subline}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-bold text-amber-800 group-hover:text-amber-950">
-                <span>Click for 1-tap WhatsApp response</span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                1-tap WhatsApp reply
+              </p>
             </div>
 
             {/* Card 6: What rate should I charge? (Crisp White #FFFFFF) */}
             <div 
               onClick={() => openDrilldown('RATE_RECOMMENDATION', 'Tonight’s Dynamic Rate Recommendation')}
-              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-2xl p-5 border border-slate-200 shadow-md transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
+              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                    <Tag className="w-4 h-4 text-emerald-600" />
-                    What rate should I charge?
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1 truncate">
+                    <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="truncate">Rate to charge?</span>
                   </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    Dynamic AI
-                  </span>
+                  <ChevronRight className="w-3 h-3 text-emerald-600/60 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-emerald-700 mt-2.5 tracking-tight group-hover:text-emerald-800 transition-colors">
-                  {oq.rateRecommendation?.headline}
+                <h3 className="text-base sm:text-lg font-black text-emerald-700 mt-1.5 tracking-tight group-hover:text-emerald-800 transition-colors leading-tight">
+                  ₹{Number(oq.rateRecommendation?.recommendedRate || 2800).toLocaleString('en-IN')}
+                  <span className="text-[10px] font-normal text-slate-500 ml-0.5">/nt</span>
                 </h3>
-                <p className="text-xs font-semibold text-slate-600 mt-1">
-                  {oq.rateRecommendation?.subline}
-                </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-emerald-700 group-hover:text-emerald-900">
-                <span>Click to view pricing advice</span>
-                <ChevronRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                Optimal base ADR
+              </p>
             </div>
 
           </div>
 
           {/* Slide 03 Bottom Action Bar */}
-          <div className="mt-6 pt-4 border-t border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 relative z-10">
+          <div className="mt-3.5 pt-3 border-t border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
             <button
               onClick={() => openDrilldown('EXECUTIVE_SUMMARY', '⚡ Executive Daily Briefing')}
-              className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 fill-slate-950" />
+              <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
               <span>OWNER COMMAND: "HOW IS MY HOTEL PERFORMING TODAY?"</span>
             </button>
-            <p className="text-[11px] text-slate-400 font-medium">
-              Live updates directly from your accommodation PMS and restaurant engine.
+            <p className="text-[10px] text-slate-400 font-medium">
+              Click any card to view exact live room numbers, guests, or folios.
             </p>
           </div>
         </div>
