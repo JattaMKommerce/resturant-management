@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { Phone, User, ArrowLeft, ShoppingBag, AlertCircle, Loader2, CreditCard, Banknote, Minus, Plus, X } from 'lucide-react';
+import { Phone, User, ArrowLeft, ShoppingBag, AlertCircle, Loader2, CreditCard, Banknote, Minus, Plus, X, Gift } from 'lucide-react';
+import KratuRewardsWidget from '../../components/customer/KratuRewardsWidget';
 
 export default function CheckoutPage({ overrideSlug }) {
   const params = useParams();
@@ -27,6 +28,12 @@ export default function CheckoutPage({ overrideSlug }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Kratu Rewards State (16-Slide Blueprint)
+  const [rewardsQuote, setRewardsQuote] = useState(null);
+  const [rewardsStatement, setRewardsStatement] = useState(null);
+  const [rewardsToRedeem, setRewardsToRedeem] = useState(0);
+  const [checkoutId] = useState(() => 'CHK_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+
   useEffect(() => {
     loadRestaurant();
     // Pre-fill from returning guest
@@ -48,15 +55,36 @@ export default function CheckoutPage({ overrideSlug }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-
-
-
-
   const subtotal = getSubtotal();
+
+  // Load Kratu Rewards quote and balance for this restaurant cart
+  useEffect(() => {
+    if (restaurant?.id && subtotal > 0) {
+      loadRewardsQuote();
+    }
+  }, [restaurant?.id, subtotal]);
+
+  const loadRewardsQuote = async () => {
+    try {
+      const [qRes, sRes] = await Promise.all([
+        api.post('/wallet/checkout/quote', {
+          tenantId: restaurant.id,
+          orderAmount: subtotal
+        }),
+        api.get(`/wallet/customer/statement?tenantId=${restaurant.id}`)
+      ]);
+      if (qRes.data.success) setRewardsQuote(qRes.data.data);
+      if (sRes.data.success) setRewardsStatement(sRes.data.data);
+    } catch (e) {
+      console.warn('Could not load rewards quote:', e.message);
+    }
+  };
+
   const taxPercentage = parseFloat(restaurant?.tax_percentage || 5);
   const taxAmount = Math.round(subtotal * (taxPercentage / 100) * 100) / 100;
   const deliveryFee = parseFloat(restaurant?.delivery_fee || 49);
-  const total = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
+  const grossTotal = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
+  const total = Math.max(0, Math.round((grossTotal - rewardsToRedeem) * 100) / 100);
   const minOrderMet = subtotal >= parseFloat(restaurant?.min_order_amount || 0);
 
   const handleSubmit = async (e) => {
@@ -74,7 +102,19 @@ export default function CheckoutPage({ overrideSlug }) {
     }
 
     setPlacing(true);
+    let reservedOk = false;
+
     try {
+      // 1. If customer opted to redeem rewards, lock them with a 10-minute reservation (Slide 06)
+      if (rewardsToRedeem > 0) {
+        await api.post('/wallet/checkout/reserve', {
+          tenantId: restaurant?.id,
+          checkoutId,
+          requestedAmount: rewardsToRedeem
+        });
+        reservedOk = true;
+      }
+
       const payload = {
         restaurantId: restaurant?.id,
         restaurantSlug: restaurant?.slug || restaurant?.random_slug || slug,
@@ -84,6 +124,10 @@ export default function CheckoutPage({ overrideSlug }) {
         deliveryArea: formData.deliveryArea,
         deliveryLandmark: formData.deliveryLandmark,
         deliveryInstructions: formData.deliveryInstructions,
+
+        // Kratu Rewards Integration
+        walletCheckoutId: rewardsToRedeem > 0 ? checkoutId : null,
+        rewardsDiscount: rewardsToRedeem,
 
         paymentMethod: formData.paymentMethod,
         items: cartItems.map(item => ({
@@ -114,6 +158,16 @@ export default function CheckoutPage({ overrideSlug }) {
         navigate(`/restaurant/${slug}/order/${orderId}`);
       }
     } catch (err) {
+      // If reservation was made, release it back to customer (Slide 06)
+      if (reservedOk) {
+        try {
+          await api.post('/wallet/checkout/release', {
+            tenantId: restaurant?.id,
+            checkoutId,
+            reason: 'Order checkout error'
+          });
+        } catch (rErr) {}
+      }
       setError(err.response?.data?.message || 'Failed to place order. Please try again.');
     }
     setPlacing(false);
@@ -299,6 +353,15 @@ export default function CheckoutPage({ overrideSlug }) {
             </div>
           </div>
 
+          {/* Kratu Rewards Loyalty Component (16-Slide Blueprint) */}
+          <KratuRewardsWidget
+            quote={rewardsQuote}
+            rewardsToRedeem={rewardsToRedeem}
+            setRewardsToRedeem={setRewardsToRedeem}
+            statement={rewardsStatement}
+            restaurantName={restaurant?.name}
+          />
+
           {/* Bill Summary */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
             <h2 className="font-semibold text-slate-800 mb-3">Bill Summary</h2>
@@ -306,9 +369,19 @@ export default function CheckoutPage({ overrideSlug }) {
               <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
               <div className="flex justify-between text-slate-600"><span>Tax ({taxPercentage}%)</span><span>₹{taxAmount.toFixed(2)}</span></div>
               <div className="flex justify-between text-slate-600"><span>Delivery Fee</span><span>₹{deliveryFee.toFixed(2)}</span></div>
+              
+              {rewardsToRedeem > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold bg-emerald-50/70 p-1.5 rounded-lg">
+                  <span className="flex items-center gap-1">
+                    <Gift className="w-3.5 h-3.5" /> Kratu Rewards Applied
+                  </span>
+                  <span>-₹{rewardsToRedeem.toFixed(2)}</span>
+                </div>
+              )}
+
               <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-800 text-base">
-                <span>Total</span>
-                <span>₹{total.toFixed(2)}</span>
+                <span>Total to Pay</span>
+                <span className="text-emerald-700 font-mono">₹{total.toFixed(2)}</span>
               </div>
             </div>
           </div>

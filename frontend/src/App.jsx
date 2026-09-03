@@ -43,6 +43,7 @@ import AdminRidersPage from './pages/admin/AdminRidersPage';
 import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
+import WalletManagementPage from './pages/admin/WalletManagementPage';
 
 // Offline Restaurant, Hotel Accommodation & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
@@ -358,6 +359,16 @@ export default function App() {
             <AdminLayout>
               <AdminSubscriptionPage />
             </AdminLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/wallet" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
+            <WalletManagementPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/:slug/wallet" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
+            <WalletManagementPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/settings" element={

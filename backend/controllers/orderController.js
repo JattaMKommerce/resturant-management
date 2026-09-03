@@ -381,7 +381,7 @@ async function computeOwnerQuestions(restId) {
         FROM rooms WHERE status IN ('VACANT', 'AVAILABLE') ORDER BY room_number ASC LIMIT 20
       `);
       if (realAvail && realAvail.length > 0) availableRoomsList = realAvail;
-    } catch (e) {}
+    } catch (e) { }
 
     let unreadyRoomsList = [
       { id: 103, room_number: '103', room_type: 'Deluxe Room', status: 'CLEANING', floor_number: 1, note: 'Bed linen change & sanitization' },
@@ -394,7 +394,7 @@ async function computeOwnerQuestions(restId) {
         FROM rooms WHERE status IN ('CLEANING', 'DIRTY', 'MAINTENANCE', 'REPAIR') ORDER BY room_number ASC LIMIT 20
       `);
       if (realUnready && realUnready.length > 0) unreadyRoomsList = realUnready;
-    } catch (e) {}
+    } catch (e) { }
 
     const drilldown = {
       AVAILABLE_ROOMS: {
@@ -429,11 +429,11 @@ async function computeOwnerQuestions(restId) {
         ]
       },
       RATE_RECOMMENDATION: {
-        summary: { title: 'Tonight’s Dynamic Rate Recommendation' },
+        summary: { title: 'Today\'s Dynamic Rate Recommendation' },
         items: []
       },
       EXECUTIVE_SUMMARY: {
-        summary: { title: '⚡ Executive Daily Briefing: "How Is My Hotel Performing Today?"' },
+        summary: { title: 'Executive Daily Briefing: "How Is My Hotel Performing Today?"' },
         items: [
           { metric: 'Tonight Available', value: `${roomsStats.vacant} of ${roomsStats.total} Rooms Available`, tag: 'Inventory' },
           { metric: 'Live Occupancy', value: `${occupancyRate}%`, tag: 'Capacity' },
@@ -695,11 +695,11 @@ async function getOwnerQuestionDrilldown(req, res) {
 async function executeDashboardQuickAction(req, res) {
   try {
     const { action, targetId, rate } = req.body;
-    
+
     if (action === 'MARK_ROOM_CLEANED') {
       try {
         await query(`UPDATE rooms SET status = 'AVAILABLE' WHERE id = ?`, [targetId]);
-      } catch (e) {}
+      } catch (e) { }
       return res.json({ success: true, message: `Room #${targetId} marked READY and available for guests.` });
     }
 
@@ -707,7 +707,7 @@ async function executeDashboardQuickAction(req, res) {
       try {
         await query(`UPDATE room_folios SET balance = 0, folio_status = 'SETTLED' WHERE id = ?`, [targetId]);
         await query(`UPDATE orders SET payment_status = 'PAID' WHERE id = ?`, [targetId]);
-      } catch (e) {}
+      } catch (e) { }
       return res.json({ success: true, message: `Payment settled successfully. Balance is ₹0.` });
     }
 
@@ -715,28 +715,28 @@ async function executeDashboardQuickAction(req, res) {
       const newRate = parseInt(rate) || 2500;
       try {
         await query(`UPDATE rooms SET rate_per_night = ? WHERE 1=1`, [newRate]);
-      } catch (e) {}
+      } catch (e) { }
       return res.json({ success: true, message: `Tonight's rate updated to ₹${newRate.toLocaleString('en-IN')} / night!`, rate: newRate });
     }
 
     if (action === 'CHECK_IN_GUEST') {
       try {
         await query(`UPDATE room_bookings SET status = 'CHECKED_IN' WHERE id = ?`, [targetId]);
-      } catch (e) {}
+      } catch (e) { }
       return res.json({ success: true, message: `Guest checked in successfully! Key card issued.` });
     }
 
     if (action === 'CHECK_OUT_GUEST') {
       try {
         await query(`UPDATE room_bookings SET status = 'CHECKED_OUT' WHERE id = ?`, [targetId]);
-      } catch (e) {}
+      } catch (e) { }
       return res.json({ success: true, message: `Guest checked out successfully! Room marked for housekeeping.` });
     }
 
     if (action === 'MARK_INQUIRY_RESPONDED') {
       try {
         await query(`UPDATE room_bookings SET status = 'RESPONDED' WHERE id = ?`, [targetId]);
-      } catch (e) {}
+      } catch (e) { }
       return res.json({ success: true, message: `Inquiry marked as responded.` });
     }
 

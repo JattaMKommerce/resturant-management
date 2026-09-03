@@ -355,6 +355,21 @@ for (const [routePath, routerHandler] of kotRouteMap) {
 app.use('/api', apiRoutes);
 app.use('/api/v1', apiRoutes);
 
+// Kratu Rewards & Double-Entry Wallet Management Routes (16-Slide Blueprint)
+const walletRoutes = require('./routes/walletRoutes');
+const walletService = require('./services/walletService');
+app.use('/api/wallet', walletRoutes);
+app.use('/api/v1/wallet', walletRoutes);
+
+// Periodic Expiry & Invariant Runner (Every hour)
+setInterval(async () => {
+  try {
+    await walletService.expireCredit();
+  } catch (err) {
+    console.warn('[Wallet] Periodic lot expiry error:', err.message);
+  }
+}, 3600000);
+
 // ──────────────────────────────────────────────────────────
 // 6. SPA STATIC SERVING & ROOT HANDLER
 // ──────────────────────────────────────────────────────────

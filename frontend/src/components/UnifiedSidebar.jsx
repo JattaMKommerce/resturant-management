@@ -32,7 +32,8 @@ import {
   UserCheck,
   MessageSquare,
   Store,
-  AlertTriangle
+  AlertTriangle,
+  Gift
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -112,6 +113,7 @@ export default function UnifiedSidebar({
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users },
     { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
     { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
+    { name: '🎁 Kratu Rewards & Wallet', path: '/admin/wallet', icon: Gift },
     { name: 'Store Website Settings', path: `/admin/${activeSlug}/settings`, icon: Settings },
   ];
 

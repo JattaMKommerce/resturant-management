@@ -150,7 +150,12 @@ async function createOrder(orderPayload) {
   const taxPercentage = parseFloat(restaurant.tax_percentage || 5);
   const taxAmount = Math.round((subtotal * (taxPercentage / 100)) * 100) / 100;
   const deliveryFee = parseFloat(restaurant.delivery_fee || 49);
-  const totalAmount = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
+  
+  // Kratu Rewards discount applied from checkout reservation
+  const rewardsDiscount = Math.max(0, parseFloat(orderPayload.rewardsDiscount || 0));
+  const discountAmount = rewardsDiscount;
+  const grossTotal = subtotal + taxAmount + deliveryFee;
+  const totalAmount = Math.max(0, Math.round((grossTotal - discountAmount) * 100) / 100);
 
   const orderNumber = generateOrderNumber();
   const conn = await getConnection();
@@ -166,13 +171,13 @@ async function createOrder(orderPayload) {
         customer_latitude, customer_longitude, distance_km,
         subtotal, tax_amount, delivery_fee, discount_amount, total_amount,
         payment_method, payment_status, order_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.00, ?, ?, 'PENDING', 'PENDING')`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING')`,
       [
         orderNumber, restaurant.id, customerIdentityId || null, customerId || null,
         customerName, customerPhone,
         deliveryAddress, deliveryArea, deliveryLandmark || null, deliveryInstructions || null,
         customerLatitude || null, customerLongitude || null, radiusValidation?.distanceKm || null,
-        subtotal, taxAmount, deliveryFee, totalAmount,
+        subtotal, taxAmount, deliveryFee, discountAmount, totalAmount,
         paymentMethod
       ]
     );
@@ -195,6 +200,30 @@ async function createOrder(orderPayload) {
     );
 
     await conn.commit();
+
+    // Kratu Rewards: Commit reservation and issue PENDING cashback (Slide 05 & 06)
+    try {
+      const walletService = require('./walletService');
+
+      // 1. Commit redemption if rewards were applied
+      if (orderPayload.walletCheckoutId && rewardsDiscount > 0) {
+        await walletService.commitRedemption(restaurant.id, orderPayload.walletCheckoutId, orderId);
+      }
+
+      // 2. Calculate and create PENDING cashback (Slide 05: unlocks only upon delivery)
+      const earned = await walletService.calculateCashback(restaurant.id, subtotal, customerId);
+      if (earned.eligible && earned.cashbackAmount > 0) {
+        await walletService.createPendingCredit(
+          restaurant.id,
+          customerId || 2,
+          orderId,
+          earned.cashbackAmount,
+          customerPhone
+        );
+      }
+    } catch (wErr) {
+      console.warn('[Wallet] Post-order rewards processing warning:', wErr.message);
+    }
 
     if (customerIdentityId) {
       await updateGuestInfo(customerIdentityId, customerName, customerPhone);
@@ -312,15 +341,39 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
   } else if (newStatus === 'DELIVERED') {
     notifTitle = 'Order Delivered! 🎉';
     notifMsg = `Your order #${order.order_number} has been delivered. Enjoy your meal!`;
+    
+    // Kratu Rewards: Unlock and activate PENDING cashback into AVAILABLE rewards (Slide 05)
+    try {
+      const walletService = require('./walletService');
+      await walletService.activateCredit(order.restaurant_id, orderId);
+    } catch (wErr) {
+      console.warn('[Wallet] Error activating pending credit upon delivery:', wErr.message);
+    }
   } else if (newStatus === 'DELIVERY_FAILED') {
     notifTitle = 'Delivery Issue Update ⚠️';
     notifMsg = `There was an issue delivering order #${order.order_number}. The restaurant team is resolving it.`;
   } else if (newStatus === 'REJECTED') {
     notifTitle = 'Order Rejected ❌';
     notifMsg = `Unfortunately, your order #${order.order_number} was rejected.`;
+    
+    // Kratu Rewards: Reverse pending rewards upon rejection
+    try {
+      const walletService = require('./walletService');
+      await walletService.reverseCredit(order.restaurant_id, orderId, 'Order rejected');
+    } catch (wErr) {
+      console.warn('[Wallet] Error reversing rewards upon rejection:', wErr.message);
+    }
   } else if (newStatus === 'CANCELLED') {
     notifTitle = 'Order Cancelled';
     notifMsg = `Your order #${order.order_number} has been cancelled.`;
+
+    // Kratu Rewards: Reverse pending rewards upon cancellation
+    try {
+      const walletService = require('./walletService');
+      await walletService.reverseCredit(order.restaurant_id, orderId, 'Order cancelled');
+    } catch (wErr) {
+      console.warn('[Wallet] Error reversing rewards upon cancellation:', wErr.message);
+    }
   }
 
   await sendNotification({
