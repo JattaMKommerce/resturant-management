@@ -4,7 +4,7 @@ import {
   Bike, Power, MapPin, Phone, CheckCircle2, Navigation, AlertTriangle,
   Package, Clock, RefreshCw, LogOut, Shield, DollarSign, User, ListOrdered,
   Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle,
-  ShieldCheck, FileText
+  ShieldCheck, FileText, Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
@@ -15,6 +15,18 @@ function getOrderLast5(orderNum) {
   const digits = String(orderNum).replace(/\D/g, '');
   if (digits.length >= 5) return digits.slice(-5);
   return String(orderNum).length > 5 ? String(orderNum).slice(-5) : String(orderNum);
+}
+
+function formatOrderDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 export default function DriverDashboardPage() {
@@ -28,6 +40,10 @@ export default function DriverDashboardPage() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [selectedRestaurantFilter, setSelectedRestaurantFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
+
+  // Order History Inspection Modal State
+  const [showOrdersHistoryModal, setShowOrdersHistoryModal] = useState(false);
+  const [ordersModalTab, setOrdersModalTab] = useState('COMPLETED'); // 'COMPLETED' | 'ALL' | 'TODAY'
 
   // Status & Location state
   const [availabilityStatus, setAvailabilityStatus] = useState('OFFLINE');
@@ -572,6 +588,17 @@ export default function DriverDashboardPage() {
   }
 
   const completedOrders = allOrders.filter(o => o.order_status === 'DELIVERED');
+  const todayDeliveredOrders = allOrders.filter(o => {
+    if (o.order_status !== 'DELIVERED') return false;
+    const d = new Date(o.created_at || o.updated_at);
+    return d.toDateString() === new Date().toDateString();
+  });
+
+  const displayOrders = ordersModalTab === 'COMPLETED'
+    ? completedOrders
+    : ordersModalTab === 'TODAY'
+    ? todayDeliveredOrders
+    : allOrders;
 
   return (
     <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased pb-12">
@@ -712,15 +739,21 @@ export default function DriverDashboardPage() {
 
         {/* RIDER DELIVERY SCORECARD */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Today</span>
-            <span className="font-black text-slate-900 text-xl block mt-1">{driver?.today_delivered_count || 0}</span>
-            <span className="text-[10px] text-blue-600 font-bold block">Delivered</span>
+          <div 
+            onClick={() => { setOrdersModalTab('TODAY'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-400 block group-hover:text-blue-600 transition-colors">Today</span>
+            <span className="font-black text-slate-900 text-xl block mt-1">{todayDeliveredOrders.length || driver?.today_delivered_count || 0}</span>
+            <span className="text-[10px] text-blue-600 font-bold block">Delivered ↗</span>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center">
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">All-Time</span>
-            <span className="font-black text-slate-900 text-xl block mt-1">{driver?.delivered_orders_count || 0}</span>
-            <span className="text-[10px] text-teal-600 font-bold block">Completed</span>
+          <div 
+            onClick={() => { setOrdersModalTab('COMPLETED'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center cursor-pointer hover:border-teal-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-400 block group-hover:text-teal-600 transition-colors">All-Time</span>
+            <span className="font-black text-slate-900 text-xl block mt-1">{completedOrders.length || driver?.delivered_orders_count || 0}</span>
+            <span className="text-[10px] text-teal-600 font-bold block">Completed ↗</span>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center flex flex-col justify-between">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">KYC Status</span>
@@ -1080,24 +1113,40 @@ export default function DriverDashboardPage() {
 
         {/* RIDER STATS & LINKS */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5" />
+          <div 
+            onClick={() => { setOrdersModalTab('COMPLETED'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-[#3A7D7C] hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#64748B] block">Completed</span>
+                <span className="font-bold text-[#1F2937] text-base">{completedOrders.length} Deliveries</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Completed</span>
-              <span className="font-bold text-[#1F2937] text-base">{completedOrders.length} Deliveries</span>
-            </div>
+            <span className="text-[11px] font-bold text-[#3A7D7C] bg-[#3A7D7C]/10 group-hover:bg-[#3A7D7C]/20 px-2 py-1 rounded-lg transition-colors flex items-center gap-0.5 shrink-0">
+              View <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <ListOrdered className="w-5 h-5" />
+          <div 
+            onClick={() => { setOrdersModalTab('ALL'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <ListOrdered className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#64748B] block">Total Assigned</span>
+                <span className="font-bold text-[#1F2937] text-base">{allOrders.length} Orders</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Total Assigned</span>
-              <span className="font-bold text-[#1F2937] text-base">{allOrders.length} Orders</span>
-            </div>
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 group-hover:bg-emerald-200 px-2 py-1 rounded-lg transition-colors flex items-center gap-0.5 shrink-0">
+              View <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
         </div>
 
@@ -1423,6 +1472,190 @@ export default function DriverDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELIVERY TASKS & ORDER HISTORY MODAL */}
+      {showOrdersHistoryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-lg w-full bg-white rounded-3xl p-5 sm:p-6 border border-[#D7E5E8] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#3A7D7C] flex items-center justify-center font-bold shadow-xs">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#1F2937]">Delivery Tasks & History</h3>
+                  <p className="text-[11px] text-[#64748B] font-medium">Detailed breakdown of orders you performed</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOrdersHistoryModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#64748B] flex items-center justify-center font-bold text-sm cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scorecard Strip Inside Modal */}
+            <div className="grid grid-cols-3 gap-2.5 py-3 shrink-0">
+              <div className="p-3 bg-emerald-50/90 border border-emerald-200/90 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 block">Delivered</span>
+                <span className="text-lg font-black text-emerald-950 block leading-tight">{completedOrders.length}</span>
+                <span className="text-[9px] text-emerald-600 font-semibold">Done by you</span>
+              </div>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Assigned</span>
+                <span className="text-lg font-black text-slate-900 block leading-tight">{allOrders.length}</span>
+                <span className="text-[9px] text-slate-500 font-semibold">All trips</span>
+              </div>
+              <div className="p-3 bg-teal-50/90 border border-teal-200/90 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-teal-700 block">Success Rate</span>
+                <span className="text-lg font-black text-teal-950 block leading-tight">
+                  {allOrders.length > 0 ? Math.round((completedOrders.length / allOrders.length) * 100) : 0}%
+                </span>
+                <span className="text-[9px] text-teal-600 font-semibold">Completion</span>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 shrink-0 overflow-x-auto">
+              <button
+                onClick={() => setOrdersModalTab('COMPLETED')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  ordersModalTab === 'COMPLETED'
+                    ? 'bg-[#3A7D7C] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                ✓ Delivered ({completedOrders.length})
+              </button>
+              <button
+                onClick={() => setOrdersModalTab('ALL')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  ordersModalTab === 'ALL'
+                    ? 'bg-[#3A7D7C] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                All Assigned ({allOrders.length})
+              </button>
+              <button
+                onClick={() => setOrdersModalTab('TODAY')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  ordersModalTab === 'TODAY'
+                    ? 'bg-[#3A7D7C] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Today ({todayDeliveredOrders.length})
+              </button>
+            </div>
+
+            {/* Orders Scrollable List */}
+            <div className="flex-1 overflow-y-auto pt-3 space-y-3 pr-1">
+              {displayOrders.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <Package className="w-8 h-8 mx-auto text-slate-300" />
+                  <p className="text-xs font-bold text-slate-600">No orders found</p>
+                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                    {ordersModalTab === 'COMPLETED'
+                      ? 'You have not completed any deliveries yet. Accept and deliver orders to see them here!'
+                      : 'No assigned orders match this filter.'}
+                  </p>
+                </div>
+              ) : (
+                displayOrders.map(order => (
+                  <div
+                    key={order.id}
+                    className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all space-y-2.5"
+                  >
+                    {/* Header: Order # + Status Pill */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-xs text-slate-900">
+                          Order #{order.order_number || order.id}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {formatOrderDate(order.created_at)}
+                        </span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        order.order_status === 'DELIVERED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : order.order_status === 'OUT_FOR_DELIVERY' || order.order_status === 'PICKED_UP'
+                          ? 'bg-amber-100 text-amber-800 animate-pulse border border-amber-200'
+                          : order.order_status === 'DELIVERY_FAILED'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
+                        {order.order_status === 'DELIVERED' ? '✓ Delivered' : order.order_status?.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    {/* Restaurant & Customer Address */}
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                        <Store className="w-3.5 h-3.5 text-[#3A7D7C] shrink-0" />
+                        <span className="truncate">{order.restaurant_name || 'Restaurant'}</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 text-slate-500 font-medium text-[11px]">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{order.delivery_address || 'No address specified'}</span>
+                      </div>
+                    </div>
+
+                    {/* Items List */}
+                    {order.items && order.items.length > 0 && (
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 text-[11px] text-slate-600 space-y-1">
+                        <span className="text-[9px] uppercase font-bold text-slate-400 block">Items in this Delivery:</span>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-[11px]">
+                            <span className="truncate">{item.quantity}x {item.item_name}</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-2">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Customer & Total Amount */}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
+                      <div className="flex items-center gap-1 text-[11px] text-slate-600 font-semibold">
+                        <User className="w-3 h-3 text-slate-400" />
+                        <span>{order.customer_name || 'Customer'}</span>
+                        {order.customer_phone && (
+                          <span className="text-slate-400 text-[10px]">({order.customer_phone})</span>
+                        )}
+                      </div>
+                      <span className="font-black text-slate-900 text-sm">
+                        ₹{order.total_amount}{' '}
+                        <span className="text-[10px] font-normal text-slate-400">
+                          ({order.payment_method || 'COD'})
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Showing {displayOrders.length} order{displayOrders.length === 1 ? '' : 's'}
+              </span>
+              <button
+                onClick={() => setShowOrdersHistoryModal(false)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}
