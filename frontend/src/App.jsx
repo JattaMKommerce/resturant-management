@@ -42,6 +42,7 @@ import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminWebsitePage from './pages/admin/AdminWebsitePage';
 import RestaurantOnboarding from './pages/admin/RestaurantOnboarding';
 import AdminRidersPage from './pages/admin/AdminRidersPage';
+import AdminDriversPage from './pages/admin/AdminDriversPage';
 import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
@@ -344,12 +345,12 @@ export default function App() {
         } />
         <Route path="/admin/:slug/drivers" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
-            <AdminRidersPage />
+            <AdminDriversPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/riders" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
-            <AdminRidersPage />
+            <AdminDriversPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/deliveries" element={

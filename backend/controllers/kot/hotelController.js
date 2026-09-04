@@ -59,7 +59,7 @@ const INITIAL_20_HOTELS = [
     city: 'Mumbai',
     rating: 4.7,
     price_per_night: 6500.00,
-    description: 'Premier business hotel located in the heart of Mumbai’s financial epicenter. Features ergonomic work suites, high-tech conference pods, express dry cleaning, and rooftop lounge.',
+    description: 'Premier business hotel located in the heart of Mumbai\'s financial epicenter. Features ergonomic work suites, high-tech conference pods, express dry cleaning, and rooftop lounge.',
     main_image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=80',
     gallery_images: JSON.stringify([
       'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80',
@@ -325,7 +325,7 @@ const INITIAL_20_HOTELS = [
     city: 'Kolkata',
     rating: 4.5,
     price_per_night: 4900.00,
-    description: 'Vibrant boutique hotel celebrating Kolkata’s jazz, literary, and culinary heritage. Features vinyl listening booths, mood lighting, and a speakeasy cocktail bar.',
+    description: 'Vibrant boutique hotel celebrating Kolkata\'s jazz, literary, and culinary heritage. Features vinyl listening booths, mood lighting, and a speakeasy cocktail bar.',
     main_image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
     gallery_images: JSON.stringify([
       'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80'

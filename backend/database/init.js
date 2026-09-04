@@ -199,6 +199,7 @@ async function initDatabase(options = {}) {
       }
 
       // Delivery Drivers columns
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'restaurant_id', "INT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'full_name', "VARCHAR(150) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'mobile', "VARCHAR(20) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'email', "VARCHAR(150) DEFAULT NULL");
@@ -208,8 +209,19 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'delivery_drivers', 'current_address', "TEXT DEFAULT NULL");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'emergency_contact', "VARCHAR(20) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'selfie_path', "VARCHAR(500) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'selfie_data', "LONGBLOB DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'license_path', "VARCHAR(500) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'license_data', "LONGBLOB DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'aadhaar_path', "VARCHAR(500) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'aadhaar_data', "LONGBLOB DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'delivery_drivers', 'kyc_status', "ENUM('PENDING', 'PARTIAL', 'VERIFIED') NOT NULL DEFAULT 'PENDING'");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'account_status', "ENUM('ACTIVE', 'SUSPENDED', 'DEACTIVATED') NOT NULL DEFAULT 'ACTIVE'");
       await addColumnIfNotExists(conn, 'delivery_drivers', 'last_location_at', "TIMESTAMP NULL DEFAULT NULL");
+
+      // Backfill restaurant_id for existing drivers if null (link to restaurant 7 or first active restaurant)
+      try {
+        await conn.query("UPDATE delivery_drivers SET restaurant_id = 7 WHERE restaurant_id IS NULL");
+      } catch (e) { }
 
       // Rider Applications columns
       await addColumnIfNotExists(conn, 'rider_applications', 'password_hash', "VARCHAR(255) DEFAULT NULL");

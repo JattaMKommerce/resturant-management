@@ -1061,10 +1061,27 @@ async function adminAssignDriverToOrder(req, res) {
       return res.status(404).json({ success: false, message: 'Driver not found.' });
     }
 
+    // Verify driver belongs to this restaurant (or has active assignment for this restaurant)
+    const isDriverAssigned = driver.restaurant_id === order.restaurant_id;
+    if (!isDriverAssigned) {
+      const [assignment] = await query(
+        'SELECT id FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id = ? AND status = "ACTIVE"',
+        [driver.id, order.restaurant_id]
+      );
+      if (!assignment) {
+        return res.status(403).json({
+          success: false,
+          message: `Delivery driver "${driver.full_name || 'Rider'}" belongs to another restaurant.`
+        });
+      }
+    }
+
     await query(
       `UPDATE orders SET assigned_driver_id = ?, order_status = 'DRIVER_ACCEPTED' WHERE id = ?`,
       [driver.id, id]
     );
+
+    await query('UPDATE delivery_drivers SET availability_status = "BUSY" WHERE id = ?', [driver.id]);
 
     await query(
       `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id)

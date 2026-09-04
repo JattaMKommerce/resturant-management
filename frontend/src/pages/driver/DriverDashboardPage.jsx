@@ -45,6 +45,73 @@ export default function DriverDashboardPage() {
   const [applyingRestId, setApplyingRestId] = useState(null);
   const [connectingAll, setConnectingAll] = useState(false);
 
+  // Upload KYC Documents State
+  const [showUploadDocsModal, setShowUploadDocsModal] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [selfiePreview, setSelfiePreview] = useState(null);
+  const [licensePreview, setLicensePreview] = useState(null);
+  const [aadhaarPreview, setAadhaarPreview] = useState(null);
+  const [licenseNumberInput, setLicenseNumberInput] = useState('');
+  const [vehicleNumberInput, setVehicleNumberInput] = useState('');
+  const [emergencyContactInput, setEmergencyContactInput] = useState('');
+  const [docsFormError, setDocsFormError] = useState('');
+  const [docsFormSuccess, setDocsFormSuccess] = useState('');
+
+  const openUploadModal = () => {
+    setSelfiePreview(driver?.selfie_url || null);
+    setLicensePreview(driver?.license_url || null);
+    setAadhaarPreview(driver?.aadhaar_url || null);
+    setLicenseNumberInput(driver?.license_number || '');
+    setVehicleNumberInput(driver?.vehicle_number || '');
+    setEmergencyContactInput(driver?.emergency_contact || '');
+    setDocsFormError('');
+    setDocsFormSuccess('');
+    setShowUploadDocsModal(true);
+  };
+
+  const handleFileChange = (e, setter) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setter(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadDocuments = async (e) => {
+    e.preventDefault();
+    setUploadingDocs(true);
+    setDocsFormError('');
+    setDocsFormSuccess('');
+
+    try {
+      const res = await api.put('/driver/profile/documents', {
+        selfie: selfiePreview || undefined,
+        license: licensePreview || undefined,
+        aadhaar: aadhaarPreview || undefined,
+        license_number: licenseNumberInput || undefined,
+        vehicle_number: vehicleNumberInput || undefined,
+        emergency_contact: emergencyContactInput || undefined
+      });
+
+      if (res.data.success) {
+        setDocsFormSuccess('🎉 Documents uploaded successfully!');
+        setDriver(prev => ({
+          ...prev,
+          ...res.data.driver
+        }));
+        setTimeout(() => {
+          setShowUploadDocsModal(false);
+          setDocsFormSuccess('');
+          fetchDriverDashboard();
+        }, 1200);
+      }
+    } catch (err) {
+      setDocsFormError(err.response?.data?.message || 'Failed to upload documents.');
+    } finally {
+      setUploadingDocs(false);
+    }
+  };
+
   // Claiming loading state
   const [claimingOrderId, setClaimingOrderId] = useState(null);
 
@@ -594,48 +661,83 @@ export default function DriverDashboardPage() {
           </button>
         </div>
 
-        {/* MULTI-RESTAURANT MANAGEMENT WIDGET */}
-        <div className="bg-white rounded-3xl p-5 border border-[#D7E5E8] shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center font-bold">
-                <Store className="w-4 h-4" />
+        {/* HIGHLIGHTED MISSING KYC DOCUMENTS ALERT BANNER */}
+        {(!driver?.kyc_status || driver?.kyc_status !== 'VERIFIED' || (driver?.missing_documents && driver?.missing_documents.length > 0)) && (
+          <div className="bg-gradient-to-br from-amber-500/10 via-rose-500/10 to-amber-500/10 border-2 border-amber-400/80 rounded-3xl p-5 shadow-lg shadow-amber-500/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-900 tracking-tight flex items-center gap-2">
+                    ⚠️ Action Required: Upload Your Verification Documents
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">
+                    Please upload your profile photo and KYC documents to ensure your account is fully verified.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-[#1F2937] text-xs">My Assigned Restaurants</h3>
-                <p className="text-[10px] text-[#64748B]">
-                  Deliver for {assignedRestaurants.length} restaurant{assignedRestaurants.length !== 1 ? 's' : ''} simultaneously
-                </p>
-              </div>
+
+              <button
+                onClick={openUploadModal}
+                className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs rounded-xl shadow-md shadow-amber-500/25 transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" /> Upload Photos & Docs
+              </button>
             </div>
 
-            <button
-              onClick={handleOpenApplyModal}
-              className="px-3 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> Partner More
-            </button>
+            {/* Missing document tags */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/60">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Required Items:</span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                driver?.has_selfie ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}>
+                {driver?.has_selfie ? '✓ Photo Uploaded' : '❌ Profile Photo / Selfie'}
+              </span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                driver?.has_license ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}>
+                {driver?.has_license ? '✓ Driving License Uploaded' : '❌ Driving License Photo'}
+              </span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                driver?.has_aadhaar ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}>
+                {driver?.has_aadhaar ? '✓ Aadhaar / ID Uploaded' : '❌ Aadhaar Card Photo'}
+              </span>
+            </div>
           </div>
+        )}
 
-          {/* Assigned Restaurants Chips */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {assignedRestaurants.length === 0 ? (
-              <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-3 rounded-2xl w-full flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>You are not currently assigned to any restaurant. Click "Partner More" to partner with a restaurant.</span>
-              </div>
-            ) : (
-              assignedRestaurants.map((rest) => (
-                <div
-                  key={rest.id}
-                  className="px-3 py-1.5 bg-slate-50 border border-[#D7E5E8] rounded-xl flex items-center gap-2 text-xs"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="font-bold text-[#1F2937]">{rest.name}</span>
-                  <span className="text-[10px] text-[#64748B]">({rest.city || 'Central'})</span>
-                </div>
-              ))
-            )}
+        {/* RIDER DELIVERY SCORECARD */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Today</span>
+            <span className="font-black text-slate-900 text-xl block mt-1">{driver?.today_delivered_count || 0}</span>
+            <span className="text-[10px] text-blue-600 font-bold block">Delivered</span>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">All-Time</span>
+            <span className="font-black text-slate-900 text-xl block mt-1">{driver?.delivered_orders_count || 0}</span>
+            <span className="text-[10px] text-teal-600 font-bold block">Completed</span>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">KYC Status</span>
+            <div>
+              <span className={`font-black text-[10px] px-2 py-1 rounded-full inline-block uppercase tracking-wider ${
+                driver?.kyc_status === 'VERIFIED'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+              }`}>
+                {driver?.kyc_status === 'VERIFIED' ? 'Verified' : 'Pending'}
+              </span>
+            </div>
+            <button 
+              onClick={openUploadModal}
+              className="text-[10px] font-bold text-[#3A7D7C] hover:underline cursor-pointer"
+            >
+              Update Docs
+            </button>
           </div>
         </div>
 
@@ -1135,39 +1237,188 @@ export default function DriverDashboardPage() {
         </div>
       )}
 
-      {/* REPORT FAILURE MODAL */}
-      {showFailureModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 border border-[#D7E5E8] shadow-xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-700">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-bold text-[#1F2937] text-base">Report Delivery Issue</h3>
+      {/* UPLOAD KYC DOCUMENTS MODAL */}
+      {showUploadDocsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-6 border border-[#D7E5E8] shadow-2xl max-h-[90vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#1F2937]">Upload KYC & Profile Photo</h3>
+                  <p className="text-[11px] text-[#64748B]">Verify your identity for delivery duty</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUploadDocsModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#64748B] flex items-center justify-center font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            <p className="text-xs text-[#64748B]">
-              Specify the reason why this delivery could not be completed. The restaurant admin will be notified to resolve operationally.
-            </p>
-            <form onSubmit={handleMarkFailedSubmit} className="space-y-4">
-              <textarea
-                required
-                rows="3"
-                value={failureReason}
-                onChange={(e) => setFailureReason(e.target.value)}
-                placeholder="e.g. Customer unavailable / Wrong address / Customer refused order"
-                className="w-full bg-white border border-[#D7E5E8] rounded-xl p-3 text-[#1F2937] text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
-              ></textarea>
-              <div className="flex gap-3">
+
+            {docsFormSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {docsFormSuccess}
+              </div>
+            )}
+
+            {docsFormError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {docsFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleUploadDocuments} className="space-y-4 text-xs">
+              
+              {/* 1. Profile Photo / Selfie */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <label className="block font-black text-slate-800">
+                  1. Profile Photo / Selfie *
+                </label>
+                <div className="flex items-center gap-3">
+                  {selfiePreview ? (
+                    <img 
+                      src={selfiePreview} 
+                      alt="Selfie Preview" 
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <User className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      onChange={(e) => handleFileChange(e, setSelfiePreview)}
+                      className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#3A7D7C] file:text-white hover:file:bg-[#2F6665] cursor-pointer"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">Take a clear front-facing selfie</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Driving License */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <label className="block font-black text-slate-800">
+                  2. Driving License Photo *
+                </label>
+                <div className="flex items-center gap-3">
+                  {licensePreview ? (
+                    <img 
+                      src={licensePreview} 
+                      alt="License Preview" 
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, setLicensePreview)}
+                      className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#3A7D7C] file:text-white hover:file:bg-[#2F6665] cursor-pointer"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">Photo of physical driving license</span>
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <input
+                    type="text"
+                    placeholder="License Number (e.g. DL-0420110012345)"
+                    value={licenseNumberInput}
+                    onChange={(e) => setLicenseNumberInput(e.target.value.toUpperCase())}
+                    className="w-full p-2 bg-white border border-[#D7E5E8] rounded-xl font-semibold text-slate-800 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Aadhaar Card */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <label className="block font-black text-slate-800">
+                  3. Aadhaar Card / ID Proof *
+                </label>
+                <div className="flex items-center gap-3">
+                  {aadhaarPreview ? (
+                    <img 
+                      src={aadhaarPreview} 
+                      alt="Aadhaar Preview" 
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <Shield className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, setAadhaarPreview)}
+                      className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#3A7D7C] file:text-white hover:file:bg-[#2F6665] cursor-pointer"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">Photo of Aadhaar or Government ID</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plate and Emergency Contact */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Vehicle Plate #</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. GA-01-AB-1234"
+                    value={vehicleNumberInput}
+                    onChange={(e) => setVehicleNumberInput(e.target.value.toUpperCase())}
+                    className="w-full p-2 bg-slate-50 border border-[#D7E5E8] rounded-xl font-semibold text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Emergency Phone</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 9876543210"
+                    value={emergencyContactInput}
+                    onChange={(e) => setEmergencyContactInput(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-[#D7E5E8] rounded-xl font-semibold text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#D7E5E8]">
                 <button
                   type="button"
-                  onClick={() => setShowFailureModal(false)}
-                  className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] rounded-xl font-bold text-xs shadow-2xs"
+                  onClick={() => setShowUploadDocsModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-2xs"
+                  disabled={uploadingDocs}
+                  className="px-5 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  Submit Issue
+                  {uploadingDocs ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" /> Submit Documents
+                    </>
+                  )}
                 </button>
               </div>
             </form>

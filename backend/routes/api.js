@@ -81,6 +81,7 @@ const driverAuth = [authenticateToken, authorizeRoles('DRIVER', 'ADMIN', 'SUPER_
 router.post('/driver/login', driverController.driverLogin);
 router.get('/driver/profile', ...driverAuth, driverController.getDriverProfile);
 router.put('/driver/profile', ...driverAuth, driverController.updateDriverProfile);
+router.put('/driver/profile/documents', ...driverAuth, driverController.uploadDriverDocuments);
 router.post('/driver/go-online', ...driverAuth, driverController.goOnline);
 router.post('/driver/go-offline', ...driverAuth, driverController.goOffline);
 router.post('/driver/location', ...driverAuth, driverController.updateDriverLocation);
