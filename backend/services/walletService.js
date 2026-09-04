@@ -4,7 +4,7 @@
  * Core Rule: Reward credits and customer money are never the same balance. (Ledger First)
  */
 
-const { query } = require('../config/db');
+const { query, getConnection } = require('../config/db');
 const crypto = require('crypto');
 
 class WalletService {
@@ -51,28 +51,229 @@ class WalletService {
         return { eligible: false, cashbackAmount: 0, reason: 'Campaign budget exhausted' };
       }
 
-      // Calculate reward value
+      // Calculate reward value based on campaign mode
       let calculated = 0;
-      if (rules.reward_type === 'PERCENTAGE') {
+      let isLuckyWinner = false;
+      const rewardMode = rules.reward_type || 'UPTO_LUCKY';
+      const uptoCap = parseFloat(rules.upto_amount || rules.max_cashback_per_order || 70.00);
+      const minReward = parseFloat(rules.min_reward_amount || 10.00);
+      const luckyRatio = parseFloat(rules.lucky_ratio || 35.00); // 1-2 in 5 (~35%)
+
+      if (rewardMode === 'UPTO_LUCKY') {
+        // User rule: Out of 5 customers, 1 or 2 get the FULL credit amount (e.g. ₹70).
+        // The rest get an amount "Up To" the credit amount (e.g. ₹10 to ₹69).
+        const roll = Math.random() * 100;
+        if (roll < luckyRatio) {
+          // 🎯 Lucky Jackpot Winner: receives full credit amount!
+          calculated = uptoCap;
+          isLuckyWinner = true;
+        } else {
+          // 🎁 Up-To Winner: randomized amount within [minReward, uptoCap - 1]
+          if (uptoCap > minReward) {
+            calculated = Math.floor(Math.random() * (uptoCap - minReward)) + minReward;
+          } else {
+            calculated = uptoCap;
+          }
+          isLuckyWinner = false;
+        }
+      } else if (rewardMode === 'PERCENTAGE') {
         calculated = (parsedAmount * parseFloat(rules.reward_value)) / 100;
+        calculated = Math.min(calculated, parseFloat(rules.max_cashback_per_order || 100));
       } else {
         calculated = parseFloat(rules.reward_value);
       }
 
-      // Clamp to max cashback cap
-      const capped = Math.min(calculated, parseFloat(rules.max_cashback_per_order));
-      const finalAmount = Math.min(capped, budgetRemaining);
+      // Clamp to max cashback cap and budget remaining
+      const capped = Math.min(calculated, uptoCap);
+      const finalAmount = Math.max(0, Math.min(capped, budgetRemaining));
 
       return {
         eligible: finalAmount > 0,
         cashbackAmount: Math.round(finalAmount * 100) / 100,
         campaignName: rules.campaign_name,
+        rewardType: rewardMode,
+        uptoAmount: uptoCap,
+        isLuckyWinner,
+        rewardLabel: isLuckyWinner
+          ? `🎉 Jackpot! Won Full ₹${Math.round(finalAmount)} Reward`
+          : `🎁 Won ₹${Math.round(finalAmount)} (from Up to ₹${uptoCap} Offer)`,
         expiryDays: rules.expiry_days,
         maxRedemptionPercentage: parseFloat(rules.max_redemption_percentage || 50.00)
       };
     } catch (err) {
       console.error('WalletService.calculateCashback error:', err);
       return { eligible: false, cashbackAmount: 0, error: err.message };
+    }
+  }
+
+  /**
+   * 1b. AUTOMATED CAMPAIGN AUDIENCE DROP (Zero Manual Admin Work)
+   * Automatically disburses rewards to restaurant customers following the rule:
+   * 1-2 out of 5 customers get the full credit amount (e.g. ₹70),
+   * while the rest receive randomized amounts up to the credit amount.
+   */
+  async autoDistributeCampaign(tenantId, options = {}, adminUser = null) {
+    try {
+      // 1. Get active campaign rules
+      const [rules] = await query(
+        `SELECT * FROM wallet_campaign_rules WHERE tenant_id = ? AND is_active = 1 LIMIT 1`,
+        [tenantId]
+      );
+      if (!rules) {
+        throw new Error('No active rewards campaign found. Please enable and save the campaign first.');
+      }
+
+      let budgetRemaining = parseFloat(rules.campaign_budget) - parseFloat(rules.budget_spent);
+      if (budgetRemaining <= 0) {
+        throw new Error('Campaign budget exhausted. Please increase the campaign budget.');
+      }
+
+      const uptoCap = parseFloat(rules.upto_amount || rules.max_cashback_per_order || 70.00);
+      const minReward = parseFloat(rules.min_reward_amount || 10.00);
+      const luckyRatio = parseFloat(rules.lucky_ratio || 35.00);
+      const targetLimit = parseInt(options.limit || 50);
+
+      const safeLimit = Math.max(1, Math.min(200, parseInt(targetLimit, 10) || 50));
+
+      // 2. Fetch customers for this restaurant
+      const customers = await query(
+        `SELECT DISTINCT u.id as customer_id, u.name as customer_name, u.phone as customer_phone, u.email as customer_email
+         FROM users u
+         LEFT JOIN orders o ON o.customer_phone = u.phone AND o.restaurant_id = ?
+         WHERE (o.restaurant_id = ? OR u.role = 'CUSTOMER') AND u.phone IS NOT NULL AND u.phone != ''
+         ORDER BY u.id DESC LIMIT ${safeLimit}`,
+        [tenantId, tenantId]
+      );
+
+      if (!customers || customers.length === 0) {
+        const anyUsers = await query(
+          `SELECT id as customer_id, name as customer_name, phone as customer_phone, email as customer_email
+           FROM users
+           WHERE phone IS NOT NULL AND phone != '' AND role = 'CUSTOMER'
+           ORDER BY id DESC LIMIT ${safeLimit}`
+        );
+        customers.push(...anyUsers);
+      }
+
+      if (customers.length === 0) {
+        throw new Error('No customers found in system to reward yet. Customers will automatically receive rewards as they register or place orders.');
+      }
+
+      const results = [];
+      let totalDistributed = 0;
+      let luckyCount = 0;
+      let upToCount = 0;
+
+      for (const cust of customers) {
+        if (budgetRemaining < minReward) break;
+
+        // Roll probability: 1-2 in 5 get full amount
+        const isLucky = (Math.random() * 100) < luckyRatio;
+        let amount = 0;
+
+        if (isLucky) {
+          amount = uptoCap;
+        } else {
+          amount = (uptoCap > minReward)
+            ? Math.floor(Math.random() * (uptoCap - minReward)) + minReward
+            : uptoCap;
+        }
+
+        // Clamp to budget remaining
+        amount = Math.min(amount, budgetRemaining);
+        if (amount <= 0) break;
+
+        // Credit to customer wallet atomically
+        const account = await this.getOrCreateAccount(tenantId, cust.customer_id, cust.customer_phone);
+        const desc = isLucky
+          ? `⚡ Auto Campaign Drop: Won Full ₹${amount} (Jackpot Winner)`
+          : `🎁 Auto Campaign Drop: Won ₹${amount} (from Up to ₹${uptoCap} Offer)`;
+
+        const conn = await getConnection();
+        try {
+          await conn.beginTransaction();
+
+          const [lotRes] = await conn.query(
+            `INSERT INTO credit_lots 
+              (wallet_account_id, tenant_id, original_amount, remaining_amount, status, valid_from, expires_at, source_event)
+             VALUES (?, ?, ?, ?, 'AVAILABLE', NOW(), DATE_ADD(NOW(), INTERVAL ? DAY), 'CAMPAIGN_AUTO_DROP')`,
+            [account.id, tenantId, amount, amount, rules.expiry_days || 30]
+          );
+
+          // Double-entry ledger
+          await conn.query(
+            `INSERT INTO ledger_transactions
+              (tenant_id, wallet_account_id, idempotency_key, entry_type, amount, account_category, event_type, reference_id, credit_lot_id, description, actor)
+             VALUES (?, ?, ?, 'CREDIT', ?, 'CUSTOMER_REWARD_BALANCE', 'CAMPAIGN_AUTO_DROP', ?, ?, ?, ?)`,
+            [
+              tenantId,
+              account.id,
+              `AUTO_CAMP_${tenantId}_${account.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              amount,
+              `CAMP-${rules.id}`,
+              lotRes.insertId,
+              desc,
+              adminUser?.email || 'CAMPAIGN_ENGINE'
+            ]
+          );
+
+          // Update cached balance
+          await conn.query(
+            `UPDATE wallet_accounts 
+             SET cached_available_balance = cached_available_balance + ? 
+             WHERE id = ?`,
+            [amount, account.id]
+          );
+
+          await conn.commit();
+        } catch (txnErr) {
+          await conn.rollback();
+          console.error(`[Wallet] Auto-distribute failed for customer ${cust.customer_id}:`, txnErr.message);
+          continue;
+        } finally {
+          conn.release();
+        }
+
+        budgetRemaining -= amount;
+        totalDistributed += amount;
+
+        if (isLucky) luckyCount++;
+        else upToCount++;
+
+        results.push({
+          customerId: cust.customer_id,
+          customerName: cust.customer_name || 'Customer',
+          customerPhone: cust.customer_phone,
+          amount,
+          isLucky
+        });
+      }
+
+      // Update budget_spent on campaign rules
+      if (totalDistributed > 0) {
+        await query(
+          `UPDATE wallet_campaign_rules 
+           SET budget_spent = budget_spent + ? 
+           WHERE id = ?`,
+          [totalDistributed, rules.id]
+        );
+      }
+
+      console.log(`🚀 [Wallet] Auto-distributed ₹${totalDistributed} across ${results.length} customers (${luckyCount} full winners, ${upToCount} up-to winners)`);
+
+      return {
+        success: true,
+        totalRewarded: results.length,
+        luckyCount,
+        upToCount,
+        totalDistributed: Math.round(totalDistributed * 100) / 100,
+        uptoCap,
+        budgetRemaining: Math.round(budgetRemaining * 100) / 100,
+        results
+      };
+    } catch (err) {
+      console.error('WalletService.autoDistributeCampaign error:', err);
+      throw err;
     }
   }
 

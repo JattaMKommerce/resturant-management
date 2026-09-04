@@ -65,6 +65,10 @@ router.post('/checkout/quote', optionalAuth, async (req, res) => {
         cashbackToEarn: cashbackCalculation.cashbackAmount,
         cashbackEligible: cashbackCalculation.eligible,
         campaignName: cashbackCalculation.campaignName,
+        rewardType: cashbackCalculation.rewardType,
+        uptoAmount: cashbackCalculation.uptoAmount,
+        isLuckyWinner: cashbackCalculation.isLuckyWinner,
+        rewardLabel: cashbackCalculation.rewardLabel,
         availableRewards: statement.availableBalance,
         pendingRewards: statement.pendingBalance,
         maxRedeemable: Math.floor(maxRedeemable * 100) / 100,
@@ -147,11 +151,11 @@ router.get('/admin/liability', authenticateToken, authorizeRoles('ADMIN', 'RESTA
 router.get('/admin/campaigns', authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN'), async (req, res) => {
   try {
     const tenantId = req.query.restaurantId || req.user?.restaurant_id || 1;
-    const [campaigns] = await query(
+    const campaigns = await query(
       `SELECT * FROM wallet_campaign_rules WHERE tenant_id = ? ORDER BY id DESC`,
       [tenantId]
     );
-    return res.json({ success: true, data: campaigns });
+    return res.json({ success: true, data: Array.isArray(campaigns) ? campaigns : (campaigns ? [campaigns] : []) });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -168,11 +172,16 @@ router.post('/admin/campaigns', authenticateToken, authorizeRoles('ADMIN', 'REST
       campaignName,
       rewardType,
       rewardValue,
+      uptoAmount,
+      minRewardAmount,
+      luckyRatio,
       maxCashbackPerOrder,
       minOrderAmount,
       maxRedemptionPercentage,
       expiryDays,
       campaignBudget,
+      autoDistributeOnOrder,
+      autoDistributeOnSignup,
       isActive
     } = req.body;
 
@@ -182,18 +191,26 @@ router.post('/admin/campaigns', authenticateToken, authorizeRoles('ADMIN', 'REST
     if (existing) {
       await query(
         `UPDATE wallet_campaign_rules 
-         SET campaign_name = ?, reward_type = ?, reward_value = ?, max_cashback_per_order = ?,
-             min_order_amount = ?, max_redemption_percentage = ?, expiry_days = ?, campaign_budget = ?, is_active = ?
+         SET campaign_name = ?, reward_type = ?, reward_value = ?,
+             upto_amount = ?, min_reward_amount = ?, lucky_ratio = ?,
+             max_cashback_per_order = ?, min_order_amount = ?, max_redemption_percentage = ?,
+             expiry_days = ?, campaign_budget = ?,
+             auto_distribute_on_order = ?, auto_distribute_on_signup = ?, is_active = ?
          WHERE id = ?`,
         [
           campaignName,
-          rewardType,
-          rewardValue,
-          maxCashbackPerOrder,
-          minOrderAmount,
-          maxRedemptionPercentage,
-          expiryDays,
-          campaignBudget,
+          rewardType || 'UPTO_LUCKY',
+          parseFloat(rewardValue) || 10.00,
+          parseFloat(uptoAmount) || 70.00,
+          parseFloat(minRewardAmount) || 10.00,
+          parseFloat(luckyRatio) || 35.00,
+          parseFloat(maxCashbackPerOrder) || 100.00,
+          parseFloat(minOrderAmount) || 250.00,
+          parseFloat(maxRedemptionPercentage) || 50.00,
+          parseInt(expiryDays) || 30,
+          parseFloat(campaignBudget) || 25000.00,
+          autoDistributeOnOrder ? 1 : 0,
+          autoDistributeOnSignup ? 1 : 0,
           isActive ? 1 : 0,
           existing.id
         ]
@@ -201,18 +218,23 @@ router.post('/admin/campaigns', authenticateToken, authorizeRoles('ADMIN', 'REST
     } else {
       await query(
         `INSERT INTO wallet_campaign_rules 
-          (tenant_id, campaign_name, reward_type, reward_value, max_cashback_per_order, min_order_amount, max_redemption_percentage, expiry_days, campaign_budget, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (tenant_id, campaign_name, reward_type, reward_value, upto_amount, min_reward_amount, lucky_ratio, max_cashback_per_order, min_order_amount, max_redemption_percentage, expiry_days, campaign_budget, auto_distribute_on_order, auto_distribute_on_signup, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           tenantId,
           campaignName,
-          rewardType,
-          rewardValue,
-          maxCashbackPerOrder,
-          minOrderAmount,
-          maxRedemptionPercentage,
-          expiryDays,
-          campaignBudget,
+          rewardType || 'UPTO_LUCKY',
+          parseFloat(rewardValue) || 10.00,
+          parseFloat(uptoAmount) || 70.00,
+          parseFloat(minRewardAmount) || 10.00,
+          parseFloat(luckyRatio) || 35.00,
+          parseFloat(maxCashbackPerOrder) || 100.00,
+          parseFloat(minOrderAmount) || 250.00,
+          parseFloat(maxRedemptionPercentage) || 50.00,
+          parseInt(expiryDays) || 30,
+          parseFloat(campaignBudget) || 25000.00,
+          autoDistributeOnOrder ? 1 : 0,
+          autoDistributeOnSignup ? 1 : 0,
           isActive ? 1 : 0
         ]
       );
@@ -222,6 +244,27 @@ router.post('/admin/campaigns', authenticateToken, authorizeRoles('ADMIN', 'REST
   } catch (err) {
     console.error('POST /wallet/admin/campaigns error:', err);
     return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * POST /api/v1/wallet/admin/campaigns/auto-distribute
+ * Automated audience drop: disburses campaign to customers following 1-2 in 5 full amount rule
+ */
+router.post('/admin/campaigns/auto-distribute', authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN'), async (req, res) => {
+  try {
+    const tenantId = req.body.restaurantId || req.user?.restaurant_id || 1;
+    const limit = req.body.limit || 50;
+
+    const result = await walletService.autoDistributeCampaign(tenantId, { limit }, req.user);
+    return res.json({
+      success: true,
+      data: result,
+      message: `🎉 Successfully distributed rewards to ${result.totalRewarded} customers! ${result.luckyCount} won the full ₹${result.uptoCap} jackpot, ${result.upToCount} received up to ₹${result.uptoCap}.`
+    });
+  } catch (err) {
+    console.error('POST /wallet/admin/campaigns/auto-distribute error:', err);
+    return res.status(400).json({ success: false, message: err.message });
   }
 });
 

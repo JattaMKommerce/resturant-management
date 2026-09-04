@@ -87,10 +87,22 @@ export default function KratuRewardsWidget({
 
         {/* Cashback to Earn Preview (Slide 05: Pending until delivery) */}
         {toEarn > 0 && (
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-100/50 border border-emerald-200 text-emerald-900 text-xs font-medium">
-            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-medium">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
             <span>
-              Earn <strong className="font-bold text-emerald-950 font-mono">₹{toEarn.toFixed(0)} cashback</strong> on this order! (Unlocks upon delivery)
+              {quote.rewardLabel ? (
+                <>
+                  <strong className="font-bold text-emerald-950">{quote.rewardLabel}</strong> on this order! (Unlocks upon delivery)
+                </>
+              ) : quote.rewardType === 'UPTO_LUCKY' ? (
+                <>
+                  Win <strong className="font-bold text-emerald-950">Up to ₹{quote.uptoAmount} cashback</strong> on this order! (1–2 in 5 get full ₹{quote.uptoAmount} 🎉, unlocks upon delivery)
+                </>
+              ) : (
+                <>
+                  Earn <strong className="font-bold text-emerald-950 font-mono">₹{toEarn.toFixed(0)} cashback</strong> on this order! (Unlocks upon delivery)
+                </>
+              )}
             </span>
           </div>
         )}

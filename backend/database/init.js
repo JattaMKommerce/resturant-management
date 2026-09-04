@@ -565,6 +565,10 @@ async function initDatabase(options = {}) {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
 
+        try {
+          await conn.query(`ALTER TABLE ledger_transactions MODIFY COLUMN event_type VARCHAR(64) NOT NULL`);
+        } catch (e) {}
+
         await conn.query(`
           CREATE TABLE IF NOT EXISTS wallet_reservations (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -586,20 +590,34 @@ async function initDatabase(options = {}) {
             id INT AUTO_INCREMENT PRIMARY KEY,
             tenant_id INT NOT NULL,
             campaign_name VARCHAR(128) NOT NULL,
-            reward_type ENUM('PERCENTAGE', 'FIXED') DEFAULT 'PERCENTAGE',
+            reward_type VARCHAR(32) DEFAULT 'UPTO_LUCKY',
             reward_value DECIMAL(10, 2) DEFAULT 10.00,
+            upto_amount DECIMAL(10, 2) DEFAULT 70.00,
+            min_reward_amount DECIMAL(10, 2) DEFAULT 10.00,
+            lucky_ratio DECIMAL(5, 2) DEFAULT 35.00,
             max_cashback_per_order DECIMAL(10, 2) DEFAULT 100.00,
-            min_order_amount DECIMAL(10, 2) DEFAULT 300.00,
+            min_order_amount DECIMAL(10, 2) DEFAULT 250.00,
             max_redemption_percentage DECIMAL(5, 2) DEFAULT 50.00,
             expiry_days INT DEFAULT 30,
-            campaign_budget DECIMAL(12, 2) DEFAULT 10000.00,
+            campaign_budget DECIMAL(12, 2) DEFAULT 25000.00,
             budget_spent DECIMAL(12, 2) DEFAULT 0.00,
+            auto_distribute_on_order TINYINT(1) DEFAULT 1,
+            auto_distribute_on_signup TINYINT(1) DEFAULT 1,
             is_active TINYINT(1) DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             INDEX idx_rules_tenant_active (tenant_id, is_active)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
+
+        await addColumnIfNotExists(conn, 'wallet_campaign_rules', 'upto_amount', 'DECIMAL(10, 2) DEFAULT 70.00');
+        await addColumnIfNotExists(conn, 'wallet_campaign_rules', 'min_reward_amount', 'DECIMAL(10, 2) DEFAULT 10.00');
+        await addColumnIfNotExists(conn, 'wallet_campaign_rules', 'lucky_ratio', 'DECIMAL(5, 2) DEFAULT 35.00');
+        await addColumnIfNotExists(conn, 'wallet_campaign_rules', 'auto_distribute_on_order', 'TINYINT(1) DEFAULT 1');
+        await addColumnIfNotExists(conn, 'wallet_campaign_rules', 'auto_distribute_on_signup', 'TINYINT(1) DEFAULT 1');
+        try {
+          await conn.query(`ALTER TABLE wallet_campaign_rules MODIFY COLUMN reward_type VARCHAR(32) DEFAULT 'UPTO_LUCKY'`);
+        } catch (e) {}
 
         // Seed initial default campaign rule for all existing restaurants
         const [restaurants] = await conn.query('SELECT id FROM restaurants');
@@ -608,8 +626,8 @@ async function initDatabase(options = {}) {
           if (existingRules.length === 0) {
             await conn.query(`
               INSERT INTO wallet_campaign_rules 
-              (tenant_id, campaign_name, reward_type, reward_value, max_cashback_per_order, min_order_amount, max_redemption_percentage, expiry_days, campaign_budget, budget_spent, is_active)
-              VALUES (?, 'Kratu Rewards 10% Welcome Cashback', 'PERCENTAGE', 10.00, 100.00, 250.00, 50.00, 30, 25000.00, 0.00, 1)
+              (tenant_id, campaign_name, reward_type, reward_value, upto_amount, min_reward_amount, lucky_ratio, max_cashback_per_order, min_order_amount, max_redemption_percentage, expiry_days, campaign_budget, budget_spent, auto_distribute_on_order, auto_distribute_on_signup, is_active)
+              VALUES (?, 'Kratu Rewards 10% Welcome Cashback', 'UPTO_LUCKY', 10.00, 70.00, 10.00, 35.00, 100.00, 250.00, 50.00, 30, 25000.00, 0.00, 1, 1, 1)
             `, [r.id]);
             console.log(`✅ Seeded default Kratu Rewards campaign for restaurant #${r.id}`);
           }
