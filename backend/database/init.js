@@ -182,6 +182,9 @@ async function initDatabase(options = {}) {
       await addColumnIfNotExists(conn, 'restaurants', 'random_slug', "VARCHAR(20) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
       await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_slug', "VARCHAR(100) DEFAULT NULL");
+      await addColumnIfNotExists(conn, 'restaurants', 'subdomain_changed', "INT NOT NULL DEFAULT 0");
+      await addColumnIfNotExists(conn, 'restaurants', 'subdomain_changes_this_month', "INT NOT NULL DEFAULT 0");
+      await addColumnIfNotExists(conn, 'restaurants', 'subdomain_last_reset_month', "VARCHAR(7) DEFAULT NULL");
 
       // Auto-populate random_slug for any restaurant missing it (5-8 char random mixed case string)
       try {

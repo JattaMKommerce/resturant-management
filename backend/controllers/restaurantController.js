@@ -1,22 +1,36 @@
 const { query } = require('../config/db');
 const { validateRestaurantAccess } = require('../middleware/auth');
 
-// Ensure database column for 1-time subdomain change tracking exists
+// Ensure database columns for subdomain change tracking exist
 (async function ensureSubdomainColumns() {
   try {
     await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changed INT DEFAULT 0`);
   } catch (e) {}
+  try {
+    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changes_this_month INT NOT NULL DEFAULT 0`);
+  } catch (e) {}
+  try {
+    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_last_reset_month VARCHAR(7) DEFAULT NULL`);
+  } catch (e) {}
 })();
 
 function getSubdomainQuota(rest) {
-  const isChanged = rest.subdomain_changed === 1 || rest.subdomain_changed === true || Boolean(rest.custom_subdomain_enabled && rest.custom_subdomain_slug);
-  const maxAllowed = 1;
-  const remaining = isChanged ? 0 : 1;
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const maxAllowed = 3;
+
+  let usedThisMonth = 0;
+  if (rest && rest.subdomain_last_reset_month === currentYearMonth) {
+    usedThisMonth = parseInt(rest.subdomain_changes_this_month, 10) || 0;
+  }
+
+  const remaining = Math.max(0, maxAllowed - usedThisMonth);
 
   return {
-    usedThisMonth: isChanged ? 1 : 0,
+    currentYearMonth,
+    usedThisMonth,
     remaining,
-    maxAllowed: 1
+    maxAllowed
   };
 }
 
@@ -447,6 +461,17 @@ async function updateRestaurantSettings(req, res) {
     if (targetSlug && existingRest) {
       const currentSlug = String(existingRest.custom_subdomain_slug || existingRest.slug || '').toLowerCase();
       if (targetSlug !== currentSlug) {
+        const conflicts = await query(
+          'SELECT id FROM restaurants WHERE (LOWER(slug) = ? OR LOWER(custom_subdomain_slug) = ?) AND id != ? LIMIT 1',
+          [targetSlug, targetSlug, restId]
+        );
+        if (conflicts.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: `Subdomain "${targetSlug}" is already taken by another restaurant. Please choose a different name.`
+          });
+        }
+
         const quota = getSubdomainQuota(existingRest);
         if (quota.remaining <= 0) {
           return res.status(400).json({
@@ -455,7 +480,7 @@ async function updateRestaurantSettings(req, res) {
           });
         }
         const newUsedCount = quota.usedThisMonth + 1;
-        sql += `, slug = ?, custom_subdomain_slug = ?, subdomain_changes_this_month = ?, subdomain_last_reset_month = ?`;
+        sql += `, slug = ?, custom_subdomain_slug = ?, subdomain_changed = 1, subdomain_changes_this_month = ?, subdomain_last_reset_month = ?`;
         params.push(targetSlug, targetSlug, newUsedCount, quota.currentYearMonth);
       }
     }
@@ -633,9 +658,25 @@ async function purchaseCustomSubdomain(req, res) {
     const [rest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
     if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
 
-    const newCustomSlug = (custom_subdomain_slug || rest.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
-    const currentSlug = String(rest.custom_subdomain_slug || rest.slug || '').toLowerCase();
-    const isSlugChanging = newCustomSlug !== currentSlug;
+    const newCustomSlug = (custom_subdomain_slug || rest.custom_subdomain_slug || rest.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!newCustomSlug) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid subdomain name (letters, numbers, hyphens).' });
+    }
+
+    // Check if another restaurant already uses this slug
+    const conflicts = await query(
+      'SELECT id, name FROM restaurants WHERE (LOWER(slug) = ? OR LOWER(custom_subdomain_slug) = ?) AND id != ? LIMIT 1',
+      [newCustomSlug, newCustomSlug, restId]
+    );
+    if (conflicts.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Subdomain "${newCustomSlug}" is already taken by another restaurant. Please choose a different subdomain.`
+      });
+    }
+
+    const currentCustomSlug = String(rest.custom_subdomain_slug || '').toLowerCase();
+    const isSlugChanging = Boolean(rest.custom_subdomain_enabled && currentCustomSlug && currentCustomSlug !== newCustomSlug);
 
     const quota = getSubdomainQuota(rest);
 
@@ -654,12 +695,14 @@ async function purchaseCustomSubdomain(req, res) {
          custom_subdomain_enabled = 1, 
          custom_subdomain_slug = ?, 
          slug = ?,
+         subdomain_changed = 1,
          subdomain_changes_this_month = ?,
          subdomain_last_reset_month = ?
        WHERE id = ?`,
       [newCustomSlug, newCustomSlug, newUsedCount, quota.currentYearMonth, restId]
     );
 
+    const [updatedRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
     const remainingLeft = Math.max(0, 3 - newUsedCount);
 
     res.json({
@@ -669,11 +712,17 @@ async function purchaseCustomSubdomain(req, res) {
       custom_subdomain_slug: newCustomSlug,
       slug: newCustomSlug,
       subdomain_changes_this_month: newUsedCount,
-      subdomain_changes_left: remainingLeft
+      subdomain_changes_left: remainingLeft,
+      restaurant: {
+        ...updatedRest,
+        subdomain_changes_this_month: newUsedCount,
+        subdomain_changes_left: remainingLeft,
+        max_subdomain_changes_per_month: 3
+      }
     });
   } catch (err) {
     console.error('purchaseCustomSubdomain Error:', err);
-    res.status(500).json({ success: false, message: 'Server error processing custom subdomain purchase.' });
+    res.status(500).json({ success: false, message: err.sqlMessage || err.message || 'Server error processing custom subdomain purchase.' });
   }
 }
 
