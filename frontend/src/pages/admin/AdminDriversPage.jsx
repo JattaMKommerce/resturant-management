@@ -37,6 +37,19 @@ export default function AdminDriversPage() {
   // Zoom Document Modal
   const [zoomedImage, setZoomedImage] = useState(null);
 
+  // Close lightbox on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setZoomedImage(null);
+      }
+    };
+    if (zoomedImage) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomedImage]);
+
   useEffect(() => {
     fetchDrivers();
   }, [slug]);
@@ -687,12 +700,27 @@ export default function AdminDriversPage() {
                     {/* Top Identity Hero Card */}
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
                       {driverDetail.selfie_url ? (
-                        <img
-                          src={driverDetail.selfie_url}
-                          alt="Driver"
-                          className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-xs cursor-pointer hover:opacity-90"
-                          onClick={() => setZoomedImage(driverDetail.selfie_url)}
-                        />
+                        <div
+                          className="relative group/avatar cursor-pointer"
+                          onClick={() => setZoomedImage({ url: driverDetail.selfie_url, title: `${driverDetail.full_name || 'Driver'} - Profile Photo (Selfie)` })}
+                          title="Click to preview photo"
+                        >
+                          <img
+                            src={driverDetail.selfie_url}
+                            alt="Driver"
+                            className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-xs"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden w-16 h-16 rounded-2xl bg-slate-200 text-slate-400 items-center justify-center">
+                            <User className="w-8 h-8" />
+                          </div>
+                          <div className="absolute inset-0 bg-slate-900/30 rounded-2xl opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <Eye className="w-4 h-4" />
+                          </div>
+                        </div>
                       ) : (
                         <div className="w-16 h-16 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center">
                           <User className="w-8 h-8" />
@@ -776,66 +804,150 @@ export default function AdminDriversPage() {
 
                       <div className="grid grid-cols-3 gap-3">
                         {/* Selfie / Profile Photo */}
-                        <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/50 flex flex-col justify-between">
-                          <span className="text-[10px] font-bold text-slate-500 block mb-1.5">1. Profile Photo</span>
+                        <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/70 hover:bg-slate-50 transition-all flex flex-col justify-between overflow-hidden shadow-xs hover:shadow-md">
+                          <span className="text-[10px] font-extrabold text-slate-600 block mb-1.5">1. Profile Photo</span>
                           {driverDetail.selfie_url ? (
-                            <img
-                              src={driverDetail.selfie_url}
-                              alt="Selfie"
-                              onClick={() => setZoomedImage(driverDetail.selfie_url)}
-                              className="w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-90 border border-slate-200"
-                            />
+                            <div
+                              onClick={() => setZoomedImage({ url: driverDetail.selfie_url, title: `${driverDetail.full_name || 'Driver'} - Profile Photo (Selfie)` })}
+                              className="relative w-full h-24 rounded-xl overflow-hidden cursor-pointer border border-slate-200 group/img bg-slate-100 flex items-center justify-center"
+                              title="Click to preview full size"
+                            >
+                              <img
+                                src={driverDetail.selfie_url}
+                                alt="Selfie"
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-105"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                              <div className="hidden absolute inset-0 bg-slate-100 flex-col items-center justify-center text-slate-400 text-[10px] font-bold p-1">
+                                <FileText className="w-5 h-5 mb-1 text-slate-400" />
+                                <span>Preview Photo</span>
+                              </div>
+                              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-[11px] font-bold">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Preview</span>
+                              </div>
+                            </div>
                           ) : (
                             <div className="w-full h-24 rounded-xl bg-rose-50 border border-dashed border-rose-200 flex flex-col items-center justify-center p-2 text-rose-600">
                               <AlertTriangle className="w-5 h-5 mb-1" />
                               <span className="text-[9px] font-black uppercase">Missing</span>
                             </div>
                           )}
-                          <span className="text-[9px] text-slate-400 font-semibold block mt-1.5">
-                            {driverDetail.selfie_url ? '✅ Uploaded' : '❌ Not Provided'}
-                          </span>
+                          <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                            <span className="text-[9px] text-slate-500 font-bold">
+                              {driverDetail.selfie_url ? '✅ Uploaded' : '❌ Not Provided'}
+                            </span>
+                            {driverDetail.selfie_url && (
+                              <button
+                                type="button"
+                                onClick={() => setZoomedImage({ url: driverDetail.selfie_url, title: `${driverDetail.full_name || 'Driver'} - Profile Photo (Selfie)` })}
+                                className="text-[10px] text-teal-700 hover:text-teal-900 font-black underline cursor-pointer"
+                              >
+                                Preview
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Driving License */}
-                        <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/50 flex flex-col justify-between">
-                          <span className="text-[10px] font-bold text-slate-500 block mb-1.5">2. Driving License</span>
+                        <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/70 hover:bg-slate-50 transition-all flex flex-col justify-between overflow-hidden shadow-xs hover:shadow-md">
+                          <span className="text-[10px] font-extrabold text-slate-600 block mb-1.5">2. Driving License</span>
                           {driverDetail.license_url ? (
-                            <img
-                              src={driverDetail.license_url}
-                              alt="License"
-                              onClick={() => setZoomedImage(driverDetail.license_url)}
-                              className="w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-90 border border-slate-200"
-                            />
+                            <div
+                              onClick={() => setZoomedImage({ url: driverDetail.license_url, title: `${driverDetail.full_name || 'Driver'} - Driving License` })}
+                              className="relative w-full h-24 rounded-xl overflow-hidden cursor-pointer border border-slate-200 group/img bg-slate-100 flex items-center justify-center"
+                              title="Click to preview full size"
+                            >
+                              <img
+                                src={driverDetail.license_url}
+                                alt="License"
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-105"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                              <div className="hidden absolute inset-0 bg-slate-100 flex-col items-center justify-center text-slate-400 text-[10px] font-bold p-1">
+                                <FileText className="w-5 h-5 mb-1 text-slate-400" />
+                                <span>Preview License</span>
+                              </div>
+                              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-[11px] font-bold">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Preview</span>
+                              </div>
+                            </div>
                           ) : (
                             <div className="w-full h-24 rounded-xl bg-rose-50 border border-dashed border-rose-200 flex flex-col items-center justify-center p-2 text-rose-600">
                               <AlertTriangle className="w-5 h-5 mb-1" />
                               <span className="text-[9px] font-black uppercase">Missing</span>
                             </div>
                           )}
-                          <span className="text-[9px] text-slate-400 font-semibold block mt-1.5">
-                            {driverDetail.license_url ? '✅ Uploaded' : '❌ Not Provided'}
-                          </span>
+                          <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                            <span className="text-[9px] text-slate-500 font-bold">
+                              {driverDetail.license_url ? '✅ Uploaded' : '❌ Not Provided'}
+                            </span>
+                            {driverDetail.license_url && (
+                              <button
+                                type="button"
+                                onClick={() => setZoomedImage({ url: driverDetail.license_url, title: `${driverDetail.full_name || 'Driver'} - Driving License` })}
+                                className="text-[10px] text-teal-700 hover:text-teal-900 font-black underline cursor-pointer"
+                              >
+                                Preview
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Aadhaar Card */}
-                        <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/50 flex flex-col justify-between">
-                          <span className="text-[10px] font-bold text-slate-500 block mb-1.5">3. Aadhaar / ID</span>
+                        <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/70 hover:bg-slate-50 transition-all flex flex-col justify-between overflow-hidden shadow-xs hover:shadow-md">
+                          <span className="text-[10px] font-extrabold text-slate-600 block mb-1.5">3. Aadhaar / ID</span>
                           {driverDetail.aadhaar_url ? (
-                            <img
-                              src={driverDetail.aadhaar_url}
-                              alt="Aadhaar"
-                              onClick={() => setZoomedImage(driverDetail.aadhaar_url)}
-                              className="w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-90 border border-slate-200"
-                            />
+                            <div
+                              onClick={() => setZoomedImage({ url: driverDetail.aadhaar_url, title: `${driverDetail.full_name || 'Driver'} - Aadhaar / Government ID` })}
+                              className="relative w-full h-24 rounded-xl overflow-hidden cursor-pointer border border-slate-200 group/img bg-slate-100 flex items-center justify-center"
+                              title="Click to preview full size"
+                            >
+                              <img
+                                src={driverDetail.aadhaar_url}
+                                alt="Aadhaar"
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover/img:scale-105"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                              <div className="hidden absolute inset-0 bg-slate-100 flex-col items-center justify-center text-slate-400 text-[10px] font-bold p-1">
+                                <FileText className="w-5 h-5 mb-1 text-slate-400" />
+                                <span>Preview Aadhaar</span>
+                              </div>
+                              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-[11px] font-bold">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Preview</span>
+                              </div>
+                            </div>
                           ) : (
                             <div className="w-full h-24 rounded-xl bg-rose-50 border border-dashed border-rose-200 flex flex-col items-center justify-center p-2 text-rose-600">
                               <AlertTriangle className="w-5 h-5 mb-1" />
                               <span className="text-[9px] font-black uppercase">Missing</span>
                             </div>
                           )}
-                          <span className="text-[9px] text-slate-400 font-semibold block mt-1.5">
-                            {driverDetail.aadhaar_url ? '✅ Uploaded' : '❌ Not Provided'}
-                          </span>
+                          <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                            <span className="text-[9px] text-slate-500 font-bold">
+                              {driverDetail.aadhaar_url ? '✅ Uploaded' : '❌ Not Provided'}
+                            </span>
+                            {driverDetail.aadhaar_url && (
+                              <button
+                                type="button"
+                                onClick={() => setZoomedImage({ url: driverDetail.aadhaar_url, title: `${driverDetail.full_name || 'Driver'} - Aadhaar / Government ID` })}
+                                className="text-[10px] text-teal-700 hover:text-teal-900 font-black underline cursor-pointer"
+                              >
+                                Preview
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -904,16 +1016,99 @@ export default function AdminDriversPage() {
         {zoomedImage && (
           <div
             onClick={() => setZoomedImage(null)}
-            className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+            className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 cursor-pointer animate-in fade-in duration-150"
           >
-            <div className="relative max-w-2xl max-h-[85vh] bg-white rounded-2xl overflow-hidden p-2">
-              <img src={zoomedImage} alt="Document Preview" className="max-w-full max-h-[80vh] object-contain rounded-xl" />
-              <button
-                onClick={() => setZoomedImage(null)}
-                className="absolute top-4 right-4 p-1.5 bg-black/60 text-white rounded-full hover:bg-black"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            {/* Top right quick exit button */}
+            <button
+              onClick={() => setZoomedImage(null)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full cursor-pointer transition-all hover:scale-110 z-[110]"
+              title="Close (Esc)"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-2xl w-full bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl p-5 sm:p-6 flex flex-col items-center cursor-default space-y-4 animate-in zoom-in-95 duration-150"
+            >
+              {/* Modal Header */}
+              <div className="w-full flex items-center justify-between pb-3 border-b border-slate-800 text-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-100">
+                      {(typeof zoomedImage === 'object' && zoomedImage?.title) || 'KYC Document Preview'}
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Verified Rider Identification Document
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setZoomedImage(null)}
+                  className="p-2 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-xl cursor-pointer transition-colors"
+                  title="Close (Esc)"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Document Image Container */}
+              <div className="w-full min-h-[300px] max-h-[70vh] flex items-center justify-center bg-slate-950/80 rounded-2xl overflow-hidden p-3 border border-slate-800/80 relative">
+                <img
+                  src={typeof zoomedImage === 'string' ? zoomedImage : zoomedImage?.url}
+                  alt={(typeof zoomedImage === 'object' && zoomedImage?.title) || 'Document Preview'}
+                  className="max-w-full max-h-[65vh] object-contain rounded-xl shadow-lg transition-transform hover:scale-[1.01]"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const fallback = e.target.parentElement.querySelector('.zoom-fallback');
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div className="zoom-fallback hidden flex-col items-center justify-center text-center p-8 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <h5 className="text-sm font-black text-slate-200">Unable to Display Inline Image</h5>
+                  <p className="text-xs text-slate-400 max-w-sm">
+                    The document format may require opening directly or in an external viewer.
+                  </p>
+                  <a
+                    href={typeof zoomedImage === 'string' ? zoomedImage : zoomedImage?.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Open Directly
+                  </a>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="w-full flex items-center justify-between pt-1 border-t border-slate-800/80">
+                <span className="text-[11px] text-slate-400 font-medium hidden sm:inline-block">
+                  Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-300 font-mono">Esc</kbd> or click outside to close
+                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                  <a
+                    href={typeof zoomedImage === 'string' ? zoomedImage : zoomedImage?.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    download="kyc-document.png"
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-teal-400" /> Open / Download
+                  </a>
+                  <button
+                    onClick={() => setZoomedImage(null)}
+                    className="px-5 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-xs font-black rounded-xl transition-colors cursor-pointer shadow-md"
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

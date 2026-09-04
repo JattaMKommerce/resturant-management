@@ -16,7 +16,21 @@ function toDataUrl(data, defaultMime = 'image/jpeg') {
     return `data:${defaultMime};base64,${data}`;
   }
   if (Buffer.isBuffer(data)) {
-    return `data:${defaultMime};base64,${data.toString('base64')}`;
+    const str = data.toString('utf8');
+    if (str.startsWith('data:') || str.startsWith('http') || str.startsWith('/')) {
+      return str;
+    }
+    let mime = defaultMime;
+    if (data.length > 4) {
+      if (data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4E && data[3] === 0x47) {
+        mime = 'image/png';
+      } else if (data[0] === 0xFF && data[1] === 0xD8 && data[2] === 0xFF) {
+        mime = 'image/jpeg';
+      } else if (data[0] === 0x25 && data[1] === 0x50 && data[2] === 0x44 && data[3] === 0x46) {
+        mime = 'application/pdf';
+      }
+    }
+    return `data:${mime};base64,${data.toString('base64')}`;
   }
   return null;
 }
