@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { 
-  Plus, Bike, Edit2, Phone, Mail, ShieldCheck, X, AlertTriangle, 
+import {
+  Plus, Bike, Edit2, Phone, Mail, ShieldCheck, X, AlertTriangle,
   CheckCircle2, Clock, Package, Eye, ChevronRight, RefreshCw,
   Search, ShieldAlert, Award, Calendar, DollarSign, MapPin, User,
   FileText, ExternalLink
@@ -32,6 +32,7 @@ export default function AdminDriversPage() {
   const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [driverDetail, setDriverDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState('');
 
   // Zoom Document Modal
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -56,14 +57,24 @@ export default function AdminDriversPage() {
 
   const openDriverDetail = async (id) => {
     setSelectedDriverId(id);
+    setDetailError('');
+    // Instant optimistic preview from current list
+    const existing = drivers.find(d => d.id === id);
+    if (existing) {
+      setDriverDetail(existing);
+    }
     setLoadingDetail(true);
     try {
       const res = await api.get(`/admin/drivers/${id}`);
-      if (res.data.success) {
+      if (res.data.success && res.data.driver) {
         setDriverDetail(res.data.driver);
+      } else {
+        setDetailError(res.data?.message || 'Could not load full driver profile.');
       }
     } catch (err) {
       console.error('Error loading driver details:', err);
+      const msg = err.response?.data?.message || 'Failed to load driver details. Please try again.';
+      setDetailError(msg);
     } finally {
       setLoadingDetail(false);
     }
@@ -72,6 +83,7 @@ export default function AdminDriversPage() {
   const closeDriverDetail = () => {
     setSelectedDriverId(null);
     setDriverDetail(null);
+    setDetailError('');
   };
 
   const handleSubmit = async (e) => {
@@ -128,7 +140,7 @@ export default function AdminDriversPage() {
 
   // Filtered drivers list
   const filteredDrivers = drivers.filter(drv => {
-    const matchesSearch = 
+    const matchesSearch =
       (drv.full_name || drv.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (drv.mobile || drv.phone || '').includes(search) ||
       (drv.vehicle_number || '').toLowerCase().includes(search.toLowerCase());
@@ -145,7 +157,7 @@ export default function AdminDriversPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 pb-12">
-        
+
         {/* Top Header & Add Rider Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs">
           <div>
@@ -218,18 +230,16 @@ export default function AdminDriversPage() {
           </div>
 
           {/* Highlighted Missing KYC Card */}
-          <div 
+          <div
             onClick={() => setStatusFilter(statusFilter === 'KYC_PENDING' ? 'ALL' : 'KYC_PENDING')}
-            className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer ${
-              kycPendingCount > 0 
-                ? 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/70 shadow-xs' 
+            className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer ${kycPendingCount > 0
+                ? 'bg-rose-50/80 border-rose-200 hover:bg-rose-100/70 shadow-xs'
                 : 'bg-white border-slate-200/80'
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between">
-              <span className={`text-[11px] font-bold uppercase tracking-wider block ${
-                kycPendingCount > 0 ? 'text-rose-700 font-black' : 'text-slate-400'
-              }`}>
+              <span className={`text-[11px] font-bold uppercase tracking-wider block ${kycPendingCount > 0 ? 'text-rose-700 font-black' : 'text-slate-400'
+                }`}>
                 Docs Pending
               </span>
               {kycPendingCount > 0 && (
@@ -274,11 +284,10 @@ export default function AdminDriversPage() {
               <button
                 key={f.key}
                 onClick={() => setStatusFilter(f.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                  statusFilter === f.key
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${statusFilter === f.key
                     ? 'bg-[#3A7D7C] text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 {f.label}
               </button>
@@ -309,13 +318,12 @@ export default function AdminDriversPage() {
             {filteredDrivers.map((drv) => {
               const hasMissingDocs = drv.kyc_status !== 'VERIFIED';
               return (
-                <div 
-                  key={drv.id} 
-                  className={`w-full bg-white rounded-2xl md:rounded-3xl p-4 sm:p-5 border transition-all hover:shadow-md ${
-                    hasMissingDocs 
-                      ? 'border-amber-200/90 shadow-xs' 
+                <div
+                  key={drv.id}
+                  className={`w-full bg-white rounded-2xl md:rounded-3xl p-4 sm:p-5 border transition-all hover:shadow-md ${hasMissingDocs
+                      ? 'border-amber-200/90 shadow-xs'
                       : 'border-slate-200/80 shadow-xs'
-                  }`}
+                    }`}
                 >
                   {/* LINE 1: Profile Avatar + Name + Contact + Vehicle Plate + Live Status + Details Button */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -323,9 +331,9 @@ export default function AdminDriversPage() {
                       {/* Avatar with status indicator */}
                       <div className="relative shrink-0">
                         {drv.selfie_url ? (
-                          <img 
-                            src={drv.selfie_url} 
-                            alt={drv.full_name || drv.name} 
+                          <img
+                            src={drv.selfie_url}
+                            alt={drv.full_name || drv.name}
                             className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
                           />
                         ) : (
@@ -333,10 +341,9 @@ export default function AdminDriversPage() {
                             <User className="w-6 h-6" />
                           </div>
                         )}
-                        <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                          drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
-                          drv.availability_status === 'BUSY' ? 'bg-amber-500' : 'bg-slate-400'
-                        }`} />
+                        <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
+                            drv.availability_status === 'BUSY' ? 'bg-amber-500' : 'bg-slate-400'
+                          }`} />
                       </div>
 
                       {/* Name + Phone + Email */}
@@ -351,9 +358,9 @@ export default function AdminDriversPage() {
                             {drv.vehicle_type || 'Bike'} • {drv.vehicle_number || 'No Plate'}
                           </span>
                         </div>
-                        
+
                         <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold mt-1 flex-wrap">
-                          <a 
+                          <a
                             href={`tel:${drv.mobile || drv.phone}`}
                             className="hover:text-[#3A7D7C] flex items-center gap-1 transition-colors"
                           >
@@ -372,19 +379,17 @@ export default function AdminDriversPage() {
 
                     {/* Right side: Live Availability Pill + View Details CTA */}
                     <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
-                      <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shrink-0 flex items-center gap-1.5 ${
-                        drv.availability_status === 'AVAILABLE'
+                      <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shrink-0 flex items-center gap-1.5 ${drv.availability_status === 'AVAILABLE'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : drv.availability_status === 'BUSY'
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${
-                          drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
-                          drv.availability_status === 'BUSY' ? 'bg-amber-500 animate-ping' : 'bg-slate-400'
-                        }`} />
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>
+                        <span className={`w-2 h-2 rounded-full ${drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
+                            drv.availability_status === 'BUSY' ? 'bg-amber-500 animate-ping' : 'bg-slate-400'
+                          }`} />
                         {drv.availability_status === 'AVAILABLE' ? 'Available' :
-                         drv.availability_status === 'BUSY' ? 'Delivering Order' : 'Offline'}
+                          drv.availability_status === 'BUSY' ? 'Delivering Order' : 'Offline'}
                       </span>
 
                       <button
@@ -427,7 +432,7 @@ export default function AdminDriversPage() {
                           </div>
                           <div className="text-xs">
                             <span className="font-black text-emerald-900">All KYC Documents Verified</span>
-                            <span className="text-emerald-700 font-medium ml-2">— Profile Photo, Driving License & Aadhaar Card on file</span>
+                            <span className="text-emerald-700 font-medium ml-2"> Profile Photo, Driving License & Aadhaar Card on file</span>
                           </div>
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full shrink-0 border border-emerald-200">
@@ -499,8 +504,8 @@ export default function AdminDriversPage() {
                     <p className="text-[11px] text-slate-400 font-medium">Create login credentials for in-house driver</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowModal(false)} 
+                <button
+                  onClick={() => setShowModal(false)}
                   className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
@@ -620,7 +625,7 @@ export default function AdminDriversPage() {
         {selectedDriverId && (
           <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
             <div className="bg-white w-full max-w-xl h-full shadow-2xl border-l border-slate-200 flex flex-col justify-between overflow-hidden animate-in slide-in-from-right duration-200">
-              
+
               {/* Drawer Top Bar */}
               <div className="p-5 border-b border-slate-200/80 flex items-center justify-between bg-slate-50">
                 <div className="flex items-center gap-3">
@@ -646,19 +651,45 @@ export default function AdminDriversPage() {
 
               {/* Drawer Body Scroll Area */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {loadingDetail || !driverDetail ? (
+                {loadingDetail && !driverDetail ? (
                   <div className="py-20 text-center">
                     <RefreshCw className="w-8 h-8 text-[#3A7D7C] animate-spin mx-auto mb-2" />
                     <p className="text-xs font-bold text-slate-500">Loading driver details...</p>
                   </div>
-                ) : (
+                ) : detailError && !driverDetail ? (
+                  <div className="py-20 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <h4 className="font-black text-slate-800 text-sm">Unable to Load Driver Details</h4>
+                    <p className="text-xs text-rose-600 font-semibold max-w-xs mx-auto">{detailError}</p>
+                    <button 
+                      onClick={() => openDriverDetail(selectedDriverId)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : driverDetail ? (
                   <>
+                    {loadingDetail && (
+                      <div className="text-[11px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                        <RefreshCw className="w-3 h-3 animate-spin text-teal-600" />
+                        Fetching latest delivery records & KYC documents...
+                      </div>
+                    )}
+                    {detailError && (
+                      <div className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        {detailError}
+                      </div>
+                    )}
                     {/* Top Identity Hero Card */}
                     <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
                       {driverDetail.selfie_url ? (
-                        <img 
-                          src={driverDetail.selfie_url} 
-                          alt="Driver" 
+                        <img
+                          src={driverDetail.selfie_url}
+                          alt="Driver"
                           className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-xs cursor-pointer hover:opacity-90"
                           onClick={() => setZoomedImage(driverDetail.selfie_url)}
                         />
@@ -667,17 +698,16 @@ export default function AdminDriversPage() {
                           <User className="w-8 h-8" />
                         </div>
                       )}
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h4 className="font-black text-base text-slate-900 truncate">
                             {driverDetail.full_name || driverDetail.name}
                           </h4>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            driverDetail.account_status === 'ACTIVE'
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${driverDetail.account_status === 'ACTIVE'
                               ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-rose-100 text-rose-800'
-                          }`}>
+                            }`}>
                             {driverDetail.account_status}
                           </span>
                         </div>
@@ -736,11 +766,10 @@ export default function AdminDriversPage() {
                         <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                           KYC Documents & Verification
                         </h4>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          driverDetail.kyc_status === 'VERIFIED'
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${driverDetail.kyc_status === 'VERIFIED'
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-rose-100 text-rose-800'
-                        }`}>
+                          }`}>
                           {driverDetail.kyc_status === 'VERIFIED' ? 'Verified' : 'Incomplete'}
                         </span>
                       </div>
@@ -750,9 +779,9 @@ export default function AdminDriversPage() {
                         <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/50 flex flex-col justify-between">
                           <span className="text-[10px] font-bold text-slate-500 block mb-1.5">1. Profile Photo</span>
                           {driverDetail.selfie_url ? (
-                            <img 
-                              src={driverDetail.selfie_url} 
-                              alt="Selfie" 
+                            <img
+                              src={driverDetail.selfie_url}
+                              alt="Selfie"
                               onClick={() => setZoomedImage(driverDetail.selfie_url)}
                               className="w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-90 border border-slate-200"
                             />
@@ -771,9 +800,9 @@ export default function AdminDriversPage() {
                         <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/50 flex flex-col justify-between">
                           <span className="text-[10px] font-bold text-slate-500 block mb-1.5">2. Driving License</span>
                           {driverDetail.license_url ? (
-                            <img 
-                              src={driverDetail.license_url} 
-                              alt="License" 
+                            <img
+                              src={driverDetail.license_url}
+                              alt="License"
                               onClick={() => setZoomedImage(driverDetail.license_url)}
                               className="w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-90 border border-slate-200"
                             />
@@ -792,9 +821,9 @@ export default function AdminDriversPage() {
                         <div className="border border-slate-200 rounded-2xl p-2.5 text-center bg-slate-50/50 flex flex-col justify-between">
                           <span className="text-[10px] font-bold text-slate-500 block mb-1.5">3. Aadhaar / ID</span>
                           {driverDetail.aadhaar_url ? (
-                            <img 
-                              src={driverDetail.aadhaar_url} 
-                              alt="Aadhaar" 
+                            <img
+                              src={driverDetail.aadhaar_url}
+                              alt="Aadhaar"
                               onClick={() => setZoomedImage(driverDetail.aadhaar_url)}
                               className="w-full h-24 object-cover rounded-xl cursor-pointer hover:opacity-90 border border-slate-200"
                             />
@@ -842,7 +871,7 @@ export default function AdminDriversPage() {
                       )}
                     </div>
                   </>
-                )}
+                ) : null}
               </div>
 
               {/* Drawer Footer Actions */}
@@ -850,11 +879,10 @@ export default function AdminDriversPage() {
                 <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
                   <button
                     onClick={() => toggleDriverStatus(driverDetail.id, driverDetail.account_status)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      driverDetail.account_status === 'ACTIVE'
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${driverDetail.account_status === 'ACTIVE'
                         ? 'bg-rose-100 hover:bg-rose-200 text-rose-700'
                         : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
-                    }`}
+                      }`}
                   >
                     {driverDetail.account_status === 'ACTIVE' ? 'Suspend Account' : 'Activate Account'}
                   </button>
@@ -874,7 +902,7 @@ export default function AdminDriversPage() {
 
         {/* Zoom Image Lightbox Modal */}
         {zoomedImage && (
-          <div 
+          <div
             onClick={() => setZoomedImage(null)}
             className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
           >

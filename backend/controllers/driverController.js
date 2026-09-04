@@ -798,7 +798,7 @@ async function markDeliveryFailed(req, res) {
 async function getAdminDrivers(req, res) {
   try {
     const { availability, accountStatus, search, restaurant_id } = req.query;
-    const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 7;
+    const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 1;
 
     let sql = `
       SELECT DISTINCT
@@ -937,7 +937,7 @@ async function createAdminDriver(req, res) {
       ? email.trim().toLowerCase() 
       : `${phone.trim().replace(/\D/g, '')}@hotel.com`;
 
-    const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 7;
+    const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 1;
 
     // Check existing user
     const existingUsers = await query(
@@ -1060,8 +1060,32 @@ async function getAdminDriverById(req, res) {
     const driver = drivers[0];
 
     // Enforce restaurant access check if not super admin
-    if (!req.isSuperAdmin && driver.restaurant_id) {
-      if (!validateRestaurantAccess(driver.restaurant_id, req)) {
+    if (!req.isSuperAdmin) {
+      const authorizedIds = req.adminRestaurantIds || (req.adminRestaurantId ? [req.adminRestaurantId] : []);
+      let hasAccess = false;
+
+      // 1. Direct restaurant_id match
+      if (driver.restaurant_id && validateRestaurantAccess(driver.restaurant_id, req)) {
+        hasAccess = true;
+      }
+
+      // 2. Check driver_restaurant_assignments match
+      if (!hasAccess && authorizedIds.length > 0) {
+        const matchingAssignments = await query(
+          'SELECT restaurant_id FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id IN (?)',
+          [driver.id, authorizedIds]
+        );
+        if (matchingAssignments && matchingAssignments.length > 0) {
+          hasAccess = true;
+          const matchedRestId = matchingAssignments[0].restaurant_id;
+          try {
+            await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [matchedRestId, driver.id]);
+            driver.restaurant_id = matchedRestId;
+          } catch (e) {}
+        }
+      }
+
+      if (!hasAccess) {
         return res.status(403).json({ success: false, message: 'Access denied to this driver profile.' });
       }
     }
