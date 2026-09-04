@@ -305,136 +305,179 @@ export default function AdminDriversPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="space-y-3.5">
             {filteredDrivers.map((drv) => {
               const hasMissingDocs = drv.kyc_status !== 'VERIFIED';
               return (
                 <div 
                   key={drv.id} 
-                  className={`bg-white rounded-3xl p-5 border transition-all flex flex-col justify-between space-y-4 hover:shadow-lg ${
+                  className={`w-full bg-white rounded-2xl md:rounded-3xl p-4 sm:p-5 border transition-all hover:shadow-md ${
                     hasMissingDocs 
                       ? 'border-amber-200/90 shadow-xs' 
                       : 'border-slate-200/80 shadow-xs'
                   }`}
                 >
-                  <div>
-                    {/* Header Row: Photo + Name + Status Pill */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="relative shrink-0">
-                          {drv.selfie_url ? (
-                            <img 
-                              src={drv.selfie_url} 
-                              alt={drv.full_name} 
-                              className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold">
-                              <User className="w-6 h-6" />
-                            </div>
-                          )}
-                          {/* Live indicator dot */}
-                          <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                            drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
-                            drv.availability_status === 'BUSY' ? 'bg-amber-500' : 'bg-slate-400'
-                          }`} />
-                        </div>
-
-                        <div className="min-w-0">
-                          <h3 className="font-black text-sm text-slate-900 truncate flex items-center gap-1.5">
-                            {drv.full_name || drv.name}
-                          </h3>
-                          <a 
-                            href={`tel:${drv.mobile || drv.phone}`}
-                            className="text-xs text-slate-500 hover:text-[#3A7D7C] font-semibold flex items-center gap-1 mt-0.5"
-                          >
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            {drv.mobile || drv.phone || 'No phone'}
-                          </a>
-                        </div>
+                  {/* LINE 1: Profile Avatar + Name + Contact + Vehicle Plate + Live Status + Details Button */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Avatar with status indicator */}
+                      <div className="relative shrink-0">
+                        {drv.selfie_url ? (
+                          <img 
+                            src={drv.selfie_url} 
+                            alt={drv.full_name || drv.name} 
+                            className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold">
+                            <User className="w-6 h-6" />
+                          </div>
+                        )}
+                        <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                          drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
+                          drv.availability_status === 'BUSY' ? 'bg-amber-500' : 'bg-slate-400'
+                        }`} />
                       </div>
 
-                      {/* Availability badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                      {/* Name + Phone + Email */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-black text-base text-slate-900 truncate">
+                            {drv.full_name || drv.name}
+                          </h3>
+                          {/* Vehicle Pill */}
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 rounded-lg text-xs font-bold text-slate-700">
+                            <Bike className="w-3.5 h-3.5 text-slate-500" />
+                            {drv.vehicle_type || 'Bike'} • {drv.vehicle_number || 'No Plate'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold mt-1 flex-wrap">
+                          <a 
+                            href={`tel:${drv.mobile || drv.phone}`}
+                            className="hover:text-[#3A7D7C] flex items-center gap-1 transition-colors"
+                          >
+                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            {drv.mobile || drv.phone || 'No phone'}
+                          </a>
+                          {drv.email && (
+                            <span className="hidden sm:inline-flex items-center gap-1 text-slate-400 font-normal">
+                              <Mail className="w-3.5 h-3.5" />
+                              {drv.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right side: Live Availability Pill + View Details CTA */}
+                    <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
+                      <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shrink-0 flex items-center gap-1.5 ${
                         drv.availability_status === 'AVAILABLE'
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : drv.availability_status === 'BUSY'
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200 animate-pulse'
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
                           : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}>
+                        <span className={`w-2 h-2 rounded-full ${
+                          drv.availability_status === 'AVAILABLE' ? 'bg-emerald-500' :
+                          drv.availability_status === 'BUSY' ? 'bg-amber-500 animate-ping' : 'bg-slate-400'
+                        }`} />
                         {drv.availability_status === 'AVAILABLE' ? 'Available' :
-                         drv.availability_status === 'BUSY' ? 'Delivering' : 'Offline'}
+                         drv.availability_status === 'BUSY' ? 'Delivering Order' : 'Offline'}
                       </span>
-                    </div>
 
-                    {/* Vehicle & Plate Specs */}
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/70 space-y-1.5 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 font-medium">Vehicle & Plate:</span>
-                        <span className="font-extrabold text-slate-900 flex items-center gap-1">
-                          <Bike className="w-3.5 h-3.5 text-slate-400" />
-                          {drv.vehicle_type || 'Bike'} • {drv.vehicle_number || 'N/A'}
-                        </span>
-                      </div>
-                      
-                      {/* Active delivery if any */}
-                      {drv.active_order && (
-                        <div className="pt-1.5 mt-1 border-t border-slate-200/60 flex items-center justify-between text-amber-700 font-bold text-[11px]">
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                            Order #{drv.active_order.order_number || drv.active_order.id}
-                          </span>
-                          <span className="text-[10px] uppercase font-black tracking-wider bg-amber-100 px-2 py-0.5 rounded-full">
-                            {drv.active_order.order_status?.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* KYC Document Status Card (Highlighted if missing) */}
-                    <div className="mt-3">
-                      {hasMissingDocs ? (
-                        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                          <div className="min-w-0">
-                            <span className="text-[11px] font-black text-rose-800 block">
-                              Documents Incomplete
-                            </span>
-                            <span className="text-[10px] font-semibold text-rose-600 leading-tight block mt-0.5">
-                              Missing: {drv.missing_documents?.join(', ') || 'Photo & ID'}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="text-[11px] font-black text-emerald-800">
-                            All KYC Documents Verified
-                          </span>
-                        </div>
-                      )}
+                      <button
+                        onClick={() => openDriverDetail(drv.id)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-[#3A7D7C] hover:text-[#2C6261] bg-[#3A7D7C]/10 hover:bg-[#3A7D7C]/20 border border-[#3A7D7C]/20 px-3.5 py-1.5 rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>Details & KYC</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Footer Stats & Drawer Trigger */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="text-center px-2 py-1 bg-slate-100 rounded-lg">
-                        <span className="text-[9px] text-slate-500 font-bold block uppercase">Today</span>
-                        <span className="text-xs font-black text-slate-900">{drv.today_delivered_count || 0}</span>
+                  {/* LINE 2: Dedicated KYC Status & Documents Banner */}
+                  <div className="my-2.5">
+                    {hasMissingDocs ? (
+                      <div className="p-3 rounded-2xl bg-rose-50/80 border border-rose-200/90 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                            <AlertTriangle className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-black text-rose-800 mr-2">KYC Documents Incomplete:</span>
+                            <span className="text-xs font-bold text-rose-600">
+                              Missing {drv.missing_documents?.join(', ') || 'Profile Photo & Identification Proof'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 bg-rose-100/90 px-2.5 py-1 rounded-full border border-rose-200">
+                            Upload Required
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-center px-2 py-1 bg-teal-50 rounded-lg border border-teal-100">
-                        <span className="text-[9px] text-teal-600 font-bold block uppercase">All-Time</span>
-                        <span className="text-xs font-black text-teal-800">{drv.delivered_orders_count || 0}</span>
+                    ) : (
+                      <div className="p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <div className="text-xs">
+                            <span className="font-black text-emerald-900">All KYC Documents Verified</span>
+                            <span className="text-emerald-700 font-medium ml-2">— Profile Photo, Driving License & Aadhaar Card on file</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full shrink-0 border border-emerald-200">
+                          Verified Rider
+                        </span>
                       </div>
+                    )}
+                  </div>
+
+                  {/* LINE 3: Operational Status, Active Order & Delivery Counters */}
+                  <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    {/* Active order badge or Idle note */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {drv.active_order ? (
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-xl font-bold text-amber-900">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                          <span>Active Delivery: Order #{drv.active_order.order_number || drv.active_order.id}</span>
+                          <span className="text-[10px] uppercase font-black tracking-wider bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-full">
+                            {drv.active_order.order_status?.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 font-medium flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          No active delivery right now
+                        </span>
+                      )}
+
+                      {drv.license_number && (
+                        <span className="hidden lg:inline-flex items-center gap-1 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60 font-mono text-[11px]">
+                          <FileText className="w-3.5 h-3.5 text-slate-400" />
+                          DL: {drv.license_number}
+                        </span>
+                      )}
                     </div>
 
-                    <button
-                      onClick={() => openDriverDetail(drv.id)}
-                      className="flex items-center gap-1 text-xs font-bold text-[#3A7D7C] hover:text-[#2C6261] bg-[#3A7D7C]/10 hover:bg-[#3A7D7C]/15 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" /> Details
-                    </button>
+                    {/* Delivery Performance Stats */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 rounded-xl border border-slate-200/70 text-slate-600">
+                        <Package className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-[11px] font-semibold">Today:</span>
+                        <span className="font-black text-slate-900">{drv.today_delivered_count || 0}</span>
+                      </div>
+
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50/80 rounded-xl border border-teal-200/70 text-teal-800">
+                        <Award className="w-3.5 h-3.5 text-teal-600" />
+                        <span className="text-[11px] font-semibold">Total Delivered:</span>
+                        <span className="font-black text-teal-900">{drv.delivered_orders_count || 0}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
