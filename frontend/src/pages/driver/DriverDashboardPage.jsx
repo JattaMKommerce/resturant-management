@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Bike, Power, MapPin, Phone, CheckCircle2, Navigation, AlertTriangle,
   Package, Clock, RefreshCw, LogOut, Shield, DollarSign, User, ListOrdered,
-  Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle
+  Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle,
+  ShieldCheck, FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
