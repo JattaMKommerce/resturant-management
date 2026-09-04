@@ -232,6 +232,7 @@ router.delete('/notifications/:id', authenticateToken, notificationController.de
 
 // Custom Subdomain & ₹99/mo Add-On Governance
 router.post('/admin/restaurant/purchase-custom-subdomain', ...adminAuth, restaurantController.purchaseCustomSubdomain);
+router.post('/admin/restaurant/reset-subdomain-quota', ...adminAuth, restaurantController.resetSubdomainQuota);
 router.post('/admin/superadmin/restaurant/:id/toggle-custom-subdomain', authenticateToken, authorizeRoles('SUPER_ADMIN'), superAdminController.toggleCustomSubdomain);
 
 // Website Room Reservation Leads & Accommodation Management

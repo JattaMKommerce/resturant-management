@@ -17,7 +17,9 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 function getSubdomainQuota(rest) {
   const now = new Date();
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const maxAllowed = 3;
+  // For development and testing purposes, allow flexible/unlimited updates so testing is never blocked
+  const isDevOrTest = process.env.NODE_ENV !== 'production' || !process.env.NODE_ENV;
+  const maxAllowed = isDevOrTest ? 999 : 3;
 
   let usedThisMonth = 0;
   if (rest && rest.subdomain_last_reset_month === currentYearMonth) {
@@ -29,8 +31,9 @@ function getSubdomainQuota(rest) {
   return {
     currentYearMonth,
     usedThisMonth,
-    remaining,
-    maxAllowed
+    remaining: isDevOrTest ? 999 : remaining,
+    maxAllowed,
+    isDevOrTest
   };
 }
 
@@ -473,7 +476,7 @@ async function updateRestaurantSettings(req, res) {
         }
 
         const quota = getSubdomainQuota(existingRest);
-        if (quota.remaining <= 0) {
+        if (quota.remaining <= 0 && !quota.isDevOrTest) {
           return res.status(400).json({
             success: false,
             message: 'You have reached your limit of 3 subdomain name changes for this month. You can change your subdomain name again next month.'
@@ -680,7 +683,7 @@ async function purchaseCustomSubdomain(req, res) {
 
     const quota = getSubdomainQuota(rest);
 
-    if (isSlugChanging && quota.remaining <= 0) {
+    if (isSlugChanging && quota.remaining <= 0 && !quota.isDevOrTest) {
       return res.status(400).json({
         success: false,
         message: 'You have reached your limit of 3 subdomain name changes for this month. You can change your subdomain name again next month.'
@@ -703,11 +706,11 @@ async function purchaseCustomSubdomain(req, res) {
     );
 
     const [updatedRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
-    const remainingLeft = Math.max(0, 3 - newUsedCount);
+    const remainingLeft = quota.isDevOrTest ? 999 : Math.max(0, 3 - newUsedCount);
 
     res.json({
       success: true,
-      message: `🎉 ₹99/mo Custom Subdomain active! (${remainingLeft} name changes remaining this month)`,
+      message: `🎉 ₹99/mo Custom Subdomain active! ${quota.isDevOrTest ? '(Testing Mode: Unlimited updates)' : `(${remainingLeft} name changes remaining this month)`}`,
       custom_subdomain_enabled: 1,
       custom_subdomain_slug: newCustomSlug,
       slug: newCustomSlug,
@@ -717,12 +720,37 @@ async function purchaseCustomSubdomain(req, res) {
         ...updatedRest,
         subdomain_changes_this_month: newUsedCount,
         subdomain_changes_left: remainingLeft,
-        max_subdomain_changes_per_month: 3
+        max_subdomain_changes_per_month: quota.isDevOrTest ? 999 : 3
       }
     });
   } catch (err) {
     console.error('purchaseCustomSubdomain Error:', err);
     res.status(500).json({ success: false, message: err.sqlMessage || err.message || 'Server error processing custom subdomain purchase.' });
+  }
+}
+
+async function resetSubdomainQuota(req, res) {
+  try {
+    const restId = req.body.restaurant_id || req.adminRestaurantId;
+    if (!restId) return res.status(400).json({ success: false, message: 'Restaurant ID required.' });
+
+    const now = new Date();
+    const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    await query(
+      'UPDATE restaurants SET subdomain_changes_this_month = 0, subdomain_last_reset_month = ? WHERE id = ?',
+      [currentYearMonth, restId]
+    );
+
+    const [updatedRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
+    res.json({
+      success: true,
+      message: 'Subdomain changes counter reset to 0 for testing.',
+      restaurant: updatedRest
+    });
+  } catch (err) {
+    console.error('resetSubdomainQuota Error:', err);
+    res.status(500).json({ success: false, message: 'Server error resetting quota.' });
   }
 }
 
@@ -738,5 +766,6 @@ module.exports = {
   publishWebsite,
   unpublishWebsite,
   toggleOnlineOrdering,
-  purchaseCustomSubdomain
+  purchaseCustomSubdomain,
+  resetSubdomainQuota
 };
