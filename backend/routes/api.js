@@ -81,6 +81,7 @@ const driverAuth = [authenticateToken, authorizeRoles('DRIVER', 'ADMIN', 'SUPER_
 router.post('/driver/login', driverController.driverLogin);
 router.get('/driver/profile', ...driverAuth, driverController.getDriverProfile);
 router.put('/driver/profile', ...driverAuth, driverController.updateDriverProfile);
+router.put('/driver/profile/documents', ...driverAuth, driverController.uploadDriverDocuments);
 router.post('/driver/go-online', ...driverAuth, driverController.goOnline);
 router.post('/driver/go-offline', ...driverAuth, driverController.goOffline);
 router.post('/driver/location', ...driverAuth, driverController.updateDriverLocation);
@@ -129,6 +130,13 @@ router.patch('/superadmin/admins/:userId/status', ...superAuth, superAdminContro
 router.get('/superadmin/drivers', ...superAuth, superAdminController.getAllDrivers);
 router.patch('/superadmin/drivers/:driverId/status', ...superAuth, superAdminController.updateDriverStatus);
 router.get('/superadmin/orders', ...superAuth, superAdminController.getAllPlatformOrders);
+
+// Restaurant Feature Controls & Modular Provisioning
+router.get('/superadmin/restaurants-with-features', ...superAuth, superAdminController.getAllRestaurantsWithFeatures);
+router.get('/superadmin/restaurants/:id/features', ...superAuth, superAdminController.getRestaurantFeatures);
+router.patch('/superadmin/restaurants/:id/features', ...superAuth, superAdminController.updateRestaurantFeatures);
+router.put('/superadmin/restaurants/:id/features', ...superAuth, superAdminController.updateRestaurantFeatures);
+router.post('/superadmin/restaurants/:id/features/preset', ...superAuth, superAdminController.bulkSetRestaurantFeatures);
 
 // ═══════════════════════════════════════════════
 // 9. RESTAURANT ADMIN ROUTES (With Tenant Isolation & SaaS Subscription Enforcement)
@@ -231,6 +239,7 @@ router.delete('/notifications/:id', authenticateToken, notificationController.de
 
 // Custom Subdomain & ₹99/mo Add-On Governance
 router.post('/admin/restaurant/purchase-custom-subdomain', ...adminAuth, restaurantController.purchaseCustomSubdomain);
+router.post('/admin/restaurant/reset-subdomain-quota', ...adminAuth, restaurantController.resetSubdomainQuota);
 router.post('/admin/superadmin/restaurant/:id/toggle-custom-subdomain', authenticateToken, authorizeRoles('SUPER_ADMIN'), superAdminController.toggleCustomSubdomain);
 
 // Website Room Reservation Leads & Accommodation Management

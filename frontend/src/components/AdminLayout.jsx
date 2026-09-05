@@ -12,7 +12,7 @@ import { useSocket } from '../context/SocketContext';
 
 export default function AdminLayout({ children }) {
   const { user, restaurant, updateRestaurant } = useAuth();
-  const { joinRoom, leaveRoom } = useSocket();
+  const { socket, joinRoom, leaveRoom } = useSocket();
   const location = useLocation();
   const [loadingToggle, setLoadingToggle] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -39,6 +39,39 @@ export default function AdminLayout({ children }) {
       joinRoom(`restaurant_admin_${restId}`);
     }
   }, [restaurant?.id, user?.restaurant_id, joinRoom]);
+
+  // Real-time synchronization when Super Admin toggles restaurant features
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleFeaturesUpdated = (data) => {
+      const currentRestId = restaurant?.id || user?.restaurant_id;
+      if (data && (String(data.restaurantId) === String(currentRestId))) {
+        if (updateRestaurant && data.features) {
+          updateRestaurant({ features: data.features });
+        }
+      }
+    };
+
+    socket.on('restaurant_features_updated', handleFeaturesUpdated);
+
+    return () => {
+      socket.off('restaurant_features_updated', handleFeaturesUpdated);
+    };
+  }, [socket, restaurant?.id, user?.restaurant_id, updateRestaurant]);
+
+  // Hydrate features if not already cached in local state
+  useEffect(() => {
+    if (restaurant?.id && !restaurant?.features) {
+      api.get('/admin/restaurant')
+        .then(res => {
+          if (res.data.success && res.data.restaurant?.features) {
+            updateRestaurant({ features: res.data.restaurant.features });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [restaurant?.id, restaurant?.features, updateRestaurant]);
 
   const fetchSubscription = async () => {
     try {

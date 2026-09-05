@@ -96,7 +96,12 @@ async function getUserOrders(req, res) {
 async function getAllOrders(req, res) {
   try {
     const { status, payment_method, search, date } = req.query;
-    const restId = req.adminRestaurantId;
+    let restId = req.adminRestaurantId;
+    if (!restId && (req.query?.slug || req.headers['x-restaurant-slug'])) {
+      const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+      const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      if (rows.length > 0) restId = rows[0].id;
+    }
 
     if (!restId && !req.isSuperAdmin) {
       return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
@@ -116,7 +121,7 @@ async function getAllOrders(req, res) {
     const params = [];
     const wheres = [];
 
-    if (!req.isSuperAdmin) {
+    if (restId) {
       wheres.push('o.restaurant_id = ?');
       params.push(restId);
     }
@@ -187,36 +192,49 @@ async function assignDriver(req, res) {
 
 async function getDashboardKPIs(req, res) {
   try {
-    const restId = req.adminRestaurantId;
+    let restId = req.adminRestaurantId;
+    if (!restId && (req.query?.slug || req.headers['x-restaurant-slug'])) {
+      const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+      const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      if (rows.length > 0) restId = rows[0].id;
+    }
+    if (!restId && (req.query?.restaurant_id || req.headers['x-restaurant-id'])) {
+      restId = parseInt(req.query?.restaurant_id || req.headers['x-restaurant-id'], 10) || null;
+    }
+
     if (!restId && !req.isSuperAdmin) {
       return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
     }
 
     const todayStr = new Date().toISOString().slice(0, 10);
 
-    const [todayOrdersRow] = await query(
-      'SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue FROM orders WHERE restaurant_id = ? AND DATE(created_at) = ?',
-      [restId, todayStr]
-    );
-
-    const statusCounts = await query(
-      'SELECT order_status, COUNT(*) as count FROM orders WHERE restaurant_id = ? AND DATE(created_at) = ? GROUP BY order_status',
-      [restId, todayStr]
-    );
-
-    const statusMap = {
+    let todayOrdersRow = { count: 0, revenue: 0 };
+    let statusMap = {
       PENDING: 0, ACCEPTED: 0, SENT_TO_KITCHEN: 0, PREPARING: 0,
       READY_FOR_PICKUP: 0, ASSIGNED_TO_DRIVER: 0, OUT_FOR_DELIVERY: 0,
       DELIVERED: 0, CANCELLED: 0, REJECTED: 0
     };
-    statusCounts.forEach(sc => { statusMap[sc.order_status] = sc.count; });
+    let recentOrders = [];
 
-    // Recent orders
-    const recentOrders = await query(
-      `SELECT o.id, o.order_number, o.customer_name, o.order_status, o.total_amount, o.payment_method, o.created_at
-       FROM orders o WHERE o.restaurant_id = ? ORDER BY o.created_at DESC LIMIT 10`,
-      [restId]
-    );
+    if (restId) {
+      const [orderRow] = await query(
+        'SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue FROM orders WHERE restaurant_id = ? AND DATE(created_at) = ?',
+        [restId, todayStr]
+      );
+      if (orderRow) todayOrdersRow = orderRow;
+
+      const statusCounts = await query(
+        'SELECT order_status, COUNT(*) as count FROM orders WHERE restaurant_id = ? AND DATE(created_at) = ? GROUP BY order_status',
+        [restId, todayStr]
+      );
+      statusCounts.forEach(sc => { statusMap[sc.order_status] = sc.count; });
+
+      recentOrders = await query(
+        `SELECT o.id, o.order_number, o.customer_name, o.order_status, o.total_amount, o.payment_method, o.created_at
+         FROM orders o WHERE o.restaurant_id = ? ORDER BY o.created_at DESC LIMIT 10`,
+        [restId]
+      );
+    }
 
     // Compute Slide 03 Owner Question-First metrics
     const ownerQuestions = await computeOwnerQuestions(restId);
@@ -237,13 +255,85 @@ async function getDashboardKPIs(req, res) {
   }
 }
 
+function getEmptyOwnerQuestions() {
+  return {
+    roomsAvailableTonight: {
+      vacant: 0,
+      total: 0,
+      occupied: 0,
+      occupancyRate: 0,
+      headline: '0 of 0 Rooms Available',
+      subline: '0% Occupancy Rate tonight'
+    },
+    arrivalsDepartures: {
+      arrivals: 0,
+      departures: 0,
+      inHouse: 0,
+      headline: '0 Check-ins • 0 Check-outs',
+      subline: '0 in-house guests staying'
+    },
+    pendingPayments: {
+      totalAmount: 0,
+      pendingFolios: 0,
+      pendingOrders: 0,
+      headline: '₹0 Pending',
+      subline: '0 room folios & 0 order awaiting settlement'
+    },
+    unreadyRooms: {
+      totalUnready: 0,
+      cleaning: 0,
+      maintenance: 0,
+      headline: '0 Rooms Need Attention',
+      subline: '0 cleaning in progress • 0 maintenance'
+    },
+    pendingInquiries: {
+      count: 0,
+      headline: '0 Leads Awaiting Response',
+      subline: 'Website inquiries ready for 1-tap WhatsApp response'
+    },
+    rateRecommendation: {
+      baseRate: 0,
+      recommendedRate: 0,
+      demandLevel: 'NOT_CONFIGURED',
+      surgePercent: 0,
+      headline: 'Charge ₹0 / night',
+      subline: 'Configure rooms to calculate rate.'
+    },
+    drilldown: {
+      AVAILABLE_ROOMS: { summary: { title: '🛏️ Rooms Available Tonight', actionText: 'Assign Room in Rooms Grid', actionLink: '/admin/accommodation/rooms' }, items: [] },
+      ARRIVALS_DEPARTURES: { summary: { title: '🚪 Who Arrives & Departs Today', actionText: 'Open Check-in / Check-out Desk', actionLink: '/admin/accommodation/checkin' }, items: [] },
+      PENDING_PAYMENTS: { summary: { title: '💳 Pending Payments & Folios', actionText: 'Settle in Room Folios', actionLink: '/admin/accommodation/folios' }, items: [] },
+      UNREADY_ROOMS: { summary: { title: '🧹 Rooms Not Ready (Housekeeping / Repair)', actionText: 'Manage in Housekeeping', actionLink: '/admin/accommodation/housekeeping' }, items: [] },
+      PENDING_INQUIRIES: { summary: { title: '📩 Inquiries Needing Follow-up', actionText: 'View All Website Leads', actionLink: '/admin/accommodation/leads' }, items: [] },
+      RATE_RECOMMENDATION: { summary: { title: 'Today\'s Dynamic Rate Recommendation' }, items: [] },
+      EXECUTIVE_SUMMARY: {
+        summary: { title: 'Executive Daily Briefing: "How Is My Hotel Performing Today?"' },
+        items: [
+          { metric: 'Tonight Available', value: '0 of 0 Rooms Available', tag: 'Inventory' },
+          { metric: 'Live Occupancy', value: '0%', tag: 'Capacity' },
+          { metric: 'Front Desk Movements', value: '0 Check-ins • 0 Check-outs', tag: 'Operations' },
+          { metric: 'Cash Pending', value: '₹0 Pending', tag: 'Finance' },
+          { metric: 'Rooms Unready', value: '0 Rooms Need Attention', tag: 'Housekeeping' },
+          { metric: 'Smart Rate Advice', value: 'Charge ₹0 / night', tag: 'Revenue' }
+        ]
+      }
+    },
+    lastLiveSync: new Date().toISOString()
+  };
+}
+
 /**
  * Slide 03 Helper: Compute real-time hotel owner answers
  */
 async function computeOwnerQuestions(restId) {
   try {
-    // 1. Rooms available tonight
-    let roomsStats = { total: 0, vacant: 0, occupied: 0, cleaning: 0, maintenance: 0, avg_rate: 2500 };
+    const targetRestId = parseInt(restId, 10);
+    if (!targetRestId) {
+      return getEmptyOwnerQuestions();
+    }
+
+    // 1. Rooms available tonight for this specific restaurant
+    let roomsStats = { total: 0, vacant: 0, occupied: 0, cleaning: 0, maintenance: 0, avg_rate: 0 };
     try {
       const roomRows = await query(`
         SELECT 
@@ -252,9 +342,11 @@ async function computeOwnerQuestions(restId) {
           SUM(CASE WHEN status = 'OCCUPIED' THEN 1 ELSE 0 END) as occupied_count,
           SUM(CASE WHEN status IN ('CLEANING', 'DIRTY') THEN 1 ELSE 0 END) as cleaning_count,
           SUM(CASE WHEN status IN ('MAINTENANCE', 'REPAIR', 'OUT_OF_SERVICE') THEN 1 ELSE 0 END) as maintenance_count,
-          COALESCE(AVG(rate_per_night), 2500) as avg_rate
+          COALESCE(AVG(rate_per_night), 0) as avg_rate
         FROM rooms
-      `);
+        WHERE restaurant_id = ?
+      `, [targetRestId]);
+
       if (roomRows.length > 0 && roomRows[0].total_rooms > 0) {
         roomsStats = {
           total: parseInt(roomRows[0].total_rooms) || 0,
@@ -262,137 +354,138 @@ async function computeOwnerQuestions(restId) {
           occupied: parseInt(roomRows[0].occupied_count) || 0,
           cleaning: parseInt(roomRows[0].cleaning_count) || 0,
           maintenance: parseInt(roomRows[0].maintenance_count) || 0,
-          avg_rate: Math.round(parseFloat(roomRows[0].avg_rate) || 2500)
+          avg_rate: Math.round(parseFloat(roomRows[0].avg_rate) || 0)
         };
-      } else {
-        roomsStats = { total: 24, vacant: 18, occupied: 6, cleaning: 2, maintenance: 1, avg_rate: 2800 };
       }
     } catch (e) {
-      roomsStats = { total: 24, vacant: 18, occupied: 6, cleaning: 2, maintenance: 1, avg_rate: 2800 };
+      roomsStats = { total: 0, vacant: 0, occupied: 0, cleaning: 0, maintenance: 0, avg_rate: 0 };
     }
 
-    const occupancyRate = roomsStats.total > 0 ? Math.round((roomsStats.occupied / roomsStats.total) * 100) : 25;
+    const occupancyRate = roomsStats.total > 0 ? Math.round((roomsStats.occupied / roomsStats.total) * 100) : 0;
 
-    // 2. Who arrives and departs today
-    let arrivalsDepartures = { arrivals: 3, departures: 2, inHouse: roomsStats.occupied || 6 };
+    // 2. Who arrives and departs today for this specific restaurant
+    let arrivalsDepartures = { arrivals: 0, departures: 0, inHouse: roomsStats.occupied || 0 };
     try {
-      const adRows = await query(`
+      const folioAD = await query(`
         SELECT 
           SUM(CASE WHEN DATE(check_in_date) = CURDATE() THEN 1 ELSE 0 END) as arrivals_today,
-          SUM(CASE WHEN DATE(check_out_date) = CURDATE() THEN 1 ELSE 0 END) as departures_today,
-          SUM(CASE WHEN status = 'CONFIRMED' AND CURDATE() BETWEEN DATE(check_in_date) AND DATE(check_out_date) THEN 1 ELSE 0 END) as in_house
+          SUM(CASE WHEN (DATE(expected_check_out) = CURDATE() OR DATE(check_out_date) = CURDATE()) THEN 1 ELSE 0 END) as departures_today,
+          SUM(CASE WHEN folio_status = 'OPEN' THEN 1 ELSE 0 END) as in_house
+        FROM room_folios
+        WHERE restaurant_id = ?
+      `, [targetRestId]);
+
+      const bookingAD = await query(`
+        SELECT 
+          SUM(CASE WHEN DATE(check_in_date) = CURDATE() THEN 1 ELSE 0 END) as arrivals_today,
+          SUM(CASE WHEN DATE(check_out_date) = CURDATE() THEN 1 ELSE 0 END) as departures_today
         FROM room_bookings
-      `);
-      if (adRows.length > 0) {
-        arrivalsDepartures = {
-          arrivals: parseInt(adRows[0].arrivals_today) || 3,
-          departures: parseInt(adRows[0].departures_today) || 2,
-          inHouse: parseInt(adRows[0].in_house) || roomsStats.occupied || 6
-        };
-      }
+        WHERE restaurant_id = ? AND status = 'CONFIRMED'
+      `, [targetRestId]).catch(() => [{ arrivals_today: 0, departures_today: 0 }]);
+
+      const arrToday = (parseInt(folioAD[0]?.arrivals_today) || 0) + (parseInt(bookingAD[0]?.arrivals_today) || 0);
+      const depToday = (parseInt(folioAD[0]?.departures_today) || 0) + (parseInt(bookingAD[0]?.departures_today) || 0);
+      const inH = (parseInt(folioAD[0]?.in_house) || 0) || roomsStats.occupied || 0;
+
+      arrivalsDepartures = {
+        arrivals: arrToday,
+        departures: depToday,
+        inHouse: inH
+      };
     } catch (e) {
-      arrivalsDepartures = { arrivals: 3, departures: 2, inHouse: roomsStats.occupied || 6 };
+      arrivalsDepartures = { arrivals: 0, departures: 0, inHouse: roomsStats.occupied || 0 };
     }
 
     // 3. Which payments are pending
-    let pendingPayments = { totalAmount: 12450, pendingFolios: 2, pendingOrders: 1 };
+    let pendingPayments = { totalAmount: 0, pendingFolios: 0, pendingOrders: 0 };
     try {
       const folioRows = await query(`
         SELECT COALESCE(SUM(balance), 0) as folio_amount, COUNT(*) as folio_count
-        FROM room_folios WHERE folio_status = 'OPEN' AND balance > 0
-      `);
+        FROM room_folios WHERE restaurant_id = ? AND folio_status = 'OPEN' AND balance > 0
+      `, [targetRestId]);
       const orderRows = await query(`
         SELECT COALESCE(SUM(total_amount), 0) as order_amount, COUNT(*) as order_count
         FROM orders WHERE restaurant_id = ? AND payment_status = 'PENDING' AND order_status NOT IN ('CANCELLED', 'REJECTED')
-      `, [restId]);
+      `, [targetRestId]);
 
       const fAmt = parseFloat(folioRows[0]?.folio_amount || 0);
       const oAmt = parseFloat(orderRows[0]?.order_amount || 0);
       pendingPayments = {
-        totalAmount: Math.round(fAmt + oAmt) || 12450,
-        pendingFolios: parseInt(folioRows[0]?.folio_count || 0) || 2,
-        pendingOrders: parseInt(orderRows[0]?.order_count || 0) || 1
+        totalAmount: Math.round(fAmt + oAmt) || 0,
+        pendingFolios: parseInt(folioRows[0]?.folio_count || 0) || 0,
+        pendingOrders: parseInt(orderRows[0]?.order_count || 0) || 0
       };
     } catch (e) {
-      pendingPayments = { totalAmount: 12450, pendingFolios: 2, pendingOrders: 1 };
+      pendingPayments = { totalAmount: 0, pendingFolios: 0, pendingOrders: 0 };
     }
 
     // 4. Which rooms are not ready
     const totalUnready = roomsStats.cleaning + roomsStats.maintenance;
 
     // 5. Which enquiries need follow-up
-    let pendingInquiriesCount = 2;
+    let pendingInquiriesCount = 0;
     try {
       const inqRows = await query(`
-        SELECT COUNT(*) as count FROM room_bookings WHERE status IN ('PENDING', 'PENDING_INQUIRY', 'INQUIRY')
-      `);
+        SELECT COUNT(*) as count FROM room_bookings WHERE restaurant_id = ? AND status IN ('PENDING', 'PENDING_INQUIRY', 'INQUIRY')
+      `, [targetRestId]);
       pendingInquiriesCount = parseInt(inqRows[0]?.count || 0);
-      if (pendingInquiriesCount === 0) pendingInquiriesCount = 2;
     } catch (e) {
-      pendingInquiriesCount = 2;
+      pendingInquiriesCount = 0;
     }
 
     // 6. What rate should I charge tonight (Dynamic occupancy intelligence)
     let dynamicRec = {
       baseRate: roomsStats.avg_rate,
       recommendedRate: roomsStats.avg_rate,
-      demandLevel: 'OPTIMAL',
+      demandLevel: roomsStats.total > 0 ? 'OPTIMAL' : 'NOT_CONFIGURED',
       surgePercent: 0,
-      reason: 'Standard seasonal occupancy. Maintain published rack rates.'
+      reason: roomsStats.total > 0 ? 'Standard seasonal occupancy. Maintain published rack rates.' : 'Configure rooms to calculate rate.'
     };
 
-    if (occupancyRate >= 80) {
-      dynamicRec = {
-        baseRate: roomsStats.avg_rate,
-        recommendedRate: Math.round(roomsStats.avg_rate * 1.2 / 50) * 50,
-        demandLevel: 'HIGH_DEMAND',
-        surgePercent: 20,
-        reason: `High occupancy (${occupancyRate}%). Recommend raising rate by +20% for remaining rooms.`
-      };
-    } else if (occupancyRate <= 35) {
-      dynamicRec = {
-        baseRate: roomsStats.avg_rate,
-        recommendedRate: Math.round(roomsStats.avg_rate * 0.88 / 50) * 50,
-        demandLevel: 'VALUE_INCENTIVE',
-        surgePercent: -12,
-        reason: `Occupancy is currently ${occupancyRate}%. Offer direct booking perk or -12% discount to fill tonight.`
-      };
-    } else {
-      dynamicRec = {
-        baseRate: roomsStats.avg_rate,
-        recommendedRate: roomsStats.avg_rate,
-        demandLevel: 'STABLE_DEMAND',
-        surgePercent: 0,
-        reason: `Healthy occupancy (${occupancyRate}%). Base rack rates are optimal.`
-      };
+    if (roomsStats.total > 0) {
+      if (occupancyRate >= 80) {
+        dynamicRec = {
+          baseRate: roomsStats.avg_rate,
+          recommendedRate: Math.round(roomsStats.avg_rate * 1.2 / 50) * 50,
+          demandLevel: 'HIGH_DEMAND',
+          surgePercent: 20,
+          reason: `High occupancy (${occupancyRate}%). Recommend raising rate by +20% for remaining rooms.`
+        };
+      } else if (occupancyRate <= 35) {
+        dynamicRec = {
+          baseRate: roomsStats.avg_rate,
+          recommendedRate: Math.round(roomsStats.avg_rate * 0.88 / 50) * 50,
+          demandLevel: 'VALUE_INCENTIVE',
+          surgePercent: -12,
+          reason: `Occupancy is currently ${occupancyRate}%. Offer direct booking perk or -12% discount to fill tonight.`
+        };
+      } else {
+        dynamicRec = {
+          baseRate: roomsStats.avg_rate,
+          recommendedRate: roomsStats.avg_rate,
+          demandLevel: 'STABLE_DEMAND',
+          surgePercent: 0,
+          reason: `Healthy occupancy (${occupancyRate}%). Base rack rates are optimal.`
+        };
+      }
     }
 
     // Pre-computed drilldown sets for instant zero-latency clicks
-    let availableRoomsList = [
-      { id: 101, room_number: '101', room_type: 'Deluxe Sea View', rate_per_night: 2800, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-      { id: 102, room_number: '102', room_type: 'Executive Suite', rate_per_night: 3500, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-      { id: 201, room_number: '201', room_type: 'Standard King', rate_per_night: 2200, status: 'AVAILABLE', floor_number: 2, bed_type: 'Queen Bed' },
-      { id: 204, room_number: '204', room_type: 'Deluxe Heritage', rate_per_night: 3000, status: 'AVAILABLE', floor_number: 2, bed_type: 'King Bed' },
-      { id: 301, room_number: '301', room_type: 'VIP Presidential', rate_per_night: 5500, status: 'AVAILABLE', floor_number: 3, bed_type: 'California King' }
-    ];
+    let availableRoomsList = [];
     try {
       const realAvail = await query(`
         SELECT id, room_number, room_type, rate_per_night, status, floor_number, bed_type
-        FROM rooms WHERE status IN ('VACANT', 'AVAILABLE') ORDER BY room_number ASC LIMIT 20
-      `);
+        FROM rooms WHERE restaurant_id = ? AND status IN ('VACANT', 'AVAILABLE') ORDER BY room_number ASC LIMIT 20
+      `, [targetRestId]);
       if (realAvail && realAvail.length > 0) availableRoomsList = realAvail;
     } catch (e) { }
 
-    let unreadyRoomsList = [
-      { id: 103, room_number: '103', room_type: 'Deluxe Room', status: 'CLEANING', floor_number: 1, note: 'Bed linen change & sanitization' },
-      { id: 205, room_number: '205', room_type: 'Executive Suite', status: 'CLEANING', floor_number: 2, note: 'Checkout clean up in progress' },
-      { id: 304, room_number: '304', room_type: 'Standard Room', status: 'MAINTENANCE', floor_number: 3, note: 'AC filter inspection & tap fix' }
-    ];
+    let unreadyRoomsList = [];
     try {
       const realUnready = await query(`
         SELECT id, room_number, room_type, status, floor_number, updated_at
-        FROM rooms WHERE status IN ('CLEANING', 'DIRTY', 'MAINTENANCE', 'REPAIR') ORDER BY room_number ASC LIMIT 20
-      `);
+        FROM rooms WHERE restaurant_id = ? AND status IN ('CLEANING', 'DIRTY', 'MAINTENANCE', 'REPAIR') ORDER BY room_number ASC LIMIT 20
+      `, [targetRestId]);
       if (realUnready && realUnready.length > 0) unreadyRoomsList = realUnready;
     } catch (e) { }
 
@@ -403,19 +496,11 @@ async function computeOwnerQuestions(restId) {
       },
       ARRIVALS_DEPARTURES: {
         summary: { title: '🚪 Who Arrives & Departs Today', actionText: 'Open Check-in / Check-out Desk', actionLink: '/admin/accommodation/checkin' },
-        items: [
-          { id: 1, guest_name: 'Rajesh Sharma', guest_phone: '+91 98765 43210', room_number: '105', room_type: 'Deluxe Room', event_type: 'ARRIVAL', time: '14:00 Check-In', status: 'CONFIRMED' },
-          { id: 2, guest_name: 'Sarah Fernandes', guest_phone: '+91 98231 11223', room_number: '202', room_type: 'Executive Suite', event_type: 'ARRIVAL', time: '15:30 Check-In', status: 'CONFIRMED' },
-          { id: 3, guest_name: 'Amit Patel', guest_phone: '+91 99887 76655', room_number: '104', room_type: 'Standard Room', event_type: 'DEPARTURE', time: '11:00 Check-Out', status: 'IN_HOUSE' }
-        ]
+        items: []
       },
       PENDING_PAYMENTS: {
         summary: { title: '💳 Pending Payments & Folios', actionText: 'Settle in Room Folios', actionLink: '/admin/accommodation/folios' },
-        items: [
-          { id: 41, room_number: 'Room 201', guest_name: 'Vikram Mehta', amount_due: 7500, source: 'ROOM_FOLIO', note: '2 Nights + Dinner charges' },
-          { id: 42, room_number: 'Room 108', guest_name: 'Ananya Roy', amount_due: 3450, source: 'ROOM_FOLIO', note: 'Room service & laundry' },
-          { id: 981, order_number: 'ORD-981', guest_name: 'Karan Malhotra', amount_due: 1500, source: 'FOOD_ORDER', note: 'Cash On Delivery pending' }
-        ]
+        items: []
       },
       UNREADY_ROOMS: {
         summary: { title: '🧹 Rooms Not Ready (Housekeeping / Repair)', actionText: 'Manage in Housekeeping', actionLink: '/admin/accommodation/housekeeping' },
@@ -423,10 +508,7 @@ async function computeOwnerQuestions(restId) {
       },
       PENDING_INQUIRIES: {
         summary: { title: '📩 Inquiries Needing Follow-up', actionText: 'View All Website Leads', actionLink: '/admin/accommodation/leads' },
-        items: [
-          { id: 12, guest_name: 'Sneha Kapoor', guest_phone: '+91 91234 56789', room_type: 'Deluxe Sea View (2 Nights)', check_in_date: 'Tomorrow', notes: 'Needs early check-in at 11 AM if available', created_at: '25m ago' },
-          { id: 13, guest_name: 'David Reynolds', guest_phone: '+44 7700 900077', room_type: 'Executive Suite (3 Nights)', check_in_date: 'This Weekend', notes: 'Inquired via Website Storefront', created_at: '1h ago' }
-        ]
+        items: []
       },
       RATE_RECOMMENDATION: {
         summary: { title: 'Today\'s Dynamic Rate Recommendation' },
@@ -493,7 +575,7 @@ async function computeOwnerQuestions(restId) {
     };
   } catch (err) {
     console.error('computeOwnerQuestions Error:', err);
-    return null;
+    return getEmptyOwnerQuestions();
   }
 }
 
@@ -502,7 +584,12 @@ async function computeOwnerQuestions(restId) {
  */
 async function getOwnerQuestionsLive(req, res) {
   try {
-    const restId = req.adminRestaurantId;
+    let restId = req.adminRestaurantId;
+    if (!restId && (req.query?.slug || req.headers['x-restaurant-slug'])) {
+      const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+      const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      if (rows.length > 0) restId = rows[0].id;
+    }
     const questions = await computeOwnerQuestions(restId);
     res.json({ success: true, questions, refreshedAt: new Date().toISOString() });
   } catch (err) {
@@ -518,7 +605,19 @@ async function getOwnerQuestionsLive(req, res) {
 async function getOwnerQuestionDrilldown(req, res) {
   try {
     const { question = 'ALL', search = '' } = req.query;
-    const restId = req.adminRestaurantId;
+    let restId = req.adminRestaurantId;
+    if (!restId && (req.query?.slug || req.headers['x-restaurant-slug'])) {
+      const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+      const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      if (rows.length > 0) restId = rows[0].id;
+    }
+    if (!restId && (req.query?.restaurant_id || req.headers['x-restaurant-id'])) {
+      restId = parseInt(req.query?.restaurant_id || req.headers['x-restaurant-id'], 10) || null;
+    }
+
+    if (!restId) {
+      return res.json({ success: true, question, items: [], summary: { title: 'Question Drilldown' }, count: 0 });
+    }
 
     let items = [];
     let summary = {};
@@ -529,21 +628,12 @@ async function getOwnerQuestionDrilldown(req, res) {
           const rows = await query(`
             SELECT id, room_number, room_type, rate_per_night, status, floor_number, bed_type
             FROM rooms
-            WHERE status IN ('VACANT', 'AVAILABLE')
+            WHERE restaurant_id = ? AND status IN ('VACANT', 'AVAILABLE')
             ORDER BY room_number ASC
-          `);
-          items = rows.length > 0 ? rows : [
-            { id: 101, room_number: '101', room_type: 'Deluxe Sea View', rate_per_night: 2800, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-            { id: 102, room_number: '102', room_type: 'Executive Suite', rate_per_night: 3500, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-            { id: 201, room_number: '201', room_type: 'Standard King', rate_per_night: 2200, status: 'AVAILABLE', floor_number: 2, bed_type: 'Queen Bed' },
-            { id: 204, room_number: '204', room_type: 'Deluxe Heritage', rate_per_night: 3000, status: 'AVAILABLE', floor_number: 2, bed_type: 'King Bed' },
-            { id: 301, room_number: '301', room_type: 'VIP Presidential', rate_per_night: 5500, status: 'AVAILABLE', floor_number: 3, bed_type: 'California King' }
-          ];
+          `, [restId]);
+          items = rows || [];
         } catch (e) {
-          items = [
-            { id: 101, room_number: '101', room_type: 'Deluxe Sea View', rate_per_night: 2800, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-            { id: 102, room_number: '102', room_type: 'Executive Suite', rate_per_night: 3500, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' }
-          ];
+          items = [];
         }
         summary = { title: '🛏️ Rooms Available Tonight', actionText: 'Assign Room in Rooms Grid', actionLink: '/admin/accommodation/rooms' };
         break;
@@ -551,23 +641,23 @@ async function getOwnerQuestionDrilldown(req, res) {
 
       case 'ARRIVALS_DEPARTURES': {
         try {
-          const rows = await query(`
+          const folioRows = await query(`
+            SELECT id, guest_name, guest_phone, room_id, check_in_date, expected_check_out as check_out_date, folio_status as status,
+                   CASE WHEN DATE(check_in_date) = CURDATE() THEN 'ARRIVAL' ELSE 'DEPARTURE' END as event_type
+            FROM room_folios
+            WHERE restaurant_id = ? AND (DATE(check_in_date) = CURDATE() OR DATE(expected_check_out) = CURDATE() OR DATE(check_out_date) = CURDATE())
+            ORDER BY event_type ASC, id DESC
+          `, [restId]);
+          const bookingRows = await query(`
             SELECT id, guest_name, guest_phone, room_number, room_type, check_in_date, check_out_date, status,
                    CASE WHEN DATE(check_in_date) = CURDATE() THEN 'ARRIVAL' ELSE 'DEPARTURE' END as event_type
             FROM room_bookings
-            WHERE DATE(check_in_date) = CURDATE() OR DATE(check_out_date) = CURDATE()
+            WHERE restaurant_id = ? AND (DATE(check_in_date) = CURDATE() OR DATE(check_out_date) = CURDATE())
             ORDER BY event_type ASC, id DESC
-          `);
-          items = rows.length > 0 ? rows : [
-            { id: 1, guest_name: 'Rajesh Sharma', guest_phone: '+91 98765 43210', room_number: '105', room_type: 'Deluxe Room', event_type: 'ARRIVAL', time: '14:00 Check-In', status: 'CONFIRMED' },
-            { id: 2, guest_name: 'Sarah Fernandes', guest_phone: '+91 98231 11223', room_number: '202', room_type: 'Executive Suite', event_type: 'ARRIVAL', time: '15:30 Check-In', status: 'CONFIRMED' },
-            { id: 3, guest_name: 'Amit Patel', guest_phone: '+91 99887 76655', room_number: '104', room_type: 'Standard Room', event_type: 'DEPARTURE', time: '11:00 Check-Out', status: 'IN_HOUSE' }
-          ];
+          `, [restId]).catch(() => []);
+          items = [...folioRows, ...bookingRows];
         } catch (e) {
-          items = [
-            { id: 1, guest_name: 'Rajesh Sharma', guest_phone: '+91 98765 43210', room_number: '105', room_type: 'Deluxe Room', event_type: 'ARRIVAL', time: '14:00 Check-In', status: 'CONFIRMED' },
-            { id: 2, guest_name: 'Amit Patel', guest_phone: '+91 99887 76655', room_number: '104', room_type: 'Standard Room', event_type: 'DEPARTURE', time: '11:00 Check-Out', status: 'IN_HOUSE' }
-          ];
+          items = [];
         }
         summary = { title: '🚪 Who Arrives & Departs Today', actionText: 'Open Check-in / Check-out Desk', actionLink: '/admin/accommodation/checkin' };
         break;
@@ -576,27 +666,16 @@ async function getOwnerQuestionDrilldown(req, res) {
       case 'PENDING_PAYMENTS': {
         try {
           const folioRows = await query(`
-            SELECT f.id, f.room_number, f.guest_name, f.balance as amount_due, 'ROOM_FOLIO' as source, f.created_at
-            FROM room_folios f WHERE f.folio_status = 'OPEN' AND f.balance > 0
-          `);
+            SELECT f.id, f.guest_name, f.balance as amount_due, 'ROOM_FOLIO' as source, f.created_at
+            FROM room_folios f WHERE f.restaurant_id = ? AND f.folio_status = 'OPEN' AND f.balance > 0
+          `, [restId]);
           const orderRows = await query(`
             SELECT o.id, o.order_number, o.customer_name as guest_name, o.total_amount as amount_due, 'FOOD_ORDER' as source, o.payment_method
             FROM orders o WHERE o.restaurant_id = ? AND o.payment_status = 'PENDING' AND o.order_status NOT IN ('CANCELLED', 'REJECTED')
           `, [restId]);
-
           items = [...folioRows, ...orderRows];
-          if (items.length === 0) {
-            items = [
-              { id: 41, room_number: 'Room 201', guest_name: 'Vikram Mehta', amount_due: 7500, source: 'ROOM_FOLIO', note: '2 Nights + Dinner charges' },
-              { id: 42, room_number: 'Room 108', guest_name: 'Ananya Roy', amount_due: 3450, source: 'ROOM_FOLIO', note: 'Room service & laundry' },
-              { id: 981, order_number: 'ORD-981', guest_name: 'Karan Malhotra', amount_due: 1500, source: 'FOOD_ORDER', note: 'Cash On Delivery pending' }
-            ];
-          }
         } catch (e) {
-          items = [
-            { id: 41, room_number: 'Room 201', guest_name: 'Vikram Mehta', amount_due: 7500, source: 'ROOM_FOLIO', note: '2 Nights + Dinner charges' },
-            { id: 981, order_number: 'ORD-981', guest_name: 'Karan Malhotra', amount_due: 1500, source: 'FOOD_ORDER', note: 'Cash On Delivery pending' }
-          ];
+          items = [];
         }
         summary = { title: '💳 Pending Payments & Folios', actionText: 'Settle in Room Folios', actionLink: '/admin/accommodation/folios' };
         break;
@@ -607,19 +686,12 @@ async function getOwnerQuestionDrilldown(req, res) {
           const rows = await query(`
             SELECT id, room_number, room_type, status, floor_number, updated_at
             FROM rooms
-            WHERE status IN ('CLEANING', 'DIRTY', 'MAINTENANCE', 'REPAIR')
+            WHERE restaurant_id = ? AND status IN ('CLEANING', 'DIRTY', 'MAINTENANCE', 'REPAIR')
             ORDER BY status ASC, room_number ASC
-          `);
-          items = rows.length > 0 ? rows : [
-            { id: 103, room_number: '103', room_type: 'Deluxe Room', status: 'CLEANING', floor_number: 1, note: 'Bed linen change & sanitization' },
-            { id: 205, room_number: '205', room_type: 'Executive Suite', status: 'CLEANING', floor_number: 2, note: 'Checkout clean up in progress' },
-            { id: 304, room_number: '304', room_type: 'Standard Room', status: 'MAINTENANCE', floor_number: 3, note: 'AC filter inspection & tap fix' }
-          ];
+          `, [restId]);
+          items = rows || [];
         } catch (e) {
-          items = [
-            { id: 103, room_number: '103', room_type: 'Deluxe Room', status: 'CLEANING', floor_number: 1, note: 'Bed linen change & sanitization' },
-            { id: 304, room_number: '304', room_type: 'Standard Room', status: 'MAINTENANCE', floor_number: 3, note: 'AC filter inspection & tap fix' }
-          ];
+          items = [];
         }
         summary = { title: '🧹 Rooms Not Ready (Housekeeping / Repair)', actionText: 'Manage in Housekeeping', actionLink: '/admin/accommodation/housekeeping' };
         break;
@@ -630,17 +702,12 @@ async function getOwnerQuestionDrilldown(req, res) {
           const rows = await query(`
             SELECT id, guest_name, guest_phone, room_type, check_in_date, check_out_date, notes, created_at
             FROM room_bookings
-            WHERE status IN ('PENDING', 'PENDING_INQUIRY', 'INQUIRY')
+            WHERE restaurant_id = ? AND status IN ('PENDING', 'PENDING_INQUIRY', 'INQUIRY')
             ORDER BY created_at DESC
-          `);
-          items = rows.length > 0 ? rows : [
-            { id: 12, guest_name: 'Sneha Kapoor', guest_phone: '+91 91234 56789', room_type: 'Deluxe Sea View (2 Nights)', check_in_date: 'Tomorrow', notes: 'Needs early check-in at 11 AM if available', created_at: '25m ago' },
-            { id: 13, guest_name: 'David Reynolds', guest_phone: '+44 7700 900077', room_type: 'Executive Suite (3 Nights)', check_in_date: 'This Weekend', notes: 'Inquired via Website Storefront', created_at: '1h ago' }
-          ];
+          `, [restId]).catch(() => []);
+          items = rows || [];
         } catch (e) {
-          items = [
-            { id: 12, guest_name: 'Sneha Kapoor', guest_phone: '+91 91234 56789', room_type: 'Deluxe Sea View (2 Nights)', check_in_date: 'Tomorrow', notes: 'Needs early check-in at 11 AM if available', created_at: '25m ago' }
-          ];
+          items = [];
         }
         summary = { title: '📩 Inquiries Needing Follow-up', actionText: 'View All Website Leads', actionLink: '/admin/accommodation/leads' };
         break;
@@ -655,12 +722,12 @@ async function getOwnerQuestionDrilldown(req, res) {
           questions
         };
         items = [
-          { metric: 'Tonight Available', value: questions?.roomsAvailableTonight?.headline, tag: 'Inventory' },
-          { metric: 'Live Occupancy', value: `${questions?.roomsAvailableTonight?.occupancyRate}%`, tag: 'Capacity' },
-          { metric: 'Front Desk Movements', value: questions?.arrivalsDepartures?.headline, tag: 'Operations' },
-          { metric: 'Cash Pending', value: questions?.pendingPayments?.headline, tag: 'Finance' },
-          { metric: 'Rooms Unready', value: questions?.unreadyRooms?.headline, tag: 'Housekeeping' },
-          { metric: 'Smart Rate Advice', value: questions?.rateRecommendation?.headline, tag: 'Revenue' }
+          { metric: 'Tonight Available', value: questions?.roomsAvailableTonight?.headline || '0 of 0 Available', tag: 'Inventory' },
+          { metric: 'Live Occupancy', value: `${questions?.roomsAvailableTonight?.occupancyRate || 0}%`, tag: 'Capacity' },
+          { metric: 'Front Desk Movements', value: questions?.arrivalsDepartures?.headline || '0 Check-ins • 0 Check-outs', tag: 'Operations' },
+          { metric: 'Cash Pending', value: questions?.pendingPayments?.headline || '₹0 Pending', tag: 'Finance' },
+          { metric: 'Rooms Unready', value: questions?.unreadyRooms?.headline || '0 Rooms Need Attention', tag: 'Housekeeping' },
+          { metric: 'Smart Rate Advice', value: questions?.rateRecommendation?.headline || 'Charge ₹0 / night', tag: 'Revenue' }
         ];
         break;
       }
@@ -685,7 +752,7 @@ async function getOwnerQuestionDrilldown(req, res) {
 
   } catch (err) {
     console.error('getOwnerQuestionDrilldown Error:', err);
-    res.status(500).json({ success: false, message: 'Server error fetching drilldown.' });
+    res.status(500).json({ success: false, message: 'Server error retrieving drilldown.' });
   }
 }
 
@@ -1061,10 +1128,27 @@ async function adminAssignDriverToOrder(req, res) {
       return res.status(404).json({ success: false, message: 'Driver not found.' });
     }
 
+    // Verify driver belongs to this restaurant (or has active assignment for this restaurant)
+    const isDriverAssigned = driver.restaurant_id === order.restaurant_id;
+    if (!isDriverAssigned) {
+      const [assignment] = await query(
+        'SELECT id FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id = ? AND status = "ACTIVE"',
+        [driver.id, order.restaurant_id]
+      );
+      if (!assignment) {
+        return res.status(403).json({
+          success: false,
+          message: `Delivery driver "${driver.full_name || 'Rider'}" belongs to another restaurant.`
+        });
+      }
+    }
+
     await query(
       `UPDATE orders SET assigned_driver_id = ?, order_status = 'DRIVER_ACCEPTED' WHERE id = ?`,
       [driver.id, id]
     );
+
+    await query('UPDATE delivery_drivers SET availability_status = "BUSY" WHERE id = ?', [driver.id]);
 
     await query(
       `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id)

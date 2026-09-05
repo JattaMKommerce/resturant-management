@@ -9,6 +9,74 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
 
+function toDataUrl(data, defaultMime = 'image/jpeg') {
+  if (!data) return null;
+  if (typeof data === 'string') {
+    if (data.startsWith('http') || data.startsWith('data:') || data.startsWith('/')) return data;
+    return `data:${defaultMime};base64,${data}`;
+  }
+  if (Buffer.isBuffer(data)) {
+    const str = data.toString('utf8');
+    if (str.startsWith('data:') || str.startsWith('http') || str.startsWith('/')) {
+      return str;
+    }
+    let mime = defaultMime;
+    if (data.length > 4) {
+      if (data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4E && data[3] === 0x47) {
+        mime = 'image/png';
+      } else if (data[0] === 0xFF && data[1] === 0xD8 && data[2] === 0xFF) {
+        mime = 'image/jpeg';
+      } else if (data[0] === 0x25 && data[1] === 0x50 && data[2] === 0x44 && data[3] === 0x46) {
+        mime = 'application/pdf';
+      }
+    }
+    return `data:${mime};base64,${data.toString('base64')}`;
+  }
+  return null;
+}
+
+function computeKycDetails(drv) {
+  if (!drv) {
+    return {
+      kyc_status: 'PENDING',
+      missing_documents: ['Profile Photo', 'Driving License', 'Aadhaar Card'],
+      has_selfie: false,
+      has_license: false,
+      has_aadhaar: false,
+      selfie_url: null,
+      license_url: null,
+      aadhaar_url: null
+    };
+  }
+
+  const hasSelfie = !!(drv.selfie_path || (drv.selfie_data && drv.selfie_data.length > 0));
+  const hasLicense = !!(drv.license_path || (drv.license_data && drv.license_data.length > 0) || (drv.license_number && drv.license_number.trim().length > 3));
+  const hasAadhaar = !!(drv.aadhaar_path || (drv.aadhaar_data && drv.aadhaar_data.length > 0));
+
+  const missing = [];
+  if (!hasSelfie) missing.push('Profile Photo');
+  if (!hasLicense) missing.push('Driving License');
+  if (!hasAadhaar) missing.push('Aadhaar Card');
+
+  let kycStatus = 'PENDING';
+  if (missing.length === 0) {
+    kycStatus = 'VERIFIED';
+  } else if (missing.length < 3) {
+    kycStatus = 'PARTIAL';
+  }
+
+  return {
+    kyc_status: kycStatus,
+    missing_documents: missing,
+    has_selfie: hasSelfie,
+    has_license: hasLicense,
+    has_aadhaar: hasAadhaar,
+    selfie_url: drv.selfie_path || toDataUrl(drv.selfie_data),
+    license_url: drv.license_path || toDataUrl(drv.license_data),
+    aadhaar_url: drv.aadhaar_path || toDataUrl(drv.aadhaar_data)
+  };
+}
+
 /**
  * 1. DRIVER LOGIN (Email/Mobile + Password)
  * Only approved & active drivers can log in. NO OTP.
@@ -164,19 +232,129 @@ async function getDriverProfile(req, res) {
     const assignedRestaurants = await query(
       `SELECT r.id, r.name, r.slug, r.logo_url, r.phone, r.address, r.latitude, r.longitude
        FROM restaurants r
-       JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id
-       WHERE dra.driver_id = ? AND dra.status = 'ACTIVE'`,
+       LEFT JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id AND dra.driver_id = ?
+       WHERE (dra.status = 'ACTIVE' OR r.id = ?)
+       LIMIT 1`,
+      [driver.id, driver.restaurant_id || 7]
+    );
+
+    const [orderStats] = await query(
+      `SELECT 
+         COUNT(CASE WHEN order_status = 'DELIVERED' THEN 1 END) as delivered_count,
+         COUNT(CASE WHEN order_status = 'DELIVERED' AND DATE(created_at) = CURDATE() THEN 1 END) as today_delivered_count
+       FROM orders WHERE assigned_driver_id = ?`,
       [driver.id]
     );
 
+    const kyc = computeKycDetails(driver);
+
+    // Get exclusive restaurant
+    let restaurant = assignedRestaurants.length > 0 ? assignedRestaurants[0] : null;
+    if (!restaurant && driver.restaurant_id) {
+      const [rest] = await query('SELECT id, name, slug, logo_url, phone, address FROM restaurants WHERE id = ?', [driver.restaurant_id]);
+      restaurant = rest || null;
+    }
+
+    // Strip raw massive buffers from response
+    delete driver.selfie_data;
+    delete driver.license_data;
+    delete driver.aadhaar_data;
+
     res.json({
       success: true,
-      driver,
+      driver: {
+        ...driver,
+        ...kyc,
+        delivered_orders_count: Number(orderStats?.delivered_count || 0),
+        today_delivered_count: Number(orderStats?.today_delivered_count || 0)
+      },
+      restaurant,
       assignedRestaurants
     });
   } catch (err) {
     console.error('getDriverProfile Error:', err);
     res.status(500).json({ success: false, message: 'Server error fetching profile.' });
+  }
+}
+
+/**
+ * 2b. DRIVER UPLOAD DOCUMENTS (Photo, License, Aadhaar)
+ */
+async function uploadDriverDocuments(req, res) {
+  try {
+    const driver = await getOrCreateDriverProfile(req);
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+    }
+
+    const { selfie, license, aadhaar, license_number, vehicle_number, emergency_contact } = req.body;
+
+    const updates = [];
+    const params = [];
+
+    if (selfie) {
+      updates.push('selfie_data = ?');
+      params.push(selfie);
+    }
+    if (license) {
+      updates.push('license_data = ?');
+      params.push(license);
+    }
+    if (aadhaar) {
+      updates.push('aadhaar_data = ?');
+      params.push(aadhaar);
+    }
+    if (license_number) {
+      updates.push('license_number = ?');
+      params.push(license_number.trim());
+    }
+    if (vehicle_number) {
+      updates.push('vehicle_number = ?');
+      params.push(vehicle_number.trim());
+    }
+    if (emergency_contact) {
+      updates.push('emergency_contact = ?');
+      params.push(emergency_contact.trim());
+    }
+
+    if (updates.length > 0) {
+      const sql = `UPDATE delivery_drivers SET ${updates.join(', ')} WHERE id = ?`;
+      params.push(driver.id);
+      await query(sql, params);
+    }
+
+    // Refresh driver record and calculate KYC status
+    const [updated] = await query('SELECT * FROM delivery_drivers WHERE id = ?', [driver.id]);
+    const kyc = computeKycDetails(updated);
+    await query('UPDATE delivery_drivers SET kyc_status = ? WHERE id = ?', [kyc.kyc_status, driver.id]);
+
+    // Send notification to restaurant admin
+    const restId = updated.restaurant_id || 7;
+    try {
+      await sendNotification({
+        restaurantId: restId,
+        title: 'Driver KYC Documents Uploaded 🪪',
+        message: `${updated.full_name || 'Driver'} submitted KYC documents. Status: ${kyc.kyc_status}.`
+      });
+    } catch (e) { }
+
+    delete updated.selfie_data;
+    delete updated.license_data;
+    delete updated.aadhaar_data;
+
+    res.json({
+      success: true,
+      message: 'KYC documents updated successfully!',
+      kyc_status: kyc.kyc_status,
+      missing_documents: kyc.missing_documents,
+      driver: {
+        ...updated,
+        ...kyc
+      }
+    });
+  } catch (err) {
+    console.error('uploadDriverDocuments Error:', err);
+    res.status(500).json({ success: false, message: 'Server error uploading documents.' });
   }
 }
 
@@ -629,25 +807,28 @@ async function markDeliveryFailed(req, res) {
  * 14. ADMIN: Get Drivers List (Restaurant-Isolated)
  */
 /**
- * 14. ADMIN: Get Drivers List (Restaurant-Isolated with SQL Fallback)
+ * 14. ADMIN: Get Drivers List (Restaurant-Isolated with Strict Scoping & KYC Tracking)
  */
 async function getAdminDrivers(req, res) {
   try {
     const { availability, accountStatus, search, restaurant_id } = req.query;
-    const restId = req.adminRestaurantId;
-
-    if (!restId && !req.isSuperAdmin && (!req.adminRestaurantIds || req.adminRestaurantIds.length === 0)) {
-      return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
-    }
+    const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 1;
 
     let sql = `
       SELECT DISTINCT
              d.id,
              d.user_id,
+             d.restaurant_id,
              d.vehicle_type,
              d.vehicle_number,
              d.license_number,
              d.selfie_path,
+             d.selfie_data,
+             d.license_path,
+             d.license_data,
+             d.aadhaar_path,
+             d.aadhaar_data,
+             d.kyc_status,
              d.account_status,
              d.availability_status,
              d.approval_status,
@@ -663,30 +844,20 @@ async function getAdminDrivers(req, res) {
              COALESCE(NULLIF(d.mobile, ''), u.phone, '') as mobile,
              COALESCE(NULLIF(d.mobile, ''), u.phone, '') as user_phone,
              u.status as user_status,
-             dra.status as assignment_status,
-             dra.restaurant_id
+             COALESCE(d.restaurant_id, dra.restaurant_id) as assigned_restaurant_id
       FROM delivery_drivers d
       LEFT JOIN users u ON d.user_id = u.id
-      JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
+      LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
     `;
     const params = [];
     const wheres = [];
 
     if (!req.isSuperAdmin) {
-      if (restaurant_id && req.adminRestaurantIds && req.adminRestaurantIds.includes(parseInt(restaurant_id, 10))) {
-        wheres.push('dra.restaurant_id = ?');
-        params.push(parseInt(restaurant_id, 10));
-      } else if (req.adminRestaurantIds && req.adminRestaurantIds.length > 0) {
-        const placeholders = req.adminRestaurantIds.map(() => '?').join(',');
-        wheres.push(`dra.restaurant_id IN (${placeholders})`);
-        params.push(...req.adminRestaurantIds);
-      } else if (restId) {
-        wheres.push('dra.restaurant_id = ?');
-        params.push(restId);
-      }
+      wheres.push('(d.restaurant_id = ? OR dra.restaurant_id = ?)');
+      params.push(targetRestId, targetRestId);
     } else if (restaurant_id) {
-      wheres.push('dra.restaurant_id = ?');
-      params.push(restaurant_id);
+      wheres.push('(d.restaurant_id = ? OR dra.restaurant_id = ?)');
+      params.push(restaurant_id, restaurant_id);
     }
 
     if (availability) {
@@ -708,7 +879,53 @@ async function getAdminDrivers(req, res) {
     if (wheres.length > 0) sql += ' WHERE ' + wheres.join(' AND ');
     sql += ` ORDER BY d.id DESC`;
 
-    const drivers = await query(sql, params);
+    const rawDrivers = await query(sql, params);
+    const seenIds = new Set();
+    const drivers = [];
+
+    for (let drv of rawDrivers) {
+      if (seenIds.has(drv.id)) continue;
+      seenIds.add(drv.id);
+
+      // Compute delivered stats
+      const [orderStats] = await query(
+        `SELECT 
+           COUNT(CASE WHEN order_status = 'DELIVERED' THEN 1 END) as delivered_count,
+           COUNT(CASE WHEN order_status = 'DELIVERED' AND DATE(created_at) = CURDATE() THEN 1 END) as today_delivered_count
+         FROM orders WHERE assigned_driver_id = ?`,
+        [drv.id]
+      );
+      drv.delivered_orders_count = Number(orderStats?.delivered_count || 0);
+      drv.today_delivered_count = Number(orderStats?.today_delivered_count || 0);
+
+      // Fetch active delivery (if any)
+      const [activeOrder] = await query(
+        `SELECT id, order_number, total_amount, order_status, delivery_address, customer_phone, customer_name, created_at
+         FROM orders 
+         WHERE assigned_driver_id = ? AND order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
+         ORDER BY id DESC LIMIT 1`,
+        [drv.id]
+      );
+      drv.active_order = activeOrder || null;
+
+      // Compute KYC details
+      const kyc = computeKycDetails(drv);
+      drv.kyc_status = kyc.kyc_status;
+      drv.missing_documents = kyc.missing_documents;
+      drv.has_selfie = kyc.has_selfie;
+      drv.has_license = kyc.has_license;
+      drv.has_aadhaar = kyc.has_aadhaar;
+      drv.selfie_url = kyc.selfie_url;
+      drv.license_url = kyc.license_url;
+      drv.aadhaar_url = kyc.aadhaar_url;
+
+      delete drv.selfie_data;
+      delete drv.license_data;
+      delete drv.aadhaar_data;
+
+      drivers.push(drv);
+    }
+
     res.json({ success: true, count: drivers.length, drivers });
   } catch (err) {
     console.error('getAdminDrivers Error:', err);
@@ -717,23 +934,29 @@ async function getAdminDrivers(req, res) {
 }
 
 /**
- * 14c. ADMIN: Create Delivery Rider directly
+ * 14c. ADMIN: Create Delivery Rider directly (Strictly Linked to Restaurant)
  */
 async function createAdminDriver(req, res) {
   try {
-    const { name, email, password, phone, vehicle_type, vehicle_number, license_number } = req.body;
+    const { name, email, password, phone, vehicle_type, vehicle_number, license_number, restaurant_id } = req.body;
 
-    if (!name || !email || !phone || !vehicle_number) {
+    if (!name || !phone || !vehicle_number) {
       return res.status(400).json({
         success: false,
-        message: 'Name, email, phone, and vehicle plate number are required.'
+        message: 'Name, phone, and vehicle plate number are required.'
       });
     }
+
+    const driverEmail = email && email.trim() 
+      ? email.trim().toLowerCase() 
+      : `${phone.trim().replace(/\D/g, '')}@hotel.com`;
+
+    const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 1;
 
     // Check existing user
     const existingUsers = await query(
       'SELECT id FROM users WHERE email = ? OR phone = ?',
-      [email.trim().toLowerCase(), phone.trim()]
+      [driverEmail, phone.trim()]
     );
 
     let userId;
@@ -750,7 +973,7 @@ async function createAdminDriver(req, res) {
       const userRes = await query(
         `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
          VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
-        [name.trim(), email.trim().toLowerCase(), hash, userPassword, phone.trim()]
+        [name.trim(), driverEmail, hash, userPassword, phone.trim()]
       );
       userId = userRes.insertId;
     }
@@ -763,13 +986,15 @@ async function createAdminDriver(req, res) {
       driverId = existingDrivers[0].id;
       await query(
         `UPDATE delivery_drivers SET
+          restaurant_id = ?,
           full_name = ?, mobile = ?, email = ?,
           vehicle_type = COALESCE(?, vehicle_type), vehicle_number = COALESCE(?, vehicle_number),
           license_number = COALESCE(?, license_number),
           account_status = 'ACTIVE', approval_status = 'APPROVED'
          WHERE id = ?`,
         [
-          name.trim(), phone.trim(), email.trim().toLowerCase(),
+          targetRestId,
+          name.trim(), phone.trim(), driverEmail,
           vehicle_type || 'Bike', vehicle_number.trim(),
           license_number || null, driverId
         ]
@@ -777,20 +1002,19 @@ async function createAdminDriver(req, res) {
     } else {
       const driverRes = await query(
         `INSERT INTO delivery_drivers (
-          user_id, full_name, mobile, email,
+          user_id, restaurant_id, full_name, mobile, email,
           vehicle_type, vehicle_number, license_number,
-          account_status, availability_status, approval_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED')`,
+          account_status, availability_status, approval_status, kyc_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED', 'PENDING')`,
         [
-          userId, name.trim(), phone.trim(), email.trim().toLowerCase(),
+          userId, targetRestId, name.trim(), phone.trim(), driverEmail,
           vehicle_type || 'Bike', vehicle_number.trim(), license_number || null
         ]
       );
       driverId = driverRes.insertId;
     }
 
-    // Assign to managing restaurant
-    const targetRestId = req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || 1;
+    // Assign to managing restaurant in driver_restaurant_assignments
     await query(
       `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
        VALUES (?, ?, 'ACTIVE', NOW())
@@ -804,14 +1028,20 @@ async function createAdminDriver(req, res) {
       driver: {
         id: driverId,
         user_id: userId,
+        restaurant_id: targetRestId,
         name: name.trim(),
         full_name: name.trim(),
-        email: email.trim().toLowerCase(),
+        email: driverEmail,
         phone: phone.trim(),
         vehicle_type: vehicle_type || 'Bike',
         vehicle_number: vehicle_number.trim(),
+        license_number: license_number || null,
         account_status: 'ACTIVE',
-        availability_status: 'OFFLINE'
+        availability_status: 'OFFLINE',
+        kyc_status: 'PENDING',
+        missing_documents: ['Profile Photo', 'Driving License', 'Aadhaar Card'],
+        delivered_orders_count: 0,
+        today_delivered_count: 0
       }
     });
   } catch (err) {
@@ -821,32 +1051,18 @@ async function createAdminDriver(req, res) {
 }
 
 /**
- * 14b. ADMIN: Get Driver Details by ID (Restaurant-Isolated)
+ * 14b. ADMIN: Get Driver Details by ID (Restaurant-Isolated with Full KYC & Orders)
  */
 async function getAdminDriverById(req, res) {
   try {
     const { id } = req.params;
-    const restId = req.adminRestaurantId;
-
-    if (!restId && !req.isSuperAdmin && (!req.adminRestaurantIds || req.adminRestaurantIds.length === 0)) {
-      return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
-    }
 
     let sql = `
       SELECT d.*, u.name as user_name, u.email as user_email, u.phone as user_phone, u.status as user_status,
-             dra.status as assignment_status, dra.approved_at, dra.approved_by, dra.application_id, dra.restaurant_id,
-             r.name as restaurant_name,
-             app.submitted_at as application_submitted_at,
-             app.reviewed_at as application_reviewed_at,
-             app.rejection_reason as application_rejection_reason,
-             app.application_status as original_application_status,
-             reviewer.name as reviewer_name
+             r.name as restaurant_name
       FROM delivery_drivers d
       JOIN users u ON d.user_id = u.id
-      LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
-      LEFT JOIN restaurants r ON dra.restaurant_id = r.id
-      LEFT JOIN rider_applications app ON (dra.application_id = app.id OR app.rider_id = d.id)
-      LEFT JOIN users reviewer ON dra.approved_by = reviewer.id
+      LEFT JOIN restaurants r ON d.restaurant_id = r.id
       WHERE d.id = ?
     `;
 
@@ -858,59 +1074,101 @@ async function getAdminDriverById(req, res) {
     const driver = drivers[0];
 
     // Enforce restaurant access check if not super admin
-    if (!req.isSuperAdmin && driver.restaurant_id) {
-      if (!validateRestaurantAccess(driver.restaurant_id, req)) {
+    if (!req.isSuperAdmin) {
+      const authorizedIds = req.adminRestaurantIds || (req.adminRestaurantId ? [req.adminRestaurantId] : []);
+      let hasAccess = false;
+
+      // 1. Direct restaurant_id match
+      if (driver.restaurant_id && validateRestaurantAccess(driver.restaurant_id, req)) {
+        hasAccess = true;
+      }
+
+      // 2. Check driver_restaurant_assignments match
+      if (!hasAccess && authorizedIds.length > 0) {
+        const matchingAssignments = await query(
+          'SELECT restaurant_id FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id IN (?)',
+          [driver.id, authorizedIds]
+        );
+        if (matchingAssignments && matchingAssignments.length > 0) {
+          hasAccess = true;
+          const matchedRestId = matchingAssignments[0].restaurant_id;
+          try {
+            await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [matchedRestId, driver.id]);
+            driver.restaurant_id = matchedRestId;
+          } catch (e) {}
+        }
+      }
+
+      if (!hasAccess) {
         return res.status(403).json({ success: false, message: 'Access denied to this driver profile.' });
       }
     }
 
-    // Fetch driver documents with multiple fallbacks
-    const documents = await query(
-      `SELECT d.id, d.application_id, d.rider_id, d.document_type, d.file_path, d.original_file_name, d.mime_type, d.file_size, d.verification_status, d.verified_by, d.verified_at, d.created_at
-       FROM rider_documents d
-       WHERE d.rider_id = ? 
-          OR (d.application_id IS NOT NULL AND d.application_id = ?)
-          OR d.application_id IN (
-            SELECT id FROM rider_applications WHERE rider_id = ? OR (email IS NOT NULL AND email = ?) OR (mobile IS NOT NULL AND mobile = ?)
-          )
-       ORDER BY d.id ASC`,
-      [driver.id, driver.application_id || 0, driver.id, driver.email || '', driver.mobile || '']
-    );
+    // Compute KYC details
+    const kyc = computeKycDetails(driver);
 
     // Fetch delivery statistics for this driver
-    let stats = { total_assigned: 0, total_delivered: 0, total_failed: 0, active_deliveries: 0 };
-    try {
-      const statsRows = await query(
-        `SELECT 
-           COUNT(*) as total_assigned,
-           COALESCE(SUM(CASE WHEN order_status = 'DELIVERED' THEN 1 ELSE 0 END), 0) as total_delivered,
-           COALESCE(SUM(CASE WHEN order_status = 'DELIVERY_FAILED' THEN 1 ELSE 0 END), 0) as total_failed,
-           COALESCE(SUM(CASE WHEN order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY') THEN 1 ELSE 0 END), 0) as active_deliveries
-         FROM orders
-         WHERE assigned_driver_id = ?`,
-        [driver.id]
-      );
-      if (statsRows && statsRows.length > 0) {
-        stats = {
-          total_assigned: Number(statsRows[0].total_assigned || 0),
-          total_delivered: Number(statsRows[0].total_delivered || 0),
-          total_failed: Number(statsRows[0].total_failed || 0),
-          active_deliveries: Number(statsRows[0].active_deliveries || 0)
-        };
-      }
-    } catch (e) {
-      console.error('Stats fetch error:', e.message);
+    const [statsRows] = await query(
+      `SELECT 
+         COUNT(*) as total_assigned,
+         COALESCE(SUM(CASE WHEN order_status = 'DELIVERED' THEN 1 ELSE 0 END), 0) as total_delivered,
+         COALESCE(SUM(CASE WHEN order_status = 'DELIVERED' AND DATE(created_at) = CURDATE() THEN 1 ELSE 0 END), 0) as today_delivered,
+         COALESCE(SUM(CASE WHEN order_status = 'DELIVERY_FAILED' THEN 1 ELSE 0 END), 0) as total_failed,
+         COALESCE(SUM(CASE WHEN order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY') THEN 1 ELSE 0 END), 0) as active_deliveries
+       FROM orders
+       WHERE assigned_driver_id = ?`,
+      [driver.id]
+    );
+
+    const stats = {
+      total_assigned: Number(statsRows?.total_assigned || 0),
+      total_delivered: Number(statsRows?.total_delivered || 0),
+      today_delivered: Number(statsRows?.today_delivered || 0),
+      total_failed: Number(statsRows?.total_failed || 0),
+      active_deliveries: Number(statsRows?.active_deliveries || 0)
+    };
+
+    // Active order (if currently out on delivery)
+    const [activeOrder] = await query(
+      `SELECT o.*, r.name as restaurant_name, r.address as restaurant_address
+       FROM orders o
+       JOIN restaurants r ON o.restaurant_id = r.id
+       WHERE o.assigned_driver_id = ? AND o.order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
+       ORDER BY o.id DESC LIMIT 1`,
+      [driver.id]
+    );
+    if (activeOrder) {
+      activeOrder.items = await query('SELECT * FROM order_items WHERE order_id = ?', [activeOrder.id]);
     }
+
+    // Recent 20 delivered orders
+    const recentDeliveries = await query(
+      `SELECT o.id, o.order_number, o.total_amount, o.order_status, o.delivery_address, 
+              o.customer_name, o.customer_phone, o.payment_method, o.created_at, o.updated_at
+       FROM orders o
+       WHERE o.assigned_driver_id = ? AND o.order_status = 'DELIVERED'
+       ORDER BY o.updated_at DESC LIMIT 20`,
+      [driver.id]
+    );
+    for (let ord of recentDeliveries) {
+      ord.items = await query('SELECT item_name, quantity, price FROM order_items WHERE order_id = ?', [ord.id]);
+    }
+
+    // Clean sensitive raw BLOBs
+    delete driver.selfie_data;
+    delete driver.license_data;
+    delete driver.aadhaar_data;
 
     res.json({
       success: true,
       driver: {
         ...driver,
-        documents,
-        stats
+        ...kyc,
+        stats,
+        active_order: activeOrder || null,
+        recent_deliveries: recentDeliveries
       }
     });
-
   } catch (err) {
     console.error('getAdminDriverById Error:', err);
     res.status(500).json({ success: false, message: 'Server error retrieving driver details.' });
@@ -1331,6 +1589,7 @@ async function applyToRestaurant(req, res) {
       driverLogin,
       getDriverProfile,
       updateDriverProfile,
+      uploadDriverDocuments,
       goOnline,
       goOffline,
       updateDriverLocation,

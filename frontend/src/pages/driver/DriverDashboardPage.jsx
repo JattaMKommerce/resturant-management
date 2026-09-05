@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Bike, Power, MapPin, Phone, CheckCircle2, Navigation, AlertTriangle,
   Package, Clock, RefreshCw, LogOut, Shield, DollarSign, User, ListOrdered,
-  Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle
+  Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle,
+  ShieldCheck, FileText, Calendar
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
@@ -14,6 +15,18 @@ function getOrderLast5(orderNum) {
   const digits = String(orderNum).replace(/\D/g, '');
   if (digits.length >= 5) return digits.slice(-5);
   return String(orderNum).length > 5 ? String(orderNum).slice(-5) : String(orderNum);
+}
+
+function formatOrderDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 export default function DriverDashboardPage() {
@@ -27,6 +40,10 @@ export default function DriverDashboardPage() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [selectedRestaurantFilter, setSelectedRestaurantFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
+
+  // Order History Inspection Modal State
+  const [showOrdersHistoryModal, setShowOrdersHistoryModal] = useState(false);
+  const [ordersModalTab, setOrdersModalTab] = useState('COMPLETED'); // 'COMPLETED' | 'ALL' | 'TODAY'
 
   // Status & Location state
   const [availabilityStatus, setAvailabilityStatus] = useState('OFFLINE');
@@ -44,6 +61,73 @@ export default function DriverDashboardPage() {
   const [loadingRestaurants, setLoadingRestaurants] = useState(false);
   const [applyingRestId, setApplyingRestId] = useState(null);
   const [connectingAll, setConnectingAll] = useState(false);
+
+  // Upload KYC Documents State
+  const [showUploadDocsModal, setShowUploadDocsModal] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [selfiePreview, setSelfiePreview] = useState(null);
+  const [licensePreview, setLicensePreview] = useState(null);
+  const [aadhaarPreview, setAadhaarPreview] = useState(null);
+  const [licenseNumberInput, setLicenseNumberInput] = useState('');
+  const [vehicleNumberInput, setVehicleNumberInput] = useState('');
+  const [emergencyContactInput, setEmergencyContactInput] = useState('');
+  const [docsFormError, setDocsFormError] = useState('');
+  const [docsFormSuccess, setDocsFormSuccess] = useState('');
+
+  const openUploadModal = () => {
+    setSelfiePreview(driver?.selfie_url || null);
+    setLicensePreview(driver?.license_url || null);
+    setAadhaarPreview(driver?.aadhaar_url || null);
+    setLicenseNumberInput(driver?.license_number || '');
+    setVehicleNumberInput(driver?.vehicle_number || '');
+    setEmergencyContactInput(driver?.emergency_contact || '');
+    setDocsFormError('');
+    setDocsFormSuccess('');
+    setShowUploadDocsModal(true);
+  };
+
+  const handleFileChange = (e, setter) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setter(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadDocuments = async (e) => {
+    e.preventDefault();
+    setUploadingDocs(true);
+    setDocsFormError('');
+    setDocsFormSuccess('');
+
+    try {
+      const res = await api.put('/driver/profile/documents', {
+        selfie: selfiePreview || undefined,
+        license: licensePreview || undefined,
+        aadhaar: aadhaarPreview || undefined,
+        license_number: licenseNumberInput || undefined,
+        vehicle_number: vehicleNumberInput || undefined,
+        emergency_contact: emergencyContactInput || undefined
+      });
+
+      if (res.data.success) {
+        setDocsFormSuccess('🎉 Documents uploaded successfully!');
+        setDriver(prev => ({
+          ...prev,
+          ...res.data.driver
+        }));
+        setTimeout(() => {
+          setShowUploadDocsModal(false);
+          setDocsFormSuccess('');
+          fetchDriverDashboard();
+        }, 1200);
+      }
+    } catch (err) {
+      setDocsFormError(err.response?.data?.message || 'Failed to upload documents.');
+    } finally {
+      setUploadingDocs(false);
+    }
+  };
 
   // Claiming loading state
   const [claimingOrderId, setClaimingOrderId] = useState(null);
@@ -504,6 +588,17 @@ export default function DriverDashboardPage() {
   }
 
   const completedOrders = allOrders.filter(o => o.order_status === 'DELIVERED');
+  const todayDeliveredOrders = allOrders.filter(o => {
+    if (o.order_status !== 'DELIVERED') return false;
+    const d = new Date(o.created_at || o.updated_at);
+    return d.toDateString() === new Date().toDateString();
+  });
+
+  const displayOrders = ordersModalTab === 'COMPLETED'
+    ? completedOrders
+    : ordersModalTab === 'TODAY'
+    ? todayDeliveredOrders
+    : allOrders;
 
   return (
     <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased pb-12">
@@ -594,48 +689,89 @@ export default function DriverDashboardPage() {
           </button>
         </div>
 
-        {/* MULTI-RESTAURANT MANAGEMENT WIDGET */}
-        <div className="bg-white rounded-3xl p-5 border border-[#D7E5E8] shadow-xs space-y-3.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center font-bold">
-                <Store className="w-4 h-4" />
+        {/* HIGHLIGHTED MISSING KYC DOCUMENTS ALERT BANNER */}
+        {(!driver?.kyc_status || driver?.kyc_status !== 'VERIFIED' || (driver?.missing_documents && driver?.missing_documents.length > 0)) && (
+          <div className="bg-gradient-to-br from-amber-500/10 via-rose-500/10 to-amber-500/10 border-2 border-amber-400/80 rounded-3xl p-5 shadow-lg shadow-amber-500/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-900 tracking-tight flex items-center gap-2">
+                    ⚠️ Action Required: Upload Your Verification Documents
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">
+                    Please upload your profile photo and KYC documents to ensure your account is fully verified.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-[#1F2937] text-xs">My Assigned Restaurants</h3>
-                <p className="text-[10px] text-[#64748B]">
-                  Deliver for {assignedRestaurants.length} restaurant{assignedRestaurants.length !== 1 ? 's' : ''} simultaneously
-                </p>
-              </div>
+
+              <button
+                onClick={openUploadModal}
+                className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs rounded-xl shadow-md shadow-amber-500/25 transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" /> Upload Photos & Docs
+              </button>
             </div>
 
-            <button
-              onClick={handleOpenApplyModal}
-              className="px-3 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> Partner More
-            </button>
+            {/* Missing document tags */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/60">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Required Items:</span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                driver?.has_selfie ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}>
+                {driver?.has_selfie ? '✓ Photo Uploaded' : '❌ Profile Photo / Selfie'}
+              </span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                driver?.has_license ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}>
+                {driver?.has_license ? '✓ Driving License Uploaded' : '❌ Driving License Photo'}
+              </span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                driver?.has_aadhaar ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}>
+                {driver?.has_aadhaar ? '✓ Aadhaar / ID Uploaded' : '❌ Aadhaar Card Photo'}
+              </span>
+            </div>
           </div>
+        )}
 
-          {/* Assigned Restaurants Chips */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {assignedRestaurants.length === 0 ? (
-              <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-3 rounded-2xl w-full flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>You are not currently assigned to any restaurant. Click "Partner More" to partner with a restaurant.</span>
-              </div>
-            ) : (
-              assignedRestaurants.map((rest) => (
-                <div
-                  key={rest.id}
-                  className="px-3 py-1.5 bg-slate-50 border border-[#D7E5E8] rounded-xl flex items-center gap-2 text-xs"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="font-bold text-[#1F2937]">{rest.name}</span>
-                  <span className="text-[10px] text-[#64748B]">({rest.city || 'Central'})</span>
-                </div>
-              ))
-            )}
+        {/* RIDER DELIVERY SCORECARD */}
+        <div className="grid grid-cols-3 gap-3">
+          <div 
+            onClick={() => { setOrdersModalTab('TODAY'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-400 block group-hover:text-blue-600 transition-colors">Today</span>
+            <span className="font-black text-slate-900 text-xl block mt-1">{todayDeliveredOrders.length || driver?.today_delivered_count || 0}</span>
+            <span className="text-[10px] text-blue-600 font-bold block">Delivered ↗</span>
+          </div>
+          <div 
+            onClick={() => { setOrdersModalTab('COMPLETED'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center cursor-pointer hover:border-teal-400 hover:shadow-md transition-all group"
+          >
+            <span className="text-[10px] uppercase font-bold text-slate-400 block group-hover:text-teal-600 transition-colors">All-Time</span>
+            <span className="font-black text-slate-900 text-xl block mt-1">{completedOrders.length || driver?.delivered_orders_count || 0}</span>
+            <span className="text-[10px] text-teal-600 font-bold block">Completed ↗</span>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs text-center flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">KYC Status</span>
+            <div>
+              <span className={`font-black text-[10px] px-2 py-1 rounded-full inline-block uppercase tracking-wider ${
+                driver?.kyc_status === 'VERIFIED'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+              }`}>
+                {driver?.kyc_status === 'VERIFIED' ? 'Verified' : 'Pending'}
+              </span>
+            </div>
+            <button 
+              onClick={openUploadModal}
+              className="text-[10px] font-bold text-[#3A7D7C] hover:underline cursor-pointer"
+            >
+              Update Docs
+            </button>
           </div>
         </div>
 
@@ -977,24 +1113,40 @@ export default function DriverDashboardPage() {
 
         {/* RIDER STATS & LINKS */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5" />
+          <div 
+            onClick={() => { setOrdersModalTab('COMPLETED'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-[#3A7D7C] hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#64748B] block">Completed</span>
+                <span className="font-bold text-[#1F2937] text-base">{completedOrders.length} Deliveries</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Completed</span>
-              <span className="font-bold text-[#1F2937] text-base">{completedOrders.length} Deliveries</span>
-            </div>
+            <span className="text-[11px] font-bold text-[#3A7D7C] bg-[#3A7D7C]/10 group-hover:bg-[#3A7D7C]/20 px-2 py-1 rounded-lg transition-colors flex items-center gap-0.5 shrink-0">
+              View <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <ListOrdered className="w-5 h-5" />
+          <div 
+            onClick={() => { setOrdersModalTab('ALL'); setShowOrdersHistoryModal(true); }}
+            className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs flex items-center justify-between gap-3 cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <ListOrdered className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#64748B] block">Total Assigned</span>
+                <span className="font-bold text-[#1F2937] text-base">{allOrders.length} Orders</span>
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#64748B] block">Total Assigned</span>
-              <span className="font-bold text-[#1F2937] text-base">{allOrders.length} Orders</span>
-            </div>
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 group-hover:bg-emerald-200 px-2 py-1 rounded-lg transition-colors flex items-center gap-0.5 shrink-0">
+              View <ArrowRight className="w-3 h-3" />
+            </span>
           </div>
         </div>
 
@@ -1135,42 +1287,375 @@ export default function DriverDashboardPage() {
         </div>
       )}
 
-      {/* REPORT FAILURE MODAL */}
-      {showFailureModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 border border-[#D7E5E8] shadow-xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-700">
-              <AlertTriangle className="w-6 h-6" />
-              <h3 className="font-bold text-[#1F2937] text-base">Report Delivery Issue</h3>
+      {/* UPLOAD KYC DOCUMENTS MODAL */}
+      {showUploadDocsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-6 border border-[#D7E5E8] shadow-2xl max-h-[90vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#1F2937]">Upload KYC & Profile Photo</h3>
+                  <p className="text-[11px] text-[#64748B]">Verify your identity for delivery duty</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUploadDocsModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#64748B] flex items-center justify-center font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            <p className="text-xs text-[#64748B]">
-              Specify the reason why this delivery could not be completed. The restaurant admin will be notified to resolve operationally.
-            </p>
-            <form onSubmit={handleMarkFailedSubmit} className="space-y-4">
-              <textarea
-                required
-                rows="3"
-                value={failureReason}
-                onChange={(e) => setFailureReason(e.target.value)}
-                placeholder="e.g. Customer unavailable / Wrong address / Customer refused order"
-                className="w-full bg-white border border-[#D7E5E8] rounded-xl p-3 text-[#1F2937] text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
-              ></textarea>
-              <div className="flex gap-3">
+
+            {docsFormSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {docsFormSuccess}
+              </div>
+            )}
+
+            {docsFormError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {docsFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleUploadDocuments} className="space-y-4 text-xs">
+              
+              {/* 1. Profile Photo / Selfie */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <label className="block font-black text-slate-800">
+                  1. Profile Photo / Selfie *
+                </label>
+                <div className="flex items-center gap-3">
+                  {selfiePreview ? (
+                    <img 
+                      src={selfiePreview} 
+                      alt="Selfie Preview" 
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <User className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      onChange={(e) => handleFileChange(e, setSelfiePreview)}
+                      className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#3A7D7C] file:text-white hover:file:bg-[#2F6665] cursor-pointer"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">Take a clear front-facing selfie</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Driving License */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <label className="block font-black text-slate-800">
+                  2. Driving License Photo *
+                </label>
+                <div className="flex items-center gap-3">
+                  {licensePreview ? (
+                    <img 
+                      src={licensePreview} 
+                      alt="License Preview" 
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, setLicensePreview)}
+                      className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#3A7D7C] file:text-white hover:file:bg-[#2F6665] cursor-pointer"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">Photo of physical driving license</span>
+                  </div>
+                </div>
+                <div className="pt-1">
+                  <input
+                    type="text"
+                    placeholder="License Number (e.g. DL-0420110012345)"
+                    value={licenseNumberInput}
+                    onChange={(e) => setLicenseNumberInput(e.target.value.toUpperCase())}
+                    className="w-full p-2 bg-white border border-[#D7E5E8] rounded-xl font-semibold text-slate-800 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Aadhaar Card */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-[#D7E5E8] space-y-2">
+                <label className="block font-black text-slate-800">
+                  3. Aadhaar Card / ID Proof *
+                </label>
+                <div className="flex items-center gap-3">
+                  {aadhaarPreview ? (
+                    <img 
+                      src={aadhaarPreview} 
+                      alt="Aadhaar Preview" 
+                      className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs" 
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+                      <Shield className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, setAadhaarPreview)}
+                      className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#3A7D7C] file:text-white hover:file:bg-[#2F6665] cursor-pointer"
+                    />
+                    <span className="text-[10px] text-slate-500 block mt-1">Photo of Aadhaar or Government ID</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plate and Emergency Contact */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Vehicle Plate #</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. GA-01-AB-1234"
+                    value={vehicleNumberInput}
+                    onChange={(e) => setVehicleNumberInput(e.target.value.toUpperCase())}
+                    className="w-full p-2 bg-slate-50 border border-[#D7E5E8] rounded-xl font-semibold text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Emergency Phone</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 9876543210"
+                    value={emergencyContactInput}
+                    onChange={(e) => setEmergencyContactInput(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-[#D7E5E8] rounded-xl font-semibold text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[#D7E5E8]">
                 <button
                   type="button"
-                  onClick={() => setShowFailureModal(false)}
-                  className="flex-1 py-2.5 bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[#1F2937] rounded-xl font-bold text-xs shadow-2xs"
+                  onClick={() => setShowUploadDocsModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-2xs"
+                  disabled={uploadingDocs}
+                  className="px-5 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  Submit Issue
+                  {uploadingDocs ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" /> Submit Documents
+                    </>
+                  )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELIVERY TASKS & ORDER HISTORY MODAL */}
+      {showOrdersHistoryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="max-w-lg w-full bg-white rounded-3xl p-5 sm:p-6 border border-[#D7E5E8] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#D7E5E8] pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#3A7D7C] flex items-center justify-center font-bold shadow-xs">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[#1F2937]">Delivery Tasks & History</h3>
+                  <p className="text-[11px] text-[#64748B] font-medium">Detailed breakdown of orders you performed</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOrdersHistoryModal(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#64748B] flex items-center justify-center font-bold text-sm cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scorecard Strip Inside Modal */}
+            <div className="grid grid-cols-3 gap-2.5 py-3 shrink-0">
+              <div className="p-3 bg-emerald-50/90 border border-emerald-200/90 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 block">Delivered</span>
+                <span className="text-lg font-black text-emerald-950 block leading-tight">{completedOrders.length}</span>
+                <span className="text-[9px] text-emerald-600 font-semibold">Done by you</span>
+              </div>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Assigned</span>
+                <span className="text-lg font-black text-slate-900 block leading-tight">{allOrders.length}</span>
+                <span className="text-[9px] text-slate-500 font-semibold">All trips</span>
+              </div>
+              <div className="p-3 bg-teal-50/90 border border-teal-200/90 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-teal-700 block">Success Rate</span>
+                <span className="text-lg font-black text-teal-950 block leading-tight">
+                  {allOrders.length > 0 ? Math.round((completedOrders.length / allOrders.length) * 100) : 0}%
+                </span>
+                <span className="text-[9px] text-teal-600 font-semibold">Completion</span>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 shrink-0 overflow-x-auto">
+              <button
+                onClick={() => setOrdersModalTab('COMPLETED')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  ordersModalTab === 'COMPLETED'
+                    ? 'bg-[#3A7D7C] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                ✓ Delivered ({completedOrders.length})
+              </button>
+              <button
+                onClick={() => setOrdersModalTab('ALL')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  ordersModalTab === 'ALL'
+                    ? 'bg-[#3A7D7C] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                All Assigned ({allOrders.length})
+              </button>
+              <button
+                onClick={() => setOrdersModalTab('TODAY')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  ordersModalTab === 'TODAY'
+                    ? 'bg-[#3A7D7C] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Today ({todayDeliveredOrders.length})
+              </button>
+            </div>
+
+            {/* Orders Scrollable List */}
+            <div className="flex-1 overflow-y-auto pt-3 space-y-3 pr-1">
+              {displayOrders.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <Package className="w-8 h-8 mx-auto text-slate-300" />
+                  <p className="text-xs font-bold text-slate-600">No orders found</p>
+                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                    {ordersModalTab === 'COMPLETED'
+                      ? 'You have not completed any deliveries yet. Accept and deliver orders to see them here!'
+                      : 'No assigned orders match this filter.'}
+                  </p>
+                </div>
+              ) : (
+                displayOrders.map(order => (
+                  <div
+                    key={order.id}
+                    className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all space-y-2.5"
+                  >
+                    {/* Header: Order # + Status Pill */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-xs text-slate-900">
+                          Order #{order.order_number || order.id}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {formatOrderDate(order.created_at)}
+                        </span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        order.order_status === 'DELIVERED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : order.order_status === 'OUT_FOR_DELIVERY' || order.order_status === 'PICKED_UP'
+                          ? 'bg-amber-100 text-amber-800 animate-pulse border border-amber-200'
+                          : order.order_status === 'DELIVERY_FAILED'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
+                        {order.order_status === 'DELIVERED' ? '✓ Delivered' : order.order_status?.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    {/* Restaurant & Customer Address */}
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                        <Store className="w-3.5 h-3.5 text-[#3A7D7C] shrink-0" />
+                        <span className="truncate">{order.restaurant_name || 'Restaurant'}</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 text-slate-500 font-medium text-[11px]">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{order.delivery_address || 'No address specified'}</span>
+                      </div>
+                    </div>
+
+                    {/* Items List */}
+                    {order.items && order.items.length > 0 && (
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 text-[11px] text-slate-600 space-y-1">
+                        <span className="text-[9px] uppercase font-bold text-slate-400 block">Items in this Delivery:</span>
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-[11px]">
+                            <span className="truncate">{item.quantity}x {item.item_name}</span>
+                            <span className="font-semibold text-slate-700 shrink-0 ml-2">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Customer & Total Amount */}
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
+                      <div className="flex items-center gap-1 text-[11px] text-slate-600 font-semibold">
+                        <User className="w-3 h-3 text-slate-400" />
+                        <span>{order.customer_name || 'Customer'}</span>
+                        {order.customer_phone && (
+                          <span className="text-slate-400 text-[10px]">({order.customer_phone})</span>
+                        )}
+                      </div>
+                      <span className="font-black text-slate-900 text-sm">
+                        ₹{order.total_amount}{' '}
+                        <span className="text-[10px] font-normal text-slate-400">
+                          ({order.payment_method || 'COD'})
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Showing {displayOrders.length} order{displayOrders.length === 1 ? '' : 's'}
+              </span>
+              <button
+                onClick={() => setShowOrdersHistoryModal(false)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}

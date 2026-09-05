@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Power, MapPin, Phone, Mail, Building, Image as ImageIcon, CheckCircle2, CreditCard, Upload, Trash2, AlertCircle, ShieldCheck, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Settings, Save, Power, MapPin, Phone, Mail, Building, Image as ImageIcon, CheckCircle2, CreditCard, Upload, Trash2, AlertCircle, ShieldCheck, Star, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminSettingsPage() {
+  const navigate = useNavigate();
+  const { updateRestaurant } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -110,6 +114,22 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const handleResetQuota = async () => {
+    try {
+      const res = await api.post('/admin/restaurant/reset-subdomain-quota', {
+        restaurant_id: restaurantId
+      });
+      if (res.data?.success) {
+        setSubdomainChangesThisMonth(0);
+        setSubdomainChangesLeft(999);
+        alert('✅ Testing Mode: Subdomain changes counter reset to 0!');
+        await fetchSettings();
+      }
+    } catch (e) {
+      console.error('Failed to reset quota:', e);
+    }
+  };
+
   const handlePurchaseCustomSubdomain = async () => {
     const slugToUse = customSlugInput.toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (!slugToUse) {
@@ -129,18 +149,31 @@ export default function AdminSettingsPage() {
         restaurant_id: restaurantId,
         custom_subdomain_slug: slugToUse
       });
-      if (res.data.success) {
+      if (res.data && res.data.success) {
         const successNotice = customSubdomainEnabled
           ? `🎉 Custom Subdomain Name Updated Successfully!\nNew URL: https://${slugToUse}.jattamkommerce.com`
           : '🎉 Custom Subdomain Unlocked Successfully!';
         alert(successNotice);
-        if (res.data.restaurant && updateRestaurant) {
+
+        setShowSubdomainModal(false);
+        setCustomSubdomainEnabled(true);
+        setCustomSubdomainSlug(slugToUse);
+        setCustomSlugInput(slugToUse);
+
+        if (res.data.restaurant && typeof updateRestaurant === 'function') {
           updateRestaurant(res.data.restaurant);
         }
         await fetchSettings();
+
+        // Seamlessly update URL to new slug
+        navigate(`/admin/${slugToUse}/settings`, { replace: true });
+      } else {
+        alert(res.data?.message || 'Failed to update custom subdomain.');
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update custom subdomain.');
+      console.error('Subdomain update error:', err);
+      const errMsg = err.response?.data?.message || err.message || 'Failed to update custom subdomain.';
+      alert(errMsg);
     } finally {
       setSaving(false);
     }
@@ -776,14 +809,19 @@ export default function AdminSettingsPage() {
           <div className="bg-white rounded-3xl border border-[#D7E5E8] max-w-lg w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-start justify-between border-b border-[#D7E5E8] pb-4">
               <div>
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${customSubdomainEnabled ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300'}`}>
-                  {customSubdomainEnabled ? 'Active Subdomain Management' : 'Subdomain Add-On'}
-                </span>
-                <h3 className="text-lg font-extrabold text-[#1F2937] mt-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${customSubdomainEnabled ? 'bg-emerald-100 text-emerald-900 border-emerald-300' : 'bg-amber-100 text-amber-900 border-amber-300'}`}>
+                    {customSubdomainEnabled ? 'Active Subdomain Management' : 'Subdomain Add-On'}
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    🧪 Testing Mode: Unlimited
+                  </span>
+                </div>
+                <h3 className="text-lg font-extrabold text-[#1F2937] mt-1.5">
                   {customSubdomainEnabled ? 'Update Subdomain Name' : 'Official Restaurant Subdomain Plan'}
                 </h3>
                 <p className="text-xs text-[#64748B]">
-                  {customSubdomainEnabled ? 'Manage and update your official digital store URL' : 'Unlock official restaurant branding for your digital store'}
+                  {customSubdomainEnabled ? 'Manage and update your official digital store URL (Free test updates enabled)' : 'Unlock official restaurant branding for your digital store'}
                 </p>
               </div>
               <button onClick={() => setShowSubdomainModal(false)} className="text-slate-400 hover:text-slate-600 font-bold p-1">✕</button>
@@ -804,6 +842,15 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="flex items-center justify-between mt-1 text-[11px] font-mono">
                   <span className="text-[#64748B]">Live Preview: <strong className="text-[#3A7D7C]">https://{customSlugInput || 'yourname'}.jattamkommerce.com</strong></span>
+                  {customSubdomainEnabled && (
+                    <button
+                      type="button"
+                      onClick={handleResetQuota}
+                      className="text-[10px] font-bold text-[#3A7D7C] hover:underline flex items-center gap-1 font-sans"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5" /> Reset Quota
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -858,10 +905,7 @@ export default function AdminSettingsPage() {
               <button
                 type="button"
                 disabled={saving}
-                onClick={async () => {
-                  await handlePurchaseCustomSubdomain();
-                  setShowSubdomainModal(false);
-                }}
+                onClick={handlePurchaseCustomSubdomain}
                 className={`px-5 py-2.5 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer ${
                   customSubdomainEnabled
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
@@ -872,7 +916,7 @@ export default function AdminSettingsPage() {
                 {saving 
                   ? 'Saving Subdomain...' 
                   : customSubdomainEnabled 
-                  ? '🔄 Renew Plan (₹99/mo)' 
+                  ? '💾 Save Subdomain Name' 
                   : '💳 Pay ₹99 & Unlock Custom Subdomain'}
               </button>
             </div>
