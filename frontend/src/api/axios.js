@@ -34,6 +34,16 @@ api.interceptors.request.use(
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
+
+    // Attach active restaurant slug if on an admin route
+    if (typeof window !== 'undefined' && window.location) {
+      const match = window.location.pathname.match(/\/admin\/([a-zA-Z0-9_-]+)/);
+      const ignored = ['offline', 'history', 'wallet', 'subscription', 'accommodation', 'unclaimed', 'login'];
+      if (match && match[1] && !ignored.includes(match[1])) {
+        config.headers['x-restaurant-slug'] = match[1];
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

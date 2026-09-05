@@ -107,10 +107,21 @@ async function resolveRestaurantAccess(req, res, next) {
 
     const userRole = req.user.role;
 
+    const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'] || req.params?.slug;
+    const targetIdParam = req.query?.restaurant_id || req.headers['x-restaurant-id'] || req.params?.restaurantId;
+
+    let targetRestId = null;
+    if (targetSlug) {
+      const slugRows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      if (slugRows.length > 0) targetRestId = slugRows[0].id;
+    } else if (targetIdParam) {
+      targetRestId = parseInt(targetIdParam, 10) || null;
+    }
+
     // Super Admin can access everything
     if (userRole === 'SUPER_ADMIN') {
       req.adminRestaurantIds = null; // null = all
-      req.adminRestaurantId = null;
+      req.adminRestaurantId = targetRestId;
       req.isSuperAdmin = true;
       return next();
     }
@@ -123,7 +134,7 @@ async function resolveRestaurantAccess(req, res, next) {
       );
 
       if (assignments.length === 0) {
-        const fallbackRestId = req.user.restaurant_id || 1;
+        const fallbackRestId = targetRestId || req.user.restaurant_id || 1;
         // Auto-link user to restaurant for persistence
         try {
           await query(
@@ -139,9 +150,14 @@ async function resolveRestaurantAccess(req, res, next) {
       }
 
       req.adminRestaurantIds = assignments.map(a => a.restaurant_id);
-      // Primary restaurant or first assigned
-      const primary = assignments.find(a => a.is_primary) || assignments[0];
-      req.adminRestaurantId = primary.restaurant_id;
+
+      if (targetRestId && req.adminRestaurantIds.includes(targetRestId)) {
+        req.adminRestaurantId = targetRestId;
+      } else {
+        // Primary restaurant or first assigned
+        const primary = assignments.find(a => a.is_primary) || assignments[0];
+        req.adminRestaurantId = primary.restaurant_id;
+      }
       req.isSuperAdmin = false;
       return next();
     }

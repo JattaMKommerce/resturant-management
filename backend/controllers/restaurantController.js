@@ -255,6 +255,38 @@ async function submitRoomInquiry(req, res) {
 // ADMIN RESTAURANT ENDPOINTS (with isolation)
 // ═══════════════════════════════════════════════
 
+async function getFeaturesForRestaurant(restId) {
+  try {
+    const [row] = await query('SELECT * FROM restaurant_feature_controls WHERE restaurant_id = ?', [restId]);
+    if (row) {
+      return {
+        online_ordering: row.online_ordering,
+        delivery_fleet: row.delivery_fleet,
+        rewards_wallet: row.rewards_wallet,
+        table_dine_in: row.table_dine_in,
+        kds_kot: row.kds_kot,
+        pos_billing: row.pos_billing,
+        inventory_stock: row.inventory_stock,
+        reports_analytics: row.reports_analytics,
+        hotel_accommodations: row.hotel_accommodations,
+        custom_subdomain: row.custom_subdomain
+      };
+    }
+  } catch (e) {}
+  return {
+    online_ordering: 1,
+    delivery_fleet: 1,
+    rewards_wallet: 1,
+    table_dine_in: 1,
+    kds_kot: 1,
+    pos_billing: 1,
+    inventory_stock: 1,
+    reports_analytics: 1,
+    hotel_accommodations: 1,
+    custom_subdomain: 1
+  };
+}
+
 async function getAdminRestaurant(req, res) {
   try {
     const slug = req.query.slug || req.params.slug;
@@ -267,13 +299,15 @@ async function getAdminRestaurant(req, res) {
           return res.status(403).json({ success: false, message: 'Access denied to this restaurant.' });
         }
         const quota = getSubdomainQuota(rowsBySlug[0]);
+        const features = await getFeaturesForRestaurant(rowsBySlug[0].id);
         return res.json({
           success: true,
           restaurant: {
             ...rowsBySlug[0],
             subdomain_changes_this_month: quota.usedThisMonth,
             subdomain_changes_left: quota.remaining,
-            max_subdomain_changes_per_month: 3
+            max_subdomain_changes_per_month: 3,
+            features
           }
         });
       }
@@ -306,13 +340,15 @@ async function getAdminRestaurant(req, res) {
     }
 
     const quota = getSubdomainQuota(rows[0]);
+    const features = await getFeaturesForRestaurant(rows[0].id);
     res.json({
       success: true,
       restaurant: {
         ...rows[0],
         subdomain_changes_this_month: quota.usedThisMonth,
         subdomain_changes_left: quota.remaining,
-        max_subdomain_changes_per_month: 3
+        max_subdomain_changes_per_month: 3,
+        features
       }
     });
   } catch (err) {

@@ -98,37 +98,45 @@ export default function UnifiedSidebar({
     };
   }, []);
 
+  // Feature Guard Helper
+  const features = restaurant?.features || {};
+  const isFeatureEnabled = (key) => {
+    if (!key) return true;
+    return features[key] !== 0 && features[key] !== false;
+  };
+
   // 1. ONLINE STORE SECTION
   const onlineNavItems = [
-    { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true },
+    { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true, featureKey: 'online_ordering' },
     {
       name: 'Unclaimed Orders (>5m)',
       path: `/admin/${activeSlug}/unclaimed`,
       icon: AlertTriangle,
       badge: unclaimedCount > 0 ? `${unclaimedCount} Urgent` : null,
-      badgeClass: 'bg-rose-600 text-white animate-pulse shadow-sm shadow-rose-500/50'
+      badgeClass: 'bg-rose-600 text-white animate-pulse shadow-sm shadow-rose-500/50',
+      featureKey: 'online_ordering'
     },
-    { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History },
+    { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
     { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
-    { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users },
+    { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users, featureKey: 'delivery_fleet' },
     { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
     { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
-    { name: '🎁 Kratu Rewards & Wallet', path: '/admin/wallet', icon: Gift },
+    { name: '🎁 Kratu Rewards & Wallet', path: '/admin/wallet', icon: Gift, featureKey: 'rewards_wallet' },
     { name: 'Store Website Settings', path: `/admin/${activeSlug}/settings`, icon: Settings },
   ];
 
   // 2. OFFLINE RESTAURANT & KOT SECTION
   const offlineNavItems = [
-    { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity },
-    { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2 },
+    { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity, featureKey: 'pos_billing' },
+    { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2, featureKey: 'table_dine_in' },
     { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
-    { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat },
-    { name: 'Kitchen Display System (Active KDS)', path: '/admin/offline/kds', icon: ChefHat },
-    { name: 'KOT Status & Acceptance', path: '/admin/offline/kot-status', icon: CheckSquare2 },
+    { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat, featureKey: 'pos_billing' },
+    { name: 'Kitchen Display System (Active KDS)', path: '/admin/offline/kds', icon: ChefHat, featureKey: 'kds_kot' },
+    { name: 'KOT Status & Acceptance', path: '/admin/offline/kot-status', icon: CheckSquare2, featureKey: 'kds_kot' },
     { name: 'Staff Management', path: '/admin/offline/staff', icon: UserCheck },
-    { name: 'Billing & Folio', path: '/admin/offline/billing', icon: Receipt },
-    { name: 'Receipts & Stocks', path: '/admin/offline/inventory', icon: Boxes },
-    { name: 'Reports', path: '/admin/offline/reports', icon: BarChart3 },
+    { name: 'Billing & Folio', path: '/admin/offline/billing', icon: Receipt, featureKey: 'pos_billing' },
+    { name: 'Receipts & Stocks', path: '/admin/offline/inventory', icon: Boxes, featureKey: 'inventory_stock' },
+    { name: 'Reports', path: '/admin/offline/reports', icon: BarChart3, featureKey: 'reports_analytics' },
   ];
 
   // 3. HOTEL ACCOMMODATION SECTION
@@ -233,7 +241,7 @@ export default function UnifiedSidebar({
 
           {onlineOpen && (
             <div className="space-y-0.5 pt-0.5">
-              {onlineNavItems.map((item, idx) => {
+              {onlineNavItems.filter(item => isFeatureEnabled(item.featureKey)).map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -287,7 +295,7 @@ export default function UnifiedSidebar({
 
           {offlineOpen && (
             <div className="space-y-0.5 pt-0.5">
-              {offlineNavItems.map((item, idx) => {
+              {offlineNavItems.filter(item => isFeatureEnabled(item.featureKey)).map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -320,8 +328,8 @@ export default function UnifiedSidebar({
           )}
         </div>
 
-        {/* SECTION 3: HOTEL ACCOMMODATION (Shown only in RESTAURANT_ACCOMMODATION mode) */}
-        {productMode === 'RESTAURANT_ACCOMMODATION' && (
+        {/* SECTION 3: HOTEL ACCOMMODATION (Shown only when enabled and in RESTAURANT_ACCOMMODATION mode) */}
+        {productMode === 'RESTAURANT_ACCOMMODATION' && isFeatureEnabled('hotel_accommodations') && (
           <div className="space-y-1 pt-2 border-t border-[#D7E5E8] animate-in fade-in duration-200">
             <button
               onClick={() => setAccommodationOpen(!accommodationOpen)}

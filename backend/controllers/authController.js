@@ -228,6 +228,23 @@ async function login(req, res) {
         await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
         user.role = 'RESTAURANT_ADMIN';
       }
+      try {
+        const featRows = await query('SELECT * FROM restaurant_feature_controls WHERE restaurant_id = ?', [restaurant.id]);
+        if (featRows.length > 0) {
+          restaurant.features = {
+            online_ordering: featRows[0].online_ordering,
+            delivery_fleet: featRows[0].delivery_fleet,
+            rewards_wallet: featRows[0].rewards_wallet,
+            table_dine_in: featRows[0].table_dine_in,
+            kds_kot: featRows[0].kds_kot,
+            pos_billing: featRows[0].pos_billing,
+            inventory_stock: featRows[0].inventory_stock,
+            reports_analytics: featRows[0].reports_analytics,
+            hotel_accommodations: featRows[0].hotel_accommodations,
+            custom_subdomain: featRows[0].custom_subdomain
+          };
+        }
+      } catch (fErr) {}
     }
 
     const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;
@@ -289,6 +306,23 @@ async function getMe(req, res) {
         await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
         user.role = 'RESTAURANT_ADMIN';
       }
+      try {
+        const featRows = await query('SELECT * FROM restaurant_feature_controls WHERE restaurant_id = ?', [restaurant.id]);
+        if (featRows.length > 0) {
+          restaurant.features = {
+            online_ordering: featRows[0].online_ordering,
+            delivery_fleet: featRows[0].delivery_fleet,
+            rewards_wallet: featRows[0].rewards_wallet,
+            table_dine_in: featRows[0].table_dine_in,
+            kds_kot: featRows[0].kds_kot,
+            pos_billing: featRows[0].pos_billing,
+            inventory_stock: featRows[0].inventory_stock,
+            reports_analytics: featRows[0].reports_analytics,
+            hotel_accommodations: featRows[0].hotel_accommodations,
+            custom_subdomain: featRows[0].custom_subdomain
+          };
+        }
+      } catch (fErr) {}
     }
 
     const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;

@@ -131,6 +131,13 @@ router.get('/superadmin/drivers', ...superAuth, superAdminController.getAllDrive
 router.patch('/superadmin/drivers/:driverId/status', ...superAuth, superAdminController.updateDriverStatus);
 router.get('/superadmin/orders', ...superAuth, superAdminController.getAllPlatformOrders);
 
+// Restaurant Feature Controls & Modular Provisioning
+router.get('/superadmin/restaurants-with-features', ...superAuth, superAdminController.getAllRestaurantsWithFeatures);
+router.get('/superadmin/restaurants/:id/features', ...superAuth, superAdminController.getRestaurantFeatures);
+router.patch('/superadmin/restaurants/:id/features', ...superAuth, superAdminController.updateRestaurantFeatures);
+router.put('/superadmin/restaurants/:id/features', ...superAuth, superAdminController.updateRestaurantFeatures);
+router.post('/superadmin/restaurants/:id/features/preset', ...superAuth, superAdminController.bulkSetRestaurantFeatures);
+
 // ═══════════════════════════════════════════════
 // 9. RESTAURANT ADMIN ROUTES (With Tenant Isolation & SaaS Subscription Enforcement)
 // ═══════════════════════════════════════════════

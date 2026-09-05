@@ -1356,6 +1356,34 @@ async function initDatabase(options = {}) {
       } catch (err) {
         console.warn('Subscription plans seed warning:', err.message);
       }
+
+      // Feature Controls System
+      try {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS restaurant_feature_controls (
+            restaurant_id INT PRIMARY KEY,
+            online_ordering TINYINT(1) NOT NULL DEFAULT 1,
+            delivery_fleet TINYINT(1) NOT NULL DEFAULT 1,
+            rewards_wallet TINYINT(1) NOT NULL DEFAULT 1,
+            table_dine_in TINYINT(1) NOT NULL DEFAULT 1,
+            kds_kot TINYINT(1) NOT NULL DEFAULT 1,
+            pos_billing TINYINT(1) NOT NULL DEFAULT 1,
+            inventory_stock TINYINT(1) NOT NULL DEFAULT 1,
+            reports_analytics TINYINT(1) NOT NULL DEFAULT 1,
+            hotel_accommodations TINYINT(1) NOT NULL DEFAULT 1,
+            custom_subdomain TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        const [allRests] = await conn.query('SELECT id FROM restaurants');
+        for (const r of allRests) {
+          await conn.query('INSERT IGNORE INTO restaurant_feature_controls (restaurant_id) VALUES (?)', [r.id]);
+        }
+      } catch (fErr) {
+        console.warn('restaurant_feature_controls init warning:', fErr.message);
+      }
     }
 
     if (require.main === module) {

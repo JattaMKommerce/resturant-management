@@ -182,7 +182,28 @@ async function updateRestaurantStatus(req, res) {
     }
 
     await query('UPDATE restaurants SET status = ? WHERE id = ?', [status, id]);
-    res.json({ success: true, message: `Restaurant status updated to ${status}.` });
+
+    // Also synchronize admin users belonging to this restaurant
+    try {
+      if (status === 'ACTIVE') {
+        await query(`
+          UPDATE users u
+          JOIN restaurant_admins ra ON ra.user_id = u.id
+          SET u.status = 'ACTIVE'
+          WHERE ra.restaurant_id = ?
+        `, [id]);
+      } else if (status === 'SUSPENDED') {
+        await query(`
+          UPDATE users u
+          JOIN restaurant_admins ra ON ra.user_id = u.id
+          SET u.status = 'DISABLED'
+          WHERE ra.restaurant_id = ?
+        `, [id]);
+      }
+    } catch (uErr) {}
+
+    const [updatedRest] = await query('SELECT * FROM restaurants WHERE id = ?', [id]);
+    res.json({ success: true, message: `Restaurant status updated to ${status}.`, restaurant: updatedRest });
   } catch (err) {
     console.error('updateRestaurantStatus Error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
@@ -453,6 +474,254 @@ async function toggleCustomSubdomain(req, res) {
   }
 }
 
+// ═══════════════════════════════════════════════
+// RESTAURANT FEATURE CONTROLS & MODULAR PROVISIONING
+// ═══════════════════════════════════════════════
+
+const DEFAULT_FEATURE_KEYS = [
+  'online_ordering',
+  'delivery_fleet',
+  'rewards_wallet',
+  'table_dine_in',
+  'kds_kot',
+  'pos_billing',
+  'inventory_stock',
+  'reports_analytics',
+  'hotel_accommodations',
+  'custom_subdomain'
+];
+
+async function ensureFeatureRow(restaurantId) {
+  const [row] = await query('SELECT * FROM restaurant_feature_controls WHERE restaurant_id = ?', [restaurantId]);
+  if (!row) {
+    await query(
+      `INSERT IGNORE INTO restaurant_feature_controls (restaurant_id) VALUES (?)`,
+      [restaurantId]
+    );
+    const [fresh] = await query('SELECT * FROM restaurant_feature_controls WHERE restaurant_id = ?', [restaurantId]);
+    return fresh;
+  }
+  return row;
+}
+
+async function getAllRestaurantsWithFeatures(req, res) {
+  try {
+    const sql = `
+      SELECT 
+        r.id, r.name, r.slug, r.status, r.website_status, r.phone, r.email,
+        COALESCE(f.online_ordering, 1) as online_ordering,
+        COALESCE(f.delivery_fleet, 1) as delivery_fleet,
+        COALESCE(f.rewards_wallet, 1) as rewards_wallet,
+        COALESCE(f.table_dine_in, 1) as table_dine_in,
+        COALESCE(f.kds_kot, 1) as kds_kot,
+        COALESCE(f.pos_billing, 1) as pos_billing,
+        COALESCE(f.inventory_stock, 1) as inventory_stock,
+        COALESCE(f.reports_analytics, 1) as reports_analytics,
+        COALESCE(f.hotel_accommodations, 1) as hotel_accommodations,
+        COALESCE(f.custom_subdomain, 1) as custom_subdomain
+      FROM restaurants r
+      LEFT JOIN restaurant_feature_controls f ON r.id = f.restaurant_id
+      ORDER BY r.id ASC
+    `;
+    const rows = await query(sql);
+
+    const formatted = rows.map(r => {
+      let activeCount = 0;
+      DEFAULT_FEATURE_KEYS.forEach(k => {
+        if (r[k] === 1) activeCount++;
+      });
+      return {
+        id: r.id,
+        name: r.name,
+        slug: r.slug,
+        status: r.status,
+        website_status: r.website_status,
+        phone: r.phone,
+        email: r.email,
+        active_features_count: activeCount,
+        total_features_count: DEFAULT_FEATURE_KEYS.length,
+        features: {
+          online_ordering: r.online_ordering,
+          delivery_fleet: r.delivery_fleet,
+          rewards_wallet: r.rewards_wallet,
+          table_dine_in: r.table_dine_in,
+          kds_kot: r.kds_kot,
+          pos_billing: r.pos_billing,
+          inventory_stock: r.inventory_stock,
+          reports_analytics: r.reports_analytics,
+          hotel_accommodations: r.hotel_accommodations,
+          custom_subdomain: r.custom_subdomain
+        }
+      };
+    });
+
+    res.json({ success: true, restaurants: formatted });
+  } catch (err) {
+    console.error('getAllRestaurantsWithFeatures Error:', err);
+    res.status(500).json({ success: false, message: 'Server error retrieving restaurant features.' });
+  }
+}
+
+async function getRestaurantFeatures(req, res) {
+  try {
+    const { id } = req.params;
+    const [rest] = await query('SELECT id, name, slug FROM restaurants WHERE id = ?', [id]);
+    if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+
+    const row = await ensureFeatureRow(id);
+    const features = {};
+    DEFAULT_FEATURE_KEYS.forEach(k => {
+      features[k] = row[k] !== undefined ? row[k] : 1;
+    });
+
+    res.json({
+      success: true,
+      restaurant: rest,
+      features
+    });
+  } catch (err) {
+    console.error('getRestaurantFeatures Error:', err);
+    res.status(500).json({ success: false, message: 'Server error retrieving features.' });
+  }
+}
+
+async function updateRestaurantFeatures(req, res) {
+  try {
+    const { id } = req.params;
+    const [rest] = await query('SELECT id, name, slug FROM restaurants WHERE id = ?', [id]);
+    if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+
+    await ensureFeatureRow(id);
+
+    const updateFields = [];
+    const updateParams = [];
+
+    for (const key of DEFAULT_FEATURE_KEYS) {
+      if (req.body[key] !== undefined) {
+        const val = req.body[key] ? 1 : 0;
+        updateFields.push(`${key} = ?`);
+        updateParams.push(val);
+      }
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid feature fields provided.' });
+    }
+
+    updateParams.push(id);
+    await query(
+      `UPDATE restaurant_feature_controls SET ${updateFields.join(', ')} WHERE restaurant_id = ?`,
+      updateParams
+    );
+
+    // Fetch complete updated feature set
+    const freshRow = await ensureFeatureRow(id);
+    const fullFeatures = {};
+    DEFAULT_FEATURE_KEYS.forEach(k => {
+      fullFeatures[k] = freshRow[k];
+    });
+
+    // If custom_subdomain is toggled, sync restaurants.custom_subdomain_enabled
+    if (req.body.custom_subdomain !== undefined) {
+      await query('UPDATE restaurants SET custom_subdomain_enabled = ? WHERE id = ?', [req.body.custom_subdomain ? 1 : 0, id]);
+    }
+    // If online_ordering is toggled, sync restaurants.is_online_ordering_enabled
+    if (req.body.online_ordering !== undefined) {
+      await query('UPDATE restaurants SET is_online_ordering_enabled = ? WHERE id = ?', [req.body.online_ordering ? 1 : 0, id]);
+    }
+
+    // Broadcast socket event for real-time instant UI update
+    try {
+      const io = NotificationService.getSocketIO ? NotificationService.getSocketIO() : null;
+      if (io) {
+        io.emit('restaurant_features_updated', {
+          restaurantId: parseInt(id, 10),
+          features: fullFeatures
+        });
+      }
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: 'Feature controls updated successfully.',
+      restaurant: rest,
+      features: fullFeatures
+    });
+  } catch (err) {
+    console.error('updateRestaurantFeatures Error:', err);
+    res.status(500).json({ success: false, message: 'Server error updating features.' });
+  }
+}
+
+async function bulkSetRestaurantFeatures(req, res) {
+  try {
+    const { id } = req.params;
+    const { preset } = req.body; // 'full', 'food_dining_only', 'cloud_kitchen', 'disable_all'
+
+    const [rest] = await query('SELECT id, name, slug FROM restaurants WHERE id = ?', [id]);
+    if (!rest) return res.status(404).json({ success: false, message: 'Restaurant not found.' });
+
+    await ensureFeatureRow(id);
+
+    let targetFeatures = {};
+    if (preset === 'full') {
+      DEFAULT_FEATURE_KEYS.forEach(k => { targetFeatures[k] = 1; });
+    } else if (preset === 'food_dining_only') {
+      DEFAULT_FEATURE_KEYS.forEach(k => { targetFeatures[k] = 1; });
+      targetFeatures.hotel_accommodations = 0;
+    } else if (preset === 'cloud_kitchen') {
+      DEFAULT_FEATURE_KEYS.forEach(k => { targetFeatures[k] = 0; });
+      targetFeatures.online_ordering = 1;
+      targetFeatures.delivery_fleet = 1;
+      targetFeatures.rewards_wallet = 1;
+      targetFeatures.inventory_stock = 1;
+      targetFeatures.reports_analytics = 1;
+      targetFeatures.pos_billing = 1;
+    } else if (preset === 'disable_all') {
+      DEFAULT_FEATURE_KEYS.forEach(k => { targetFeatures[k] = 0; });
+    } else {
+      return res.status(400).json({ success: false, message: 'Unknown preset profile.' });
+    }
+
+    const setClauses = DEFAULT_FEATURE_KEYS.map(k => `${k} = ?`).join(', ');
+    const setValues = DEFAULT_FEATURE_KEYS.map(k => targetFeatures[k]);
+    setValues.push(id);
+
+    await query(
+      `UPDATE restaurant_feature_controls SET ${setClauses} WHERE restaurant_id = ?`,
+      setValues
+    );
+
+    // Sync sub-flags
+    if (targetFeatures.custom_subdomain !== undefined) {
+      await query('UPDATE restaurants SET custom_subdomain_enabled = ? WHERE id = ?', [targetFeatures.custom_subdomain, id]);
+    }
+    if (targetFeatures.online_ordering !== undefined) {
+      await query('UPDATE restaurants SET is_online_ordering_enabled = ? WHERE id = ?', [targetFeatures.online_ordering, id]);
+    }
+
+    // Broadcast socket event
+    try {
+      const io = NotificationService.getSocketIO ? NotificationService.getSocketIO() : null;
+      if (io) {
+        io.emit('restaurant_features_updated', {
+          restaurantId: parseInt(id, 10),
+          features: targetFeatures
+        });
+      }
+    } catch (e) {}
+
+    res.json({
+      success: true,
+      message: `Preset profile "${preset}" applied successfully.`,
+      features: targetFeatures
+    });
+  } catch (err) {
+    console.error('bulkSetRestaurantFeatures Error:', err);
+    res.status(500).json({ success: false, message: 'Server error applying feature preset.' });
+  }
+}
+
 module.exports = {
   getSuperAdminKPIs,
   getAllRestaurants,
@@ -467,5 +736,9 @@ module.exports = {
   getAllDrivers,
   updateDriverStatus,
   getAllPlatformOrders,
-  toggleCustomSubdomain
+  toggleCustomSubdomain,
+  getAllRestaurantsWithFeatures,
+  getRestaurantFeatures,
+  updateRestaurantFeatures,
+  bulkSetRestaurantFeatures
 };

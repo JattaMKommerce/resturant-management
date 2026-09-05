@@ -104,6 +104,24 @@ const ProtectedRoute = ({ children, allowedRoles = [], loginPath = '/admin/login
   return children;
 };
 
+// Feature-Gated Route Guard Component
+const FeatureRoute = ({ children, featureKey, fallbackPath }) => {
+  const { restaurant, user } = useAuth();
+
+  // Super Admin bypasses feature restrictions
+  if (user?.role === 'SUPER_ADMIN') {
+    return children;
+  }
+
+  // If feature controls exist and the specific feature is turned OFF (0)
+  if (restaurant?.features && featureKey && restaurant.features[featureKey] === 0) {
+    const defaultFallback = fallbackPath || (restaurant?.slug ? `/admin/${restaurant.slug}` : '/admin/offline/dashboard');
+    return <Navigate to={defaultFallback} replace />;
+  }
+
+  return children;
+};
+
 // Waiter Portal Smart Redirector
 const WaiterRedirect = () => {
   const { user, loading } = useAuth();
@@ -345,17 +363,23 @@ export default function App() {
         } />
         <Route path="/admin/:slug/drivers" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
-            <AdminDriversPage />
+            <FeatureRoute featureKey="delivery_fleet">
+              <AdminDriversPage />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/riders" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
-            <AdminDriversPage />
+            <FeatureRoute featureKey="delivery_fleet">
+              <AdminDriversPage />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/deliveries" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
-            <AdminDeliveriesPage />
+            <FeatureRoute featureKey="delivery_fleet">
+              <AdminDeliveriesPage />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/subscription" element={
@@ -374,12 +398,16 @@ export default function App() {
         } />
         <Route path="/admin/wallet" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
-            <WalletManagementPage />
+            <FeatureRoute featureKey="rewards_wallet">
+              <WalletManagementPage />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/wallet" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
-            <WalletManagementPage />
+            <FeatureRoute featureKey="rewards_wallet">
+              <WalletManagementPage />
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/settings" element={
@@ -442,32 +470,40 @@ export default function App() {
         {/* Accommodation & Hotel Room Management */}
         <Route path="/admin/offline/accommodation" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <AccommodationPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="hotel_accommodations">
+              <AdminLayout>
+                <AccommodationPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/accommodation" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <AccommodationPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="hotel_accommodations">
+              <AdminLayout>
+                <AccommodationPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
         <Route path="/admin/accommodation/:subTab" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <AccommodationPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="hotel_accommodations">
+              <AdminLayout>
+                <AccommodationPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
         {/* 3. Table Management */}
         <Route path="/admin/offline/tables" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <TableManagementPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="table_dine_in">
+              <AdminLayout>
+                <TableManagementPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
@@ -504,45 +540,55 @@ export default function App() {
         {/* 6. Kitchen Display (KDS) */}
         <Route path="/admin/offline/kds" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'KITCHEN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <KitchenDisplayPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="kds_kot">
+              <AdminLayout>
+                <KitchenDisplayPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
         {/* 7. Kitchen Display System (Accept/Reject) */}
         <Route path="/admin/offline/kot-status" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'KITCHEN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <KOTStatusPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="kds_kot">
+              <AdminLayout>
+                <KOTStatusPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
         {/* 8. Billing & Room Folio */}
         <Route path="/admin/offline/billing" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <BillingPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="pos_billing">
+              <AdminLayout>
+                <BillingPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
         {/* 9. Receipts & Stocks (Inventory) */}
         <Route path="/admin/offline/inventory" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'KITCHEN', 'INVENTORY_MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <RecipeInventoryPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="inventory_stock">
+              <AdminLayout>
+                <RecipeInventoryPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 
         {/* 10. Reports */}
         <Route path="/admin/offline/reports" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
-            <AdminLayout>
-              <ReportsPage />
-            </AdminLayout>
+            <FeatureRoute featureKey="reports_analytics">
+              <AdminLayout>
+                <ReportsPage />
+              </AdminLayout>
+            </FeatureRoute>
           </ProtectedRoute>
         } />
 

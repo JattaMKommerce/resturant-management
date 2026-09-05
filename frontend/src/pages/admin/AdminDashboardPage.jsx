@@ -79,10 +79,11 @@ export default function AdminDashboardPage() {
   const fetchDashboardData = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
+      const queryParam = currentSlug ? `?slug=${encodeURIComponent(currentSlug)}` : '';
       const [kpiRes, ordersRes, progRes] = await Promise.all([
-        api.get('/admin/dashboard/kpis'),
-        api.get('/admin/orders'),
-        api.get('/admin/restaurant/setup-progress').catch(() => null)
+        api.get(`/admin/dashboard/kpis${queryParam}`),
+        api.get(`/admin/orders${queryParam}`),
+        api.get(`/admin/restaurant/setup-progress${queryParam}`).catch(() => null)
       ]);
 
       if (kpiRes.data.success) setKpis(kpiRes.data.kpis);
@@ -101,44 +102,23 @@ export default function AdminDashboardPage() {
     const defaults = {
       AVAILABLE_ROOMS: {
         summary: { title: '🛏️ Rooms Available Tonight', actionText: 'Assign Room in Rooms Grid', actionLink: '/admin/accommodation/rooms' },
-        items: [
-          { id: 101, room_number: '101', room_type: 'Deluxe Sea View', rate_per_night: 2800, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-          { id: 102, room_number: '102', room_type: 'Executive Suite', rate_per_night: 3500, status: 'AVAILABLE', floor_number: 1, bed_type: 'King Bed' },
-          { id: 201, room_number: '201', room_type: 'Standard King', rate_per_night: 2200, status: 'AVAILABLE', floor_number: 2, bed_type: 'Queen Bed' },
-          { id: 204, room_number: '204', room_type: 'Deluxe Heritage', rate_per_night: 3000, status: 'AVAILABLE', floor_number: 2, bed_type: 'King Bed' },
-          { id: 301, room_number: '301', room_type: 'VIP Presidential', rate_per_night: 5500, status: 'AVAILABLE', floor_number: 3, bed_type: 'California King' }
-        ]
+        items: []
       },
       ARRIVALS_DEPARTURES: {
         summary: { title: '🚪 Who Arrives & Departs Today', actionText: 'Open Check-in / Check-out Desk', actionLink: '/admin/accommodation/checkin' },
-        items: [
-          { id: 1, guest_name: 'Rajesh Sharma', guest_phone: '+91 98765 43210', room_number: '105', room_type: 'Deluxe Room', event_type: 'ARRIVAL', time: '14:00 Check-In', status: 'CONFIRMED' },
-          { id: 2, guest_name: 'Sarah Fernandes', guest_phone: '+91 98231 11223', room_number: '202', room_type: 'Executive Suite', event_type: 'ARRIVAL', time: '15:30 Check-In', status: 'CONFIRMED' },
-          { id: 3, guest_name: 'Amit Patel', guest_phone: '+91 99887 76655', room_number: '104', room_type: 'Standard Room', event_type: 'DEPARTURE', time: '11:00 Check-Out', status: 'IN_HOUSE' }
-        ]
+        items: []
       },
       PENDING_PAYMENTS: {
         summary: { title: '💳 Pending Payments & Folios', actionText: 'Settle in Room Folios', actionLink: '/admin/accommodation/folios' },
-        items: [
-          { id: 41, room_number: 'Room 201', guest_name: 'Vikram Mehta', amount_due: 7500, source: 'ROOM_FOLIO', note: '2 Nights + Dinner charges' },
-          { id: 42, room_number: 'Room 108', guest_name: 'Ananya Roy', amount_due: 3450, source: 'ROOM_FOLIO', note: 'Room service & laundry' },
-          { id: 981, order_number: 'ORD-981', guest_name: 'Karan Malhotra', amount_due: 1500, source: 'FOOD_ORDER', note: 'Cash On Delivery pending' }
-        ]
+        items: []
       },
       UNREADY_ROOMS: {
         summary: { title: '🧹 Rooms Not Ready (Housekeeping / Repair)', actionText: 'Manage in Housekeeping', actionLink: '/admin/accommodation/housekeeping' },
-        items: [
-          { id: 103, room_number: '103', room_type: 'Deluxe Room', status: 'CLEANING', floor_number: 1, note: 'Bed linen change & sanitization' },
-          { id: 205, room_number: '205', room_type: 'Executive Suite', status: 'CLEANING', floor_number: 2, note: 'Checkout clean up in progress' },
-          { id: 304, room_number: '304', room_type: 'Standard Room', status: 'MAINTENANCE', floor_number: 3, note: 'AC filter inspection & tap fix' }
-        ]
+        items: []
       },
       PENDING_INQUIRIES: {
         summary: { title: '📩 Inquiries Needing Follow-up', actionText: 'View All Website Leads', actionLink: '/admin/accommodation/leads' },
-        items: [
-          { id: 12, guest_name: 'Sneha Kapoor', guest_phone: '+91 91234 56789', room_type: 'Deluxe Sea View (2 Nights)', check_in_date: 'Tomorrow', notes: 'Needs early check-in at 11 AM if available', created_at: '25m ago' },
-          { id: 13, guest_name: 'David Reynolds', guest_phone: '+44 7700 900077', room_type: 'Executive Suite (3 Nights)', check_in_date: 'This Weekend', notes: 'Inquired via Website Storefront', created_at: '1h ago' }
-        ]
+        items: []
       },
       RATE_RECOMMENDATION: {
         summary: { title: 'Tonight’s Dynamic Rate Recommendation' },
@@ -147,12 +127,12 @@ export default function AdminDashboardPage() {
       EXECUTIVE_SUMMARY: {
         summary: { title: '⚡ Executive Daily Briefing: "How Is My Hotel Performing Today?"' },
         items: [
-          { metric: 'Tonight Available', value: oqData?.roomsAvailableTonight?.headline || '18 of 24 Available', tag: 'Inventory' },
-          { metric: 'Live Occupancy', value: `${oqData?.roomsAvailableTonight?.occupancyRate || 25}%`, tag: 'Capacity' },
-          { metric: 'Front Desk Movements', value: oqData?.arrivalsDepartures?.headline || '3 In • 2 Out', tag: 'Operations' },
-          { metric: 'Cash Pending', value: oqData?.pendingPayments?.headline || '₹12,450 Pending', tag: 'Finance' },
-          { metric: 'Rooms Unready', value: oqData?.unreadyRooms?.headline || '3 Rooms Need Attention', tag: 'Housekeeping' },
-          { metric: 'Smart Rate Advice', value: oqData?.rateRecommendation?.headline || 'Charge ₹2,800 / night', tag: 'Revenue' }
+          { metric: 'Tonight Available', value: oqData?.roomsAvailableTonight?.headline || '0 of 0 Available', tag: 'Inventory' },
+          { metric: 'Live Occupancy', value: `${oqData?.roomsAvailableTonight?.occupancyRate || 0}%`, tag: 'Capacity' },
+          { metric: 'Front Desk Movements', value: oqData?.arrivalsDepartures?.headline || '0 Check-ins • 0 Check-outs', tag: 'Operations' },
+          { metric: 'Cash Pending', value: oqData?.pendingPayments?.headline || '₹0 Pending', tag: 'Finance' },
+          { metric: 'Rooms Unready', value: oqData?.unreadyRooms?.headline || '0 Rooms Need Attention', tag: 'Housekeeping' },
+          { metric: 'Smart Rate Advice', value: oqData?.rateRecommendation?.headline || 'Charge ₹0 / night', tag: 'Revenue' }
         ]
       }
     };
@@ -172,7 +152,8 @@ export default function AdminDashboardPage() {
 
     try {
       const q = searchParam || searchQuery;
-      const res = await api.get(`/admin/dashboard/question-drilldown?question=${questionKey}&search=${encodeURIComponent(q)}`);
+      const slugQuery = currentSlug ? `&slug=${encodeURIComponent(currentSlug)}` : '';
+      const res = await api.get(`/admin/dashboard/question-drilldown?question=${questionKey}&search=${encodeURIComponent(q)}${slugQuery}`);
       if (res.data?.success && res.data?.items) {
         setDrilldownData(res.data);
       }
@@ -264,14 +245,16 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const isHotelFeatureEnabled = restaurant?.features ? restaurant.features.hotel_accommodations !== 0 : true;
+
   const k = kpis || { todayOrders: 0, todayRevenue: 0, statusCounts: {} };
   const oq = k.ownerQuestions || {
-    roomsAvailableTonight: { headline: '18 of 24 Rooms Available', subline: '25% Occupancy Rate tonight', vacant: 18, total: 24, occupancyRate: 25 },
-    arrivalsDepartures: { headline: '3 Check-ins • 2 Check-outs', subline: '6 in-house guests staying', arrivals: 3, departures: 2, inHouse: 6 },
-    pendingPayments: { headline: '₹12,450 Pending', subline: '2 room folios & 1 order awaiting settlement', totalAmount: 12450 },
-    unreadyRooms: { headline: '3 Rooms Need Attention', subline: '2 cleaning in progress • 1 maintenance', totalUnready: 3, cleaning: 2, maintenance: 1 },
-    pendingInquiries: { headline: '2 Leads Awaiting Response', subline: 'Website inquiries ready for 1-tap WhatsApp response', count: 2 },
-    rateRecommendation: { headline: 'Charge ₹2,800 / night', subline: 'Healthy occupancy (25%). Base rack rates are optimal.', recommendedRate: 2800 }
+    roomsAvailableTonight: { headline: '0 Rooms Configured', subline: 'Configure rooms in Accommodations', vacant: 0, total: 0, occupancyRate: 0 },
+    arrivalsDepartures: { headline: '0 Check-ins • 0 Check-outs', subline: '0 in-house guests', arrivals: 0, departures: 0, inHouse: 0 },
+    pendingPayments: { headline: '₹0 Pending', subline: '0 folios awaiting settlement', totalAmount: 0, pendingFolios: 0, pendingOrders: 0 },
+    unreadyRooms: { headline: '0 Rooms Need Attention', subline: '0 cleaning • 0 repair', totalUnready: 0, cleaning: 0, maintenance: 0 },
+    pendingInquiries: { headline: '0 Leads Awaiting Response', subline: 'No pending inquiries', count: 0 },
+    rateRecommendation: { headline: '₹0 / night', subline: 'Configure rooms to calculate rate', recommendedRate: 0 }
   };
 
   const showOnboardingBanner = setupProgress && !setupProgress.isSetupComplete;
@@ -306,212 +289,214 @@ export default function AdminDashboardPage() {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* SLIDE 03: OWNER QUESTION-FIRST REAL-TIME DASHBOARD WIDGETS     */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0f172a] text-white rounded-2xl p-4 sm:p-5 shadow-xl border border-slate-700/60 relative overflow-hidden">
-          {/* Subtle background glow effect */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+        {isHotelFeatureEnabled && (
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#0f172a] text-white rounded-2xl p-4 sm:p-5 shadow-xl border border-slate-700/60 relative overflow-hidden">
+            {/* Subtle background glow effect */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
 
-          {/* Section Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
-            <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  Slide 03 • AI Hotel Operating System
-                </span>
-                <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live Data
-                </span>
-                {oq.lastLiveSync && (
-                  <span className="text-[10px] text-slate-400">
-                    Synced: {new Date(oq.lastLiveSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {/* Section Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    Slide 03 • AI Hotel Operating System
                   </span>
-                )}
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live Data
+                  </span>
+                  {oq.lastLiveSync && (
+                    <span className="text-[10px] text-slate-400">
+                      Synced: {new Date(oq.lastLiveSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  Design every screen around the owner's questions
+                </h1>
+                <p className="text-[11px] text-slate-300 font-medium">
+                  The first screen must explain today — not display software complexity.
+                </p>
               </div>
-              <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
-                Design every screen around the owner's questions
-              </h1>
-              <p className="text-[11px] text-slate-300 font-medium">
-                The first screen must explain today — not display software complexity.
-              </p>
+
+              {/* Live Search & Instant Command Bar */}
+              <div className="w-full lg:w-auto flex items-center gap-2">
+                <div className="relative flex-1 lg:w-72">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => handleLiveSearch(e.target.value)}
+                    placeholder="Search rooms, arrivals, payments..."
+                    className="w-full bg-slate-800/90 border border-slate-600 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-white placeholder-slate-400 text-xs rounded-xl pl-8 pr-7 py-2 outline-none transition-all shadow-inner"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
+                  )}
+                </div>
+                <button 
+                  onClick={() => fetchDashboardData(true)} 
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-600 transition-all cursor-pointer shadow-sm hover:text-emerald-300"
+                  title="Refresh Live Data"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
             </div>
 
-            {/* Live Search & Instant Command Bar */}
-            <div className="w-full lg:w-auto flex items-center gap-2">
-              <div className="relative flex-1 lg:w-72">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input 
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleLiveSearch(e.target.value)}
-                  placeholder="Search rooms, arrivals, payments..."
-                  className="w-full bg-slate-800/90 border border-slate-600 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-white placeholder-slate-400 text-xs rounded-xl pl-8 pr-7 py-2 outline-none transition-all shadow-inner"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">✕</button>
-                )}
-              </div>
-              <button 
-                onClick={() => fetchDashboardData(true)} 
-                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-600 transition-all cursor-pointer shadow-sm hover:text-emerald-300"
-                title="Refresh Live Data"
+            {/* The 6 Slide 03 Side-by-Side Compact Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 mt-3.5 relative z-10">
+              
+              {/* Card 1: Rooms available tonight? (Warm Cream #FFFDF9) */}
+              <div 
+                onClick={() => openDrilldown('AVAILABLE_ROOMS', 'Rooms Available Tonight')}
+                className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
+                      <BedDouble className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">Rooms tonight?</span>
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-amber-700/60 group-hover:text-amber-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 tracking-tight group-hover:text-amber-800 transition-colors leading-tight">
+                    {oq.roomsAvailableTonight?.vacant ?? 0} / {oq.roomsAvailableTonight?.total ?? 0}
+                    <span className="text-[11px] font-bold text-slate-500 ml-1">Left</span>
+                  </h3>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                  {oq.roomsAvailableTonight?.occupancyRate ?? 0}% occupancy
+                </p>
+              </div>
+
+              {/* Card 2: Who arrives and departs? (Crisp White #FFFFFF) */}
+              <div 
+                onClick={() => openDrilldown('ARRIVALS_DEPARTURES', 'Who Arrives & Departs Today')}
+                className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-400 cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-sky-900 uppercase tracking-tight flex items-center gap-1 truncate">
+                      <CalendarCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                      <span className="truncate">Arrivals/Departs?</span>
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-sky-600/60 group-hover:text-sky-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 tracking-tight group-hover:text-sky-800 transition-colors leading-tight">
+                    {oq.arrivalsDepartures?.arrivals ?? 0} In • {oq.arrivalsDepartures?.departures ?? 0} Out
+                  </h3>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                  {oq.arrivalsDepartures?.inHouse ?? 0} in-house guests
+                </p>
+              </div>
+
+              {/* Card 3: Which payments are pending? (Warm Cream #FFFDF9) */}
+              <div 
+                onClick={() => openDrilldown('PENDING_PAYMENTS', 'Pending Payments & Folios')}
+                className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-rose-400 cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
+                      <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">Pending payments?</span>
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-rose-600/60 group-hover:text-rose-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-rose-700 mt-1.5 tracking-tight group-hover:text-rose-800 transition-colors leading-tight">
+                    ₹{Number(oq.pendingPayments?.totalAmount ?? 0).toLocaleString('en-IN')}
+                  </h3>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                  {oq.pendingPayments?.pendingFolios ?? 0} folios awaiting ₹
+                </p>
+              </div>
+
+              {/* Card 4: Which rooms are not ready? (Crisp White #FFFFFF) */}
+              <div 
+                onClick={() => openDrilldown('UNREADY_ROOMS', 'Rooms Not Ready')}
+                className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1 truncate">
+                      <Wrench className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">Rooms not ready?</span>
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-slate-800 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-amber-800 mt-1.5 tracking-tight group-hover:text-amber-900 transition-colors leading-tight">
+                    {oq.unreadyRooms?.totalUnready ?? 0} Unready
+                  </h3>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                  {oq.unreadyRooms?.cleaning ?? 0} cleaning • {oq.unreadyRooms?.maintenance ?? 0} repair
+                </p>
+              </div>
+
+              {/* Card 5: Which enquiries need follow-up? (Warm Cream #FFFDF9) */}
+              <div 
+                onClick={() => openDrilldown('PENDING_INQUIRIES', 'Inquiries Needing Follow-up')}
+                className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">Enquiries follow-up?</span>
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-emerald-600/60 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-emerald-700 mt-1.5 tracking-tight group-hover:text-emerald-800 transition-colors leading-tight">
+                    {oq.pendingInquiries?.count ?? 0} Leads
+                  </h3>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                  1-tap WhatsApp reply
+                </p>
+              </div>
+
+              {/* Card 6: What rate should I charge? (Crisp White #FFFFFF) */}
+              <div 
+                onClick={() => openDrilldown('RATE_RECOMMENDATION', 'Tonight’s Dynamic Rate Recommendation')}
+                className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1 truncate">
+                      <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">Rate to charge?</span>
+                    </span>
+                    <ChevronRight className="w-3 h-3 text-emerald-600/60 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-emerald-700 mt-1.5 tracking-tight group-hover:text-emerald-800 transition-colors leading-tight">
+                    ₹{Number(oq.rateRecommendation?.recommendedRate ?? 0).toLocaleString('en-IN')}
+                    <span className="text-[10px] font-normal text-slate-500 ml-0.5">/nt</span>
+                  </h3>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+                  Optimal base ADR
+                </p>
+              </div>
+
+            </div>
+
+            {/* Slide 03 Bottom Action Bar */}
+            <div className="mt-3.5 pt-3 border-t border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
+              <button
+                onClick={() => openDrilldown('EXECUTIVE_SUMMARY', '⚡ Executive Daily Briefing')}
+                className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+                <span>OWNER COMMAND: "HOW IS MY HOTEL PERFORMING TODAY?"</span>
               </button>
+              <p className="text-[10px] text-slate-400 font-medium">
+                Click any card to view exact live room numbers, guests, or folios.
+              </p>
             </div>
           </div>
-
-          {/* The 6 Slide 03 Side-by-Side Compact Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 mt-3.5 relative z-10">
-            
-            {/* Card 1: Rooms available tonight? (Warm Cream #FFFDF9) */}
-            <div 
-              onClick={() => openDrilldown('AVAILABLE_ROOMS', 'Rooms Available Tonight')}
-              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
-                    <BedDouble className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Rooms tonight?</span>
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-amber-700/60 group-hover:text-amber-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 tracking-tight group-hover:text-amber-800 transition-colors leading-tight">
-                  {oq.roomsAvailableTonight?.vacant} / {oq.roomsAvailableTonight?.total}
-                  <span className="text-[11px] font-bold text-slate-500 ml-1">Left</span>
-                </h3>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-                {oq.roomsAvailableTonight?.occupancyRate}% occupancy
-              </p>
-            </div>
-
-            {/* Card 2: Who arrives and departs? (Crisp White #FFFFFF) */}
-            <div 
-              onClick={() => openDrilldown('ARRIVALS_DEPARTURES', 'Who Arrives & Departs Today')}
-              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-400 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-sky-900 uppercase tracking-tight flex items-center gap-1 truncate">
-                    <CalendarCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                    <span className="truncate">Arrivals/Departs?</span>
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-sky-600/60 group-hover:text-sky-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1.5 tracking-tight group-hover:text-sky-800 transition-colors leading-tight">
-                  {oq.arrivalsDepartures?.arrivals} In • {oq.arrivalsDepartures?.departures} Out
-                </h3>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-                {oq.arrivalsDepartures?.inHouse} in-house guests
-              </p>
-            </div>
-
-            {/* Card 3: Which payments are pending? (Warm Cream #FFFDF9) */}
-            <div 
-              onClick={() => openDrilldown('PENDING_PAYMENTS', 'Pending Payments & Folios')}
-              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-rose-400 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
-                    <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Pending payments?</span>
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-rose-600/60 group-hover:text-rose-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-rose-700 mt-1.5 tracking-tight group-hover:text-rose-800 transition-colors leading-tight">
-                  ₹{Number(oq.pendingPayments?.totalAmount || 12450).toLocaleString('en-IN')}
-                </h3>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-                {oq.pendingPayments?.pendingFolios || 2} folios awaiting ₹
-              </p>
-            </div>
-
-            {/* Card 4: Which rooms are not ready? (Crisp White #FFFFFF) */}
-            <div 
-              onClick={() => openDrilldown('UNREADY_ROOMS', 'Rooms Not Ready')}
-              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1 truncate">
-                    <Wrench className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Rooms not ready?</span>
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-slate-800 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-amber-800 mt-1.5 tracking-tight group-hover:text-amber-900 transition-colors leading-tight">
-                  {oq.unreadyRooms?.totalUnready} Unready
-                </h3>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-                {oq.unreadyRooms?.cleaning} cleaning • {oq.unreadyRooms?.maintenance} repair
-              </p>
-            </div>
-
-            {/* Card 5: Which enquiries need follow-up? (Warm Cream #FFFDF9) */}
-            <div 
-              onClick={() => openDrilldown('PENDING_INQUIRIES', 'Inquiries Needing Follow-up')}
-              className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-amber-900/90 uppercase tracking-tight flex items-center gap-1 truncate">
-                    <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Enquiries follow-up?</span>
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-emerald-600/60 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-emerald-700 mt-1.5 tracking-tight group-hover:text-emerald-800 transition-colors leading-tight">
-                  {oq.pendingInquiries?.count} Leads
-                </h3>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-                1-tap WhatsApp reply
-              </p>
-            </div>
-
-            {/* Card 6: What rate should I charge? (Crisp White #FFFFFF) */}
-            <div 
-              onClick={() => openDrilldown('RATE_RECOMMENDATION', 'Tonight’s Dynamic Rate Recommendation')}
-              className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1 truncate">
-                    <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="truncate">Rate to charge?</span>
-                  </span>
-                  <ChevronRight className="w-3 h-3 text-emerald-600/60 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-emerald-700 mt-1.5 tracking-tight group-hover:text-emerald-800 transition-colors leading-tight">
-                  ₹{Number(oq.rateRecommendation?.recommendedRate || 2800).toLocaleString('en-IN')}
-                  <span className="text-[10px] font-normal text-slate-500 ml-0.5">/nt</span>
-                </h3>
-              </div>
-              <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-                Optimal base ADR
-              </p>
-            </div>
-
-          </div>
-
-          {/* Slide 03 Bottom Action Bar */}
-          <div className="mt-3.5 pt-3 border-t border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
-            <button
-              onClick={() => openDrilldown('EXECUTIVE_SUMMARY', '⚡ Executive Daily Briefing')}
-              className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
-              <span>OWNER COMMAND: "HOW IS MY HOTEL PERFORMING TODAY?"</span>
-            </button>
-            <p className="text-[10px] text-slate-400 font-medium">
-              Click any card to view exact live room numbers, guests, or folios.
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* LIVE REAL-TIME DRILLDOWN DRAWER / MODAL                        */}
