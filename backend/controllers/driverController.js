@@ -283,14 +283,46 @@ async function getDriverProfile(req, res) {
       return res.status(404).json({ success: false, message: 'Driver profile not found.' });
     }
 
-    const restId = driver.restaurant_id || null;
-    const assignedRestaurants = await query(
-      `SELECT DISTINCT r.id, r.name, r.slug, r.logo_url, r.phone, r.address, r.latitude, r.longitude
-       FROM restaurants r
-       LEFT JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id AND dra.driver_id = ?
-       WHERE (dra.status = 'ACTIVE' ${restId ? 'OR r.id = ?' : ''})`,
-      restId ? [driver.id, restId] : [driver.id]
-    );
+    let restaurant = null;
+    if (driver.restaurant_id) {
+      const [r] = await query(
+        'SELECT id, name, slug, logo_url, phone, address, latitude, longitude FROM restaurants WHERE id = ?',
+        [driver.restaurant_id]
+      );
+      restaurant = r || null;
+    }
+
+    if (!restaurant) {
+      const [r] = await query(
+        `SELECT r.id, r.name, r.slug, r.logo_url, r.phone, r.address, r.latitude, r.longitude
+         FROM restaurants r
+         JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id
+         WHERE dra.driver_id = ? AND dra.status = 'ACTIVE'
+         ORDER BY dra.id DESC LIMIT 1`,
+        [driver.id]
+      );
+      restaurant = r || null;
+      if (restaurant) {
+        await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [restaurant.id, driver.id]);
+        driver.restaurant_id = restaurant.id;
+      }
+    }
+
+    // Ensure driver is exclusively mapped to this single restaurant
+    if (restaurant) {
+      await query(
+        'DELETE FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id != ?',
+        [driver.id, restaurant.id]
+      );
+      await query(
+        `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
+         VALUES (?, ?, 'ACTIVE', NOW())
+         ON DUPLICATE KEY UPDATE status = 'ACTIVE'`,
+        [driver.id, restaurant.id]
+      );
+    }
+
+    const assignedRestaurants = restaurant ? [restaurant] : [];
 
     const [orderStats] = await query(
       `SELECT 
@@ -301,16 +333,6 @@ async function getDriverProfile(req, res) {
     );
 
     const kyc = computeKycDetails(driver);
-
-    // Get primary restaurant
-    let restaurant = assignedRestaurants.length > 0 ? assignedRestaurants[0] : null;
-    if (!restaurant && driver.restaurant_id) {
-      const [rest] = await query('SELECT id, name, slug, logo_url, phone, address FROM restaurants WHERE id = ?', [driver.restaurant_id]);
-      restaurant = rest || null;
-      if (restaurant) {
-        assignedRestaurants.push(restaurant);
-      }
-    }
 
     // Strip raw massive buffers from response
     delete driver.selfie_data;
@@ -642,6 +664,10 @@ async function acceptOrder(req, res) {
 
     if (order.assigned_driver_id && order.assigned_driver_id !== driver.id) {
       return res.status(400).json({ success: false, message: 'This order is assigned to another driver.' });
+    }
+
+    if (driver.restaurant_id && order.restaurant_id !== driver.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'You can only accept deliveries for your assigned restaurant.' });
     }
 
     // Auto-ensure driver is linked to restaurant if active
@@ -1600,41 +1626,34 @@ async function applyToRestaurant(req, res) {
           return res.json({ success: true, count: 0, orders: [] });
         }
 
-        // Get assigned restaurant IDs
-        const assignments = await query(
-          'SELECT restaurant_id FROM driver_restaurant_assignments WHERE driver_id = ? AND status = "ACTIVE"',
-          [driver.id]
-        );
-
-        const restIdSet = new Set(assignments.map(a => a.restaurant_id));
-        if (driver.restaurant_id) {
-          restIdSet.add(driver.restaurant_id);
-        }
-        let restIds = Array.from(restIdSet);
-
-        // If specific restaurant filter is requested
-        if (req.query.restaurant_id) {
-          const filterId = parseInt(req.query.restaurant_id);
-          restIds = restIds.filter(id => id === filterId);
+        let targetRestId = driver.restaurant_id;
+        if (!targetRestId) {
+          const [dra] = await query(
+            'SELECT restaurant_id FROM driver_restaurant_assignments WHERE driver_id = ? AND status = "ACTIVE" ORDER BY id DESC LIMIT 1',
+            [driver.id]
+          );
+          targetRestId = dra ? dra.restaurant_id : null;
+          if (targetRestId) {
+            await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [targetRestId, driver.id]);
+            driver.restaurant_id = targetRestId;
+          }
         }
 
-        if (restIds.length === 0) {
+        if (!targetRestId) {
           return res.json({ success: true, count: 0, orders: [] });
         }
-
-        const placeholders = restIds.map(() => '?').join(',');
 
         const orders = await query(
           `SELECT o.*, r.name as restaurant_name, r.address as restaurant_address,
               r.phone as restaurant_phone, r.latitude as restaurant_latitude, r.longitude as restaurant_longitude
        FROM orders o
        JOIN restaurants r ON o.restaurant_id = r.id
-       WHERE o.restaurant_id IN (${placeholders})
+       WHERE o.restaurant_id = ?
          AND (o.assigned_driver_id IS NULL OR o.assigned_driver_id = ?)
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
          AND o.created_at >= NOW() - INTERVAL 48 HOUR
        ORDER BY o.created_at DESC`,
-          [...restIds, driver.id]
+          [targetRestId, driver.id]
         );
 
         for (let order of orders) {
@@ -1672,6 +1691,14 @@ async function applyToRestaurant(req, res) {
         const [order] = await query('SELECT * FROM orders WHERE id = ?', [id]);
         if (!order) {
           return res.status(404).json({ success: false, message: 'Order not found.' });
+        }
+
+        // Strict isolation: Driver can only claim orders for their designated restaurant
+        if (driver.restaurant_id && order.restaurant_id !== driver.restaurant_id) {
+          return res.status(403).json({
+            success: false,
+            message: 'You can only claim deliveries for your assigned restaurant.'
+          });
         }
 
         // Auto-ensure driver is linked to restaurant
