@@ -35,7 +35,24 @@ export default function AdminUnclaimedOrdersPage() {
   const [selectedOrderForDriver, setSelectedOrderForDriver] = useState(null);
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [nowTimestamp, setNowTimestamp] = useState(Date.now());
-  const alertedOrderIdsRef = useRef(new Set());
+
+  // Session-level memory: sound plays ONLY ONCE per order in this browser session
+  const getSessionAlertedIds = () => {
+    try {
+      const raw = sessionStorage.getItem('hms_alerted_unclaimed_ids');
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+
+  const markSessionOrdersAlerted = (orderIds) => {
+    try {
+      const set = getSessionAlertedIds();
+      orderIds.forEach(id => set.add(id));
+      sessionStorage.setItem('hms_alerted_unclaimed_ids', JSON.stringify(Array.from(set)));
+    } catch {}
+  };
 
   // Update clock every second for live countdown / elapsed seconds
   useEffect(() => {
@@ -56,19 +73,13 @@ export default function AdminUnclaimedOrdersPage() {
         const newOrders = orderRes.data.orders || [];
         setOrders(newOrders);
 
-        // Alert ONLY when a brand new unclaimed order appears that hasn't been alerted yet
-        const unalertedOrders = newOrders.filter(o => !alertedOrderIdsRef.current.has(o.id));
-        if (unalertedOrders.length > 0 && soundEnabled) {
-          unalertedOrders.forEach(o => alertedOrderIdsRef.current.add(o.id));
-          playServiceChime('unclaimed_order_alert');
-        }
+        // Alert ONLY ONCE for any order that hasn't been alerted yet in this session
+        const alreadyAlerted = getSessionAlertedIds();
+        const unalertedOrders = newOrders.filter(o => !alreadyAlerted.has(o.id));
 
-        // Clean up resolved orders from memory
-        const currentIds = new Set(newOrders.map(o => o.id));
-        for (const id of alertedOrderIdsRef.current) {
-          if (!currentIds.has(id)) {
-            alertedOrderIdsRef.current.delete(id);
-          }
+        if (unalertedOrders.length > 0 && soundEnabled) {
+          markSessionOrdersAlerted(unalertedOrders.map(o => o.id));
+          playServiceChime('unclaimed_order_alert');
         }
       }
 
@@ -84,7 +95,7 @@ export default function AdminUnclaimedOrdersPage() {
 
   useEffect(() => {
     fetchUnclaimedOrders();
-    const pollInterval = setInterval(fetchUnclaimedOrders, 8000);
+    const pollInterval = setInterval(fetchUnclaimedOrders, 10000);
 
     return () => clearInterval(pollInterval);
   }, [soundEnabled]);
@@ -163,9 +174,15 @@ export default function AdminUnclaimedOrdersPage() {
                   Unclaimed Delivery Orders
                 </h1>
                 {orders.length > 0 && (
-                  <span className="px-3 py-1 rounded-full bg-rose-600 text-white text-xs font-black animate-pulse shadow-sm">
-                    {orders.length} URGENT
-                  </span>
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 shadow-xs">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
+                    </span>
+                    <span className="text-xs font-black text-rose-700 uppercase tracking-wide">
+                      {orders.length} URGENT
+                    </span>
+                  </div>
                 )}
               </div>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -179,10 +196,10 @@ export default function AdminUnclaimedOrdersPage() {
             <button
               onClick={() => {
                 unlockAudio();
-                playServiceChime('unclaimed_order_alert');
+                playServiceChime('unclaimed_order_alert', true);
               }}
               className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-              title="Test Urgent Audio Chime"
+              title="Test Audio Chime (Once)"
             >
               <Volume2 className="w-4 h-4 text-rose-600" />
               Test Sound
@@ -245,8 +262,12 @@ export default function AdminUnclaimedOrdersPage() {
                   {/* Top Urgency Header */}
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-xl bg-rose-100 text-rose-800 text-xs font-black flex items-center gap-1.5 animate-pulse">
-                        <Clock className="w-3.5 h-3.5" />
+                      <span className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-black flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                        </span>
+                        <Clock className="w-3.5 h-3.5 text-rose-600" />
                         Waiting {waitingDisplay}
                       </span>
                       <span className="text-xs font-bold text-slate-400">

@@ -38,7 +38,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { playServiceChime } from '../utils/audio';
 
 export default function UnifiedSidebar({
   restaurant,
@@ -73,7 +72,7 @@ export default function UnifiedSidebar({
   const [accommodationOpen, setAccommodationOpen] = useState(true);
   const [unclaimedCount, setUnclaimedCount] = useState(0);
 
-  // Poll for unclaimed orders (>5m) and play urgent alarm when an order crosses threshold
+  // Poll for unclaimed orders (>5m) for visual notification light & badge (NO AUDIO IN SIDEBAR)
   useEffect(() => {
     let isMounted = true;
     const checkUnclaimed = async () => {
@@ -81,18 +80,13 @@ export default function UnifiedSidebar({
         const res = await api.get('/admin/orders/unclaimed');
         if (res.data?.success && isMounted) {
           const count = res.data.count || 0;
-          setUnclaimedCount(prev => {
-            if (count > prev && count > 0) {
-              playServiceChime('unclaimed_order_alert');
-            }
-            return count;
-          });
+          setUnclaimedCount(count);
         }
       } catch (e) {}
     };
 
     checkUnclaimed();
-    const interval = setInterval(checkUnclaimed, 10000);
+    const interval = setInterval(checkUnclaimed, 15000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -265,7 +259,11 @@ export default function UnifiedSidebar({
                     <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'inline'}`}>{item.name}</span>
 
                     {item.badge && (
-                      <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isCollapsed ? 'lg:hidden' : 'inline-block'} ${item.badgeClass || 'bg-rose-600 text-white'}`}>
+                      <span className={`ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isCollapsed ? 'lg:hidden' : 'inline-flex'} ${item.badgeClass || 'bg-rose-600 text-white'}`}>
+                        <span className="relative flex h-1.5 w-1.5 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                        </span>
                         {item.badge}
                       </span>
                     )}

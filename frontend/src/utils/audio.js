@@ -54,9 +54,27 @@ export function isCustomerRoute() {
   );
 }
 
-export function playServiceChime(type = 'call_waiter') {
+// Track last played timestamps to prevent overlapping or continuous sounds
+const lastPlayedTimes = {};
+let lastGlobalSoundTime = 0;
+
+export function playServiceChime(type = 'call_waiter', force = false) {
   try {
     if (typeof window === 'undefined') return;
+
+    // Strict cooldown protection: Sound must NEVER repeat rapidly or play continuously
+    const nowMs = Date.now();
+    const typeCooldown = (type === 'unclaimed_order_alert' || type === 'urgent_alarm') ? 25000 : 5000;
+    if (!force) {
+      if (nowMs - lastGlobalSoundTime < 2500) {
+        return; // Global throttle: At least 2.5s between any sounds
+      }
+      if (lastPlayedTimes[type] && (nowMs - lastPlayedTimes[type] < typeCooldown)) {
+        return; // Per-type cooldown: Alert plays once and stays quiet
+      }
+    }
+    lastPlayedTimes[type] = nowMs;
+    lastGlobalSoundTime = nowMs;
 
     // RULE 1: If on ANY customer route, ZERO sound
     if (isCustomerRoute()) {

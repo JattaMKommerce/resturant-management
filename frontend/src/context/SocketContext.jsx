@@ -50,7 +50,6 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('admin_notification', (data) => {
-      playServiceChime('new_order');
       showToast(data, 10000);
     });
 

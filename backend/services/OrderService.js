@@ -150,7 +150,7 @@ async function createOrder(orderPayload) {
   const taxPercentage = parseFloat(restaurant.tax_percentage || 5);
   const taxAmount = Math.round((subtotal * (taxPercentage / 100)) * 100) / 100;
   const deliveryFee = parseFloat(restaurant.delivery_fee || 49);
-  
+
   // Kratu Rewards discount applied from checkout reservation
   const rewardsDiscount = Math.max(0, parseFloat(orderPayload.rewardsDiscount || 0));
   const discountAmount = rewardsDiscount;
@@ -234,7 +234,7 @@ async function createOrder(orderPayload) {
       restaurantId: restaurant.id,
       orderId: orderId,
       title: `New Order! #${orderNumber}`,
-      message: `New order from ${customerName} — ₹${totalAmount}`,
+      message: `New order from ${customerName} - ₹${totalAmount}`,
       type: 'NEW_ORDER'
     });
 
@@ -363,7 +363,7 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
   } else if (newStatus === 'DELIVERED') {
     notifTitle = 'Order Delivered! 🎉';
     notifMsg = `Your order #${order.order_number} has been delivered. Enjoy your meal!`;
-    
+
     // Kratu Rewards: Unlock and activate PENDING cashback into AVAILABLE rewards (Slide 05)
     try {
       const walletService = require('./walletService');
@@ -388,7 +388,7 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
   } else if (newStatus === 'REJECTED') {
     notifTitle = 'Order Rejected ❌';
     notifMsg = `Unfortunately, your order #${order.order_number} was rejected.`;
-    
+
     // Kratu Rewards: Reverse pending rewards upon rejection
     try {
       const walletService = require('./walletService');
