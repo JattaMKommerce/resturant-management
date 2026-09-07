@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
 import { useSocket } from '../../../context/SocketContext';
 import { useAuth } from '../../../context/AuthContext';
+import { playServiceChime, unlockAudio } from '../../../utils/audio';
 import KOTCard from '../../../components/kds/KOTCard';
 import KOTPrintModal from '../../../components/kds/KOTPrintModal';
-import { ChefHat, RefreshCw, AlertTriangle, CheckCircle, Clock, Globe, Utensils, Columns, LayoutGrid, LogOut } from 'lucide-react';
+import { ChefHat, RefreshCw, AlertTriangle, CheckCircle, Clock, Globe, Utensils, Columns, LayoutGrid, LogOut, Volume2 } from 'lucide-react';
 
 export default function KitchenDisplayPage() {
   const location = useLocation();
@@ -32,11 +33,22 @@ export default function KitchenDisplayPage() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
+    // Unlock browser audio on first user touch/click anywhere on the KDS page
+    const handleUserInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
     const timer = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
   }, []);
 
   const fetchKOTs = async () => {
@@ -78,9 +90,20 @@ export default function KitchenDisplayPage() {
     joinRoom(tenantRoom);
 
     if (socket) {
+      const handleNewKOT = (data) => {
+        fetchKOTs();
+        const isOnline = data?.order_type === 'ONLINE' || data?.is_online === true || data?.channel === 'ONLINE';
+        if (isOnline) {
+          playServiceChime('kitchen_online_order');
+        } else {
+          playServiceChime('kitchen_offline_order');
+        }
+      };
+
       const handleRefresh = () => fetchKOTs();
-      socket.on('new_kot', handleRefresh);
-      socket.on('new_order', handleRefresh);
+
+      socket.on('new_kot', handleNewKOT);
+      socket.on('new_order', handleNewKOT);
       socket.on('kot_updated', handleRefresh);
       socket.on('order_updated', handleRefresh);
       socket.on('kot_item_updated', handleRefresh);
@@ -89,8 +112,8 @@ export default function KitchenDisplayPage() {
       return () => {
         leaveRoom('kitchen');
         leaveRoom(tenantRoom);
-        socket.off('new_kot', handleRefresh);
-        socket.off('new_order', handleRefresh);
+        socket.off('new_kot', handleNewKOT);
+        socket.off('new_order', handleNewKOT);
         socket.off('kot_updated', handleRefresh);
         socket.off('order_updated', handleRefresh);
         socket.off('kot_item_updated', handleRefresh);
@@ -270,8 +293,23 @@ export default function KitchenDisplayPage() {
             🔴 Late: <span>{summaryCounts.late}</span>
           </div>
 
-          <div className="px-3 py-1.5 rounded-xl bg-[#EAF4F7] border border-[#D7E5E8] text-xs font-bold text-[#3A7D7C]">
-            ✓ Ready: <span>{summaryCounts.ready}</span>
+          <div className="flex items-center gap-1 bg-[#EAF4F7] p-1 rounded-xl border border-[#D7E5E8] ml-1">
+            <button
+              onClick={() => playServiceChime('kitchen_offline_order')}
+              className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-[#D7E5E8] text-[11px] font-bold text-[#1F2937] transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+              title="Test Offline Table KOT Sound (Double Bell Ding-Ding)"
+            >
+              <span>🍽️</span>
+              <span className="hidden sm:inline">Offline Bell</span>
+            </button>
+            <button
+              onClick={() => playServiceChime('kitchen_online_order')}
+              className="px-2.5 py-1.5 rounded-lg bg-[#3A7D7C] hover:bg-[#2F6665] text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+              title="Test Online Delivery KOT Sound (Melodic Alert)"
+            >
+              <span>🌐</span>
+              <span className="hidden sm:inline">Online Alert</span>
+            </button>
           </div>
 
           <button

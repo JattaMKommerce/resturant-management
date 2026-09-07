@@ -33,7 +33,11 @@ function calculateNextTableNumber(tables) {
 
 async function getNextTableNumberHandler(req, res, next) {
   try {
-    const [rows] = await pool.query(`SELECT table_number, table_name FROM restaurant_tables`);
+    const restaurantId = req.user?.restaurant_id || 1;
+    const [rows] = await pool.query(
+      `SELECT table_number, table_name FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1`,
+      [restaurantId]
+    );
     const nextTable = calculateNextTableNumber(rows);
     return sendSuccess(res, nextTable, 'Next available table number calculated');
   } catch (err) {
@@ -43,31 +47,54 @@ async function getNextTableNumberHandler(req, res, next) {
 
 async function autoSeedTablesIfEmpty(restaurantId = 1) {
   try {
+    const tablesData = [
+      ['T01', 'Table 1', 'Main Dining', 'Section A', 2, 'STANDARD'],
+      ['T02', 'Table 2', 'Main Dining', 'Section A', 4, 'STANDARD'],
+      ['T03', 'Table 3', 'Main Dining', 'Section B', 4, 'BOOTH'],
+      ['T04', 'Table 4', 'Terrace Floor', 'Outdoor', 6, 'OUTDOOR'],
+      ['T05', 'Table 5 (VIP)', 'VIP Lounge', 'VIP Area', 8, 'VIP'],
+      ['T06', 'Table 6', 'Main Dining', 'Section B', 4, 'STANDARD'],
+      ['T07', 'Table 7', 'Terrace Floor', 'Outdoor', 4, 'OUTDOOR'],
+      ['T08', 'Table 8', 'Main Dining', 'Section A', 2, 'STANDARD']
+    ];
+
     const [tCheck] = await pool.query(
-      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL)',
+      'SELECT COUNT(*) as count FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND (is_active = 1 OR is_active IS NULL)',
       [restaurantId]
     );
+
     if (tCheck[0].count === 0) {
       console.log('🔄 Auto-seeding default restaurant tables for restaurant:', restaurantId);
-      const tablesData = [
-        ['T01', 'Table 1', 'Main Dining', 'Section A', 2, 'STANDARD'],
-        ['T02', 'Table 2', 'Main Dining', 'Section A', 4, 'STANDARD'],
-        ['T03', 'Table 3', 'Main Dining', 'Section B', 4, 'BOOTH'],
-        ['T04', 'Table 4', 'Terrace Floor', 'Outdoor', 6, 'OUTDOOR'],
-        ['T05', 'Table 5 (VIP)', 'VIP Lounge', 'VIP Area', 8, 'VIP'],
-        ['T06', 'Table 6', 'Main Dining', 'Section B', 4, 'STANDARD'],
-        ['T07', 'Table 7', 'Terrace Floor', 'Outdoor', 4, 'OUTDOOR'],
-        ['T08', 'Table 8', 'Main Dining', 'Section A', 2, 'STANDARD']
-      ];
       for (const [tNum, tName, floor, section, capacity, type] of tablesData) {
         const qrToken = crypto.randomBytes(32).toString('hex');
-        await pool.query(
-          `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
-          [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
-        );
+        try {
+          await pool.query(
+            `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
+            [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
+          );
+        } catch (e) {
+          console.warn(`[TABLE SEED WARN] ${tNum}: ${e.message}`);
+        }
       }
-      console.log('✅ Default restaurant tables seeded successfully!');
+    } else {
+      // Ensure missing T01 or T02 default slots get seeded if missing for this restaurant
+      for (const [tNum, tName, floor, section, capacity, type] of tablesData.slice(0, 2)) {
+        const [existing] = await pool.query(
+          'SELECT id FROM restaurant_tables WHERE restaurant_id = ? AND table_number = ? AND (is_active = 1 OR is_active IS NULL)',
+          [restaurantId, tNum]
+        );
+        if (existing.length === 0) {
+          const qrToken = crypto.randomBytes(32).toString('hex');
+          try {
+            await pool.query(
+              `INSERT INTO restaurant_tables (restaurant_id, table_number, table_name, floor, section, capacity, table_type, qr_token, status, is_active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', 1)`,
+              [restaurantId, tNum, tName, floor, section, capacity, type, qrToken]
+            );
+          } catch (e) { }
+        }
+      }
     }
   } catch (err) {
     console.warn('Table auto-seed check warning:', err.message);
@@ -83,7 +110,7 @@ async function getTables(req, res, next) {
       SELECT t.*, 
         (SELECT COUNT(*) FROM restaurant_orders o WHERE o.table_id = t.id AND o.order_status NOT IN ('COMPLETED', 'CANCELLED')) as active_orders_count
       FROM restaurant_tables t
-      WHERE (t.restaurant_id = ? OR t.restaurant_id IS NULL)
+      WHERE (t.restaurant_id = ? OR t.restaurant_id IS NULL) AND (t.is_active = 1 OR t.is_active IS NULL)
     `;
     const params = [restaurantId];
 
@@ -129,8 +156,11 @@ async function createTable(req, res, next) {
     table_name = body.table_name;
     const { floor, section, capacity, table_type } = body;
 
-    // Auto-generate if not provided or empty (check all tables globally)
-    const [allTables] = await connection.query(`SELECT table_number, table_name FROM restaurant_tables`);
+    // Auto-generate if not provided or empty (check tables for this restaurant)
+    const [allTables] = await connection.query(
+      `SELECT table_number, table_name FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1`,
+      [restaurantId]
+    );
     const autoGen = calculateNextTableNumber(allTables);
 
     if (!table_number || String(table_number).trim() === '') {
@@ -143,10 +173,10 @@ async function createTable(req, res, next) {
     table_number = String(table_number).trim();
     table_name = String(table_name).trim();
 
-    // Check duplicate across entire restaurant_tables since table_number is UNIQUE in schema
+    // Check duplicate per restaurant
     const [existing] = await connection.query(
-      `SELECT id, table_number, table_name FROM restaurant_tables WHERE table_number = ? OR table_name = ?`,
-      [table_number, table_name]
+      `SELECT id, table_number, table_name FROM restaurant_tables WHERE (table_number = ? OR table_name = ?) AND (restaurant_id = ? OR restaurant_id IS NULL) AND is_active = 1`,
+      [table_number, table_name, restaurantId]
     );
     if (existing.length > 0) {
       const isNumMatch = existing.some(e => String(e.table_number).toLowerCase() === table_number.toLowerCase());

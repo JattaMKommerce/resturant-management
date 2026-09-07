@@ -140,8 +140,30 @@ async function callWaiterHandler(req, res, next) {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     };
 
+    // Persist notification to database for Waiter and Admin
+    try {
+      await pool.query(
+        `INSERT INTO notifications (title, message, type, is_read) VALUES (?, ?, 'CALL_WAITER', 0)`,
+        [
+          `🛎️ Waiter Called: Table ${payload.table_number}`,
+          `Guests at Table ${payload.table_number} (${payload.floor}) requested waiter assistance!`
+        ]
+      );
+    } catch (nErr) { }
+
+    const notificationPayload = {
+      title: `🛎️ Waiter Called: Table ${payload.table_number}`,
+      message: `Guests at Table ${payload.table_number} (${payload.floor}) requested waiter assistance!`,
+      link: '/hotel/admin/offline/tables',
+      type: 'CALL_WAITER',
+      table_number: payload.table_number,
+      floor: payload.floor
+    };
+
     emitToRoom('waiter', 'call_waiter', payload);
     emitToRoom('admin', 'call_waiter', payload);
+    emitToRoom('waiter', 'notification', notificationPayload);
+    emitToRoom('admin', 'notification', notificationPayload);
     broadcastEvent('call_waiter', payload);
 
     return sendSuccess(res, payload, 'Waiter called successfully');

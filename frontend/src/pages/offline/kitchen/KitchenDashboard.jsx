@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../../services/api';
 import { useSocket } from '../../../context/SocketContext';
+import { playServiceChime, unlockAudio } from '../../../utils/audio';
 import KOTCard from '../../../components/kds/KOTCard';
 import KOTPrintModal from '../../../components/kds/KOTPrintModal';
 import KitchenInventoryView from './KitchenInventoryView';
@@ -24,10 +25,20 @@ export default function KitchenDashboard() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
+    const handleUserInteraction = () => {
+      unlockAudio();
+    };
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
+
     const timer = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+    };
   }, []);
 
   const fetchKOTs = async () => {
@@ -67,18 +78,30 @@ export default function KitchenDashboard() {
     joinRoom('kitchen');
 
     if (socket) {
-      socket.on('new_kot', () => fetchKOTs());
+      const handleNewKOT = (data) => {
+        fetchKOTs();
+        const isOnline = data?.order_type === 'ONLINE' || data?.is_online === true || data?.channel === 'ONLINE';
+        if (isOnline) {
+          playServiceChime('kitchen_online_order');
+        } else {
+          playServiceChime('kitchen_offline_order');
+        }
+      };
+
+      socket.on('new_kot', handleNewKOT);
       socket.on('kot_updated', () => fetchKOTs());
       socket.on('kot_delayed', () => fetchKOTs());
+
+      return () => {
+        leaveRoom('kitchen');
+        socket.off('new_kot', handleNewKOT);
+        socket.off('kot_updated');
+        socket.off('kot_delayed');
+      };
     }
 
     return () => {
       leaveRoom('kitchen');
-      if (socket) {
-        socket.off('new_kot');
-        socket.off('kot_updated');
-        socket.off('kot_delayed');
-      }
     };
   }, [selectedDept, selectedStatus, delayedOnly, activeTab, socket]);
 

@@ -1,3 +1,4 @@
+// Restaurant Order & KOT Operations Controller
 const pool = require('../../config/database');
 const orderService = require('../../services/kot/orderService');
 const { sendSuccess, sendError } = require('../../utils/response');

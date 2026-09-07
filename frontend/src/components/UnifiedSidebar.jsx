@@ -24,6 +24,7 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  Calendar,
   Sparkles,
   BedDouble,
   UserPlus,
@@ -60,22 +61,32 @@ export default function UnifiedSidebar({
   const [offlineOpen, setOfflineOpen] = useState(true);
   const [accommodationOpen, setAccommodationOpen] = useState(true);
 
-  // 1. ONLINE STORE SECTION
+  const basePath = `/admin/${activeSlug}`;
+
+  // 1. ONLINE HOTEL & STORE MANAGEMENT SECTION
   const onlineNavItems = [
-    { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true },
-    { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History },
-    { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users },
-    { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
-    { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
-    { name: 'Store Website Settings', path: `/admin/${activeSlug}/settings`, icon: Settings },
+    { name: 'Online Dashboard', path: basePath, icon: LayoutDashboard, exact: true },
+    { name: 'Orders Pipeline', path: `${basePath}/orders`, icon: ShoppingBag },
+    { name: 'Order History & Archive', path: `${basePath}/history`, icon: History },
+    { name: 'Staff Management', path: `${basePath}/staff`, icon: Users },
+    { name: 'Delivery Riders', path: `${basePath}/riders`, icon: UtensilsCrossed },
+    { name: 'Active Fleet Monitor', path: `${basePath}/deliveries`, icon: Globe },
+    { name: 'Menu Items', path: `${basePath}/menu`, icon: Utensils },
+    { name: 'Categories', path: `${basePath}/categories`, icon: Layers },
+    { name: 'Website & Setup', path: `${basePath}/website`, icon: Globe },
+    { name: 'Store Settings', path: `${basePath}/settings`, icon: Settings },
   ];
 
   // 2. OFFLINE RESTAURANT & KOT SECTION
   const offlineNavItems = [
-    { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity },
+    { name: 'Dashboard', path: '/admin/offline/dashboard', icon: LayoutDashboard },
+    { name: 'Live Operation', path: '/admin/offline/operations', icon: Activity },
+    { name: 'Staff & Access', path: '/admin/offline/staff', icon: Users },
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2 },
-    { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
-    { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat },
+    { name: 'Menu Management', path: '/admin/offline/menu', icon: UtensilsCrossed },
+    { name: 'Orders', path: '/admin/offline/orders', icon: ShoppingBag },
+    { name: 'Order History', path: '/admin/offline/history', icon: History },
+    { name: 'Kitchen Display', path: '/admin/offline/kds', icon: ChefHat },
     { name: 'Kitchen Display System (Accept/Reject)', path: '/admin/offline/kot-status', icon: CheckSquare2 },
     { name: 'Billing & Folio', path: '/admin/offline/billing', icon: Receipt },
     { name: 'Receipts & Stocks', path: '/admin/offline/inventory', icon: Boxes },
@@ -84,15 +95,15 @@ export default function UnifiedSidebar({
 
   // 3. HOTEL ACCOMMODATION SECTION
   const accommodationNavItems = [
-    { name: '20 Hotels Catalog', path: '/admin/accommodation/hotels', icon: Hotel },
     { name: 'Dashboard', path: '/admin/accommodation/dashboard', icon: LayoutDashboard },
-    { name: 'Rooms Grid', path: '/admin/accommodation/rooms', icon: BedDouble },
-    { name: 'Guest Directory', path: '/admin/accommodation/guests', icon: Users },
-    { name: 'Check-In Desk', path: '/admin/accommodation/checkin', icon: UserPlus },
-    { name: 'Check-Out Desk', path: '/admin/accommodation/checkout', icon: LogOut },
-    { name: 'Room Folios', path: '/admin/accommodation/folios', icon: Receipt },
+    { name: 'Rooms', path: '/admin/accommodation/rooms', icon: BedDouble },
+    { name: 'Bookings', path: '/admin/accommodation/bookings', icon: Calendar },
+    { name: 'Guests', path: '/admin/accommodation/guests', icon: Users },
+    { name: 'Check-in / Check-out', path: '/admin/accommodation/checkin-checkout', icon: UserPlus },
     { name: 'Housekeeping', path: '/admin/accommodation/housekeeping', icon: Sparkles },
     { name: 'Maintenance', path: '/admin/accommodation/maintenance', icon: Wrench },
+    { name: 'Payments & Folios', path: '/admin/accommodation/payments-folios', icon: Receipt },
+    { name: 'Hotels Directory', path: '/admin/accommodation/hotels', icon: Hotel },
   ];
 
   const handleLinkClick = () => {

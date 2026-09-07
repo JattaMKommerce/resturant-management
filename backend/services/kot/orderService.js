@@ -312,6 +312,9 @@ async function createOrder(orderData, idempotencyKey = null) {
     const createdOrderPayload = {
       id: orderId,
       order_number: orderNumber,
+      order_type: order_type || (tableNumber ? 'DINE_IN' : 'TAKEAWAY'),
+      is_online: false,
+      channel: 'OFFLINE',
       table_id: validatedTableId,
       table_number: tableNumber,
       total_amount: grandTotal,
