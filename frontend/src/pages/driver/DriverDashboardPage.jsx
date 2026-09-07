@@ -37,6 +37,7 @@ export default function DriverDashboardPage() {
   const navigate = useNavigate();
 
   const [driver, setDriver] = useState(null);
+  const [assignedRestaurant, setAssignedRestaurant] = useState(null);
   const [assignedRestaurants, setAssignedRestaurants] = useState([]);
   const [activeDelivery, setActiveDelivery] = useState(null);
   const [allOrders, setAllOrders] = useState([]);
@@ -225,6 +226,9 @@ export default function DriverDashboardPage() {
       const res = await api.get('/driver/orders');
       if (res.data.success) {
         setDriver(res.data.driver);
+        if (res.data.restaurant) {
+          setAssignedRestaurant(res.data.restaurant);
+        }
         setAvailabilityStatus(res.data.driver?.availability_status || 'OFFLINE');
         if (res.data.driver?.current_latitude && res.data.driver?.current_longitude) {
           setCurrentCoords({
@@ -236,10 +240,22 @@ export default function DriverDashboardPage() {
         setAllOrders(res.data.orders || []);
       }
 
-      // Fetch assigned restaurants
+      // Fetch assigned restaurants & complete profile details
       const profRes = await api.get('/driver/profile');
       if (profRes.data.success) {
         setAssignedRestaurants(profRes.data.assignedRestaurants || []);
+        if (profRes.data.restaurant) {
+          setAssignedRestaurant(profRes.data.restaurant);
+        }
+        if (profRes.data.driver) {
+          setDriver(prev => ({
+            ...prev,
+            ...profRes.data.driver,
+            restaurant_name: profRes.data.restaurant?.name || profRes.data.driver?.restaurant_name || prev?.restaurant_name,
+            restaurant_address: profRes.data.restaurant?.address || profRes.data.driver?.restaurant_address || prev?.restaurant_address,
+            restaurant_phone: profRes.data.restaurant?.phone || profRes.data.driver?.restaurant_phone || prev?.restaurant_phone
+          }));
+        }
       }
 
       // Fetch driver wallet
@@ -781,11 +797,16 @@ export default function DriverDashboardPage() {
           </div>
           <div>
             <h1 className="font-bold text-[#1F2937] text-sm leading-tight">
-              {driver?.full_name || user?.name || 'Rider Duty'}
+              {driver?.full_name || user?.name || 'Delivery Partner'}
             </h1>
-            <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-              <span>Dedicated Fleet &bull; <strong className="text-[#1F2937]">{assignedRestaurants[0]?.name || driver?.restaurant_name || 'Assigned Hotel'}</strong></span>
+            <p className="text-[10px] font-bold text-[#3A7D7C] uppercase tracking-wider flex items-center gap-1.5 mt-0.5">
+              <Store className="w-3.5 h-3.5 text-[#3A7D7C] shrink-0" />
+              <span className="truncate max-w-[170px] sm:max-w-xs text-slate-800 font-extrabold">
+                {assignedRestaurant?.name || driver?.restaurant_name || assignedRestaurants[0]?.name || 'Hotel Partner'}
+              </span>
+              <span className="text-[8px] uppercase font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md border border-emerald-200 shrink-0">
+                In-House Fleet
+              </span>
             </p>
           </div>
         </div>
@@ -806,6 +827,47 @@ export default function DriverDashboardPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-5">
+
+        {/* DEDICATED HOTEL IN-HOUSE FLEET BANNER */}
+        <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#D7E5E8] shadow-xs space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 text-[#3A7D7C] flex items-center justify-center font-black shadow-2xs shrink-0">
+                <Store className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-black tracking-wider text-[#3A7D7C] block">
+                  Dedicated In-House Delivery Fleet
+                </span>
+                <h2 className="font-black text-[#1F2937] text-sm sm:text-base truncate">
+                  {assignedRestaurant?.name || driver?.restaurant_name || assignedRestaurants[0]?.name || 'Hotel Restaurant'}
+                </h2>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-[10px] uppercase tracking-wider border border-emerald-200">
+                Active Fleet
+              </span>
+            </div>
+          </div>
+
+          {(assignedRestaurant?.address || driver?.restaurant_address || assignedRestaurant?.phone || driver?.restaurant_phone) && (
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-medium">
+              {(assignedRestaurant?.address || driver?.restaurant_address) && (
+                <div className="flex items-center gap-1.5 truncate min-w-0">
+                  <MapPin className="w-3.5 h-3.5 text-[#3A7D7C] shrink-0" />
+                  <span className="truncate">{assignedRestaurant?.address || driver?.restaurant_address}</span>
+                </div>
+              )}
+              {(assignedRestaurant?.phone || driver?.restaurant_phone) && (
+                <div className="flex items-center gap-1 text-slate-700 font-bold shrink-0">
+                  <Phone className="w-3.5 h-3.5 text-[#3A7D7C]" />
+                  <span>{assignedRestaurant?.phone || driver?.restaurant_phone}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Success Alert */}
         {successMsg && (
@@ -1039,9 +1101,16 @@ export default function DriverDashboardPage() {
             </div>
 
             {/* Dedicated Hotel In-House Fleet Indicator */}
-            <div className="flex items-center gap-2 px-1 text-xs text-[#3A7D7C] font-semibold">
-              <Store className="w-3.5 h-3.5 shrink-0" />
-              <span>Dedicated Fleet for: <strong className="text-[#1F2937] font-bold">{assignedRestaurants[0]?.name || driver?.restaurant_name || 'Your Assigned Hotel'}</strong></span>
+            <div className="flex items-center justify-between px-3.5 py-2.5 text-xs text-[#3A7D7C] font-semibold bg-white rounded-2xl border border-[#D7E5E8] shadow-2xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Store className="w-4 h-4 text-[#3A7D7C] shrink-0" />
+                <span className="truncate">
+                  Exclusive Orders for: <strong className="text-[#1F2937] font-black">{assignedRestaurant?.name || driver?.restaurant_name || assignedRestaurants[0]?.name || 'Your Assigned Hotel'}</strong>
+                </span>
+              </div>
+              <span className="text-[9px] font-black uppercase text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200 shrink-0">
+                Dedicated Fleet
+              </span>
             </div>
 
             {availableOrders.length === 0 ? (
@@ -1050,7 +1119,7 @@ export default function DriverDashboardPage() {
                 <p className="text-xs font-bold text-[#1F2937]">No Orders Waiting in Pool</p>
                 <p className="text-[11px] text-[#64748B] max-w-xs mx-auto">
                   {availabilityStatus === 'AVAILABLE'
-                    ? `Live orders from ${assignedRestaurants[0]?.name || driver?.restaurant_name || 'your restaurant'} will appear here. First rider to claim gets it!`
+                    ? `Live delivery orders from ${assignedRestaurant?.name || driver?.restaurant_name || assignedRestaurants[0]?.name || 'your hotel'} will appear here. First rider to claim gets it!`
                     : 'Turn your status ONLINE to see and claim live delivery orders.'}
                 </p>
               </div>
@@ -2037,7 +2106,7 @@ export default function DriverDashboardPage() {
             {/* Modal Footer */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
               <span className="text-[11px] text-slate-500 font-medium">
-                Hotel: <strong>{walletData?.restaurant_name || 'Admin Desk'}</strong>
+                Hotel: <strong>{assignedRestaurant?.name || driver?.restaurant_name || walletData?.restaurant_name || 'Admin Desk'}</strong>
               </span>
               <button
                 onClick={() => setShowWalletModal(false)}

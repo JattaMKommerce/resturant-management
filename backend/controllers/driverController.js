@@ -185,14 +185,44 @@ async function driverLogin(req, res) {
       return res.status(403).json({ success: false, message: 'Your driver account has been suspended. Please contact the restaurant admin.' });
     }
 
-    // Fetch assigned restaurants via driver_restaurant_assignments or primary restaurant
-    const assignedRestaurants = await query(
-      `SELECT DISTINCT r.id, r.name, r.slug, r.logo_url, r.address, r.latitude, r.longitude, dra.status as assignment_status
-       FROM restaurants r
-       LEFT JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id AND dra.driver_id = ?
-       WHERE (dra.status = 'ACTIVE' OR r.id = ?)`,
-      [driver.id, driver.restaurant_id || 0]
-    );
+    // Resolve dedicated restaurant
+    let restaurant = null;
+    if (driver.restaurant_id) {
+      const [r] = await query(
+        'SELECT id, name, slug, logo_url, phone, address, latitude, longitude FROM restaurants WHERE id = ?',
+        [driver.restaurant_id]
+      );
+      restaurant = r || null;
+    }
+
+    if (!restaurant) {
+      const [r] = await query(
+        `SELECT r.id, r.name, r.slug, r.logo_url, r.phone, r.address, r.latitude, r.longitude
+         FROM restaurants r
+         JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id
+         WHERE dra.driver_id = ? AND dra.status = 'ACTIVE'
+         ORDER BY dra.id DESC LIMIT 1`,
+        [driver.id]
+      );
+      restaurant = r || null;
+      if (restaurant) {
+        await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [restaurant.id, driver.id]);
+        driver.restaurant_id = restaurant.id;
+      }
+    }
+
+    // Clean rogue assignments
+    if (restaurant) {
+      await query('DELETE FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id != ?', [driver.id, restaurant.id]);
+      await query(
+        `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
+         VALUES (?, ?, 'ACTIVE', NOW())
+         ON DUPLICATE KEY UPDATE status = 'ACTIVE'`,
+        [driver.id, restaurant.id]
+      );
+    }
+
+    const assignedRestaurants = restaurant ? [restaurant] : [];
 
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: 'DRIVER', driverId: driver.id },
@@ -214,8 +244,15 @@ async function driverLogin(req, res) {
         accountStatus: driver.account_status,
         availabilityStatus: driver.availability_status,
         currentLatitude: driver.current_latitude,
-        currentLongitude: driver.current_longitude
+        currentLongitude: driver.current_longitude,
+        restaurant_id: restaurant?.id || driver.restaurant_id,
+        restaurant_name: restaurant?.name || null,
+        restaurant_slug: restaurant?.slug || null,
+        restaurant_phone: restaurant?.phone || null,
+        restaurant_address: restaurant?.address || null,
+        restaurant_logo: restaurant?.logo_url || null
       },
+      restaurant,
       assignedRestaurants
     });
 
@@ -344,6 +381,12 @@ async function getDriverProfile(req, res) {
       driver: {
         ...driver,
         ...kyc,
+        restaurant_id: restaurant?.id || driver.restaurant_id,
+        restaurant_name: restaurant?.name || null,
+        restaurant_slug: restaurant?.slug || null,
+        restaurant_phone: restaurant?.phone || null,
+        restaurant_address: restaurant?.address || null,
+        restaurant_logo: restaurant?.logo_url || null,
         delivered_orders_count: Number(orderStats?.delivered_count || 0),
         today_delivered_count: Number(orderStats?.today_delivered_count || 0)
       },
@@ -618,14 +661,38 @@ async function getDriverOrders(req, res) {
       return res.status(404).json({ success: false, message: 'Driver profile not found.' });
     }
 
+    let restaurant = null;
+    if (driver.restaurant_id) {
+      const [r] = await query(
+        'SELECT id, name, slug, logo_url, phone, address, latitude, longitude FROM restaurants WHERE id = ?',
+        [driver.restaurant_id]
+      );
+      restaurant = r || null;
+    }
+    if (!restaurant) {
+      const [r] = await query(
+        `SELECT r.id, r.name, r.slug, r.logo_url, r.phone, r.address, r.latitude, r.longitude
+         FROM restaurants r
+         JOIN driver_restaurant_assignments dra ON dra.restaurant_id = r.id
+         WHERE dra.driver_id = ? AND dra.status = 'ACTIVE'
+         ORDER BY dra.id DESC LIMIT 1`,
+        [driver.id]
+      );
+      restaurant = r || null;
+      if (restaurant) {
+        await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [restaurant.id, driver.id]);
+        driver.restaurant_id = restaurant.id;
+      }
+    }
+
     const assignedOrders = await query(
       `SELECT o.*, r.name as restaurant_name, r.address as restaurant_address,
               r.phone as restaurant_phone, r.latitude as restaurant_latitude, r.longitude as restaurant_longitude
        FROM orders o
        JOIN restaurants r ON o.restaurant_id = r.id
-       WHERE o.assigned_driver_id = ?
+       WHERE o.assigned_driver_id = ? ${restaurant ? 'AND o.restaurant_id = ?' : ''}
        ORDER BY o.created_at DESC`,
-      [driver.id]
+      restaurant ? [driver.id, restaurant.id] : [driver.id]
     );
 
     for (let order of assignedOrders) {
@@ -638,7 +705,16 @@ async function getDriverOrders(req, res) {
 
     res.json({
       success: true,
-      driver,
+      driver: {
+        ...driver,
+        restaurant_id: restaurant?.id || driver.restaurant_id,
+        restaurant_name: restaurant?.name || null,
+        restaurant_slug: restaurant?.slug || null,
+        restaurant_phone: restaurant?.phone || null,
+        restaurant_address: restaurant?.address || null,
+        restaurant_logo: restaurant?.logo_url || null
+      },
+      restaurant,
       activeDelivery,
       orders: assignedOrders
     });
@@ -1176,7 +1252,11 @@ async function createAdminDriver(req, res) {
       driverId = driverRes.insertId;
     }
 
-    // Assign to managing restaurant in driver_restaurant_assignments
+    // Assign to managing restaurant in driver_restaurant_assignments and prune rogue assignments
+    await query(
+      'DELETE FROM driver_restaurant_assignments WHERE driver_id = ? AND restaurant_id != ?',
+      [driverId, targetRestId]
+    );
     await query(
       `INSERT INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
        VALUES (?, ?, 'ACTIVE', NOW())
@@ -1195,17 +1275,20 @@ async function createAdminDriver(req, res) {
          ON DUPLICATE KEY UPDATE updated_at = NOW()`,
         [targetRestId, driverId]
       );
-    } catch (payErr) {
-      console.warn('Payout settings auto-provision notice:', payErr.message);
+    } catch (e) {
+      console.warn('Driver payout auto-provision notice:', e.message);
     }
+
+    const [targetRest] = await query('SELECT id, name, slug FROM restaurants WHERE id = ?', [targetRestId]);
 
     res.status(201).json({
       success: true,
-      message: `Delivery rider "${name}" created successfully.`,
+      message: `Delivery rider "${name}" created successfully for ${targetRest?.name || 'hotel'}.`,
       driver: {
         id: driverId,
         user_id: userId,
         restaurant_id: targetRestId,
+        restaurant_name: targetRest?.name || '',
         name: name.trim(),
         full_name: name.trim(),
         email: driverEmail,

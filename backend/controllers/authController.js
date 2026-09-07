@@ -368,6 +368,23 @@ async function getMe(req, res) {
           };
         }
       } catch (fErr) {}
+    if (!restaurant && user.role === 'DRIVER') {
+      const driverRows = await query('SELECT restaurant_id FROM delivery_drivers WHERE user_id = ?', [user.id]);
+      let restId = driverRows[0]?.restaurant_id;
+      if (!restId) {
+        const [dra] = await query(
+          'SELECT restaurant_id FROM driver_restaurant_assignments WHERE driver_id = (SELECT id FROM delivery_drivers WHERE user_id = ? LIMIT 1) AND status = "ACTIVE" ORDER BY id DESC LIMIT 1',
+          [user.id]
+        );
+        restId = dra?.restaurant_id;
+      }
+      if (restId) {
+        const [dRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restId]);
+        if (dRest) {
+          restaurant = dRest;
+          restaurants = [dRest];
+        }
+      }
     }
 
     const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;

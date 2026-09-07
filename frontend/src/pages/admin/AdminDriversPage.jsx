@@ -4,13 +4,15 @@ import {
   Plus, Bike, Edit2, Phone, Mail, ShieldCheck, X, AlertTriangle,
   CheckCircle2, Clock, Package, Eye, ChevronRight, RefreshCw,
   Search, ShieldAlert, Award, Calendar, DollarSign, MapPin, User,
-  FileText, ExternalLink
+  FileText, ExternalLink, Store
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AdminDriversPage() {
   const { slug } = useParams();
+  const { restaurant } = useAuth();
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -117,7 +119,8 @@ export default function AdminDriversPage() {
         vehicle_type: vehicleType,
         vehicle_number: vehicleNumber,
         license_number: licenseNumber,
-        slug
+        slug: slug || restaurant?.slug,
+        restaurant_id: restaurant?.id
       });
 
       if (res.data.success) {
@@ -536,6 +539,19 @@ export default function AdminDriversPage() {
                   {formError}
                 </div>
               )}
+
+              {/* Hotel dedicated fleet banner */}
+              <div className="p-3 bg-teal-50/80 border border-teal-200/80 rounded-2xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Store className="w-4 h-4 text-[#3A7D7C] shrink-0" />
+                  <span className="font-bold text-teal-900 truncate">
+                    Hotel Fleet: <strong className="font-black text-slate-900">{restaurant?.name || slug || 'This Hotel'}</strong>
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-[9px] uppercase tracking-wider shrink-0">
+                  Dedicated
+                </span>
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
                 <div>
