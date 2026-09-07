@@ -180,7 +180,7 @@ async function initDatabase(options = {}) {
       // Custom Subdomain & Template Choice Migrations
       await addColumnIfNotExists(conn, 'restaurants', 'template_id', "VARCHAR(50) NOT NULL DEFAULT 'royal_heritage'");
       await addColumnIfNotExists(conn, 'restaurants', 'random_slug', "VARCHAR(20) DEFAULT NULL");
-      await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+      await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_enabled', "TINYINT(1) NOT NULL DEFAULT 1");
       await addColumnIfNotExists(conn, 'restaurants', 'custom_subdomain_slug', "VARCHAR(100) DEFAULT NULL");
       await addColumnIfNotExists(conn, 'restaurants', 'subdomain_changed', "INT NOT NULL DEFAULT 0");
       await addColumnIfNotExists(conn, 'restaurants', 'subdomain_changes_this_month', "INT NOT NULL DEFAULT 0");
@@ -199,6 +199,14 @@ async function initDatabase(options = {}) {
         }
       } catch (e) {
         console.warn('Warning populating random_slugs:', e.message);
+      }
+
+      // Ensure all restaurants on production have custom_subdomain_enabled = 1 and custom_subdomain_slug = slug
+      try {
+        await conn.query("UPDATE restaurants SET custom_subdomain_enabled = 1 WHERE custom_subdomain_enabled = 0 OR custom_subdomain_enabled IS NULL");
+        await conn.query("UPDATE restaurants SET custom_subdomain_slug = slug WHERE custom_subdomain_slug IS NULL OR custom_subdomain_slug = ''");
+      } catch (e) {
+        console.warn('Warning updating custom_subdomain_enabled in init.js:', e.message);
       }
 
       // Delivery Drivers columns
