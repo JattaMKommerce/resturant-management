@@ -368,6 +368,8 @@ async function getMe(req, res) {
           };
         }
       } catch (fErr) {}
+    }
+
     if (!restaurant && user.role === 'DRIVER') {
       const driverRows = await query('SELECT restaurant_id FROM delivery_drivers WHERE user_id = ?', [user.id]);
       let restId = driverRows[0]?.restaurant_id;
