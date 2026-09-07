@@ -111,13 +111,13 @@ async function registerRestaurant(req, res) {
     // Create Restaurant with PENDING status and DRAFT website
     const restRes = await query(
       `INSERT INTO restaurants (
-        name, slug, admin_user_id, phone, email, address,
+        name, slug, custom_subdomain_slug, custom_subdomain_enabled, admin_user_id, phone, email, address,
         latitude, longitude, opening_time, closing_time,
         delivery_radius_km, min_order_amount, delivery_fee, tax_percentage,
         currency, status, website_status, is_online_ordering_enabled, is_cod_enabled, is_online_payment_enabled
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '10:00', '23:00', ?, ?, ?, ?, 'INR', 'PENDING', 'DRAFT', 0, 1, 1)`,
+      ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, '10:00', '23:00', ?, ?, ?, ?, 'INR', 'PENDING', 'DRAFT', 0, 1, 1)`,
       [
-        restaurantName, uniqueSlug, adminUserId,
+        restaurantName, uniqueSlug, uniqueSlug, adminUserId,
         restaurantPhone || adminPhone, restaurantEmail || adminEmail, address,
         latitude ? parseFloat(latitude) : null,
         longitude ? parseFloat(longitude) : null,
@@ -175,7 +175,29 @@ async function login(req, res) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
-    const users = await query('SELECT * FROM users WHERE email = ?', [email]);
+    const inputStr = (email || '').trim();
+    let users = [];
+
+    if (inputStr.includes('@')) {
+      // Direct email lookup
+      users = await query('SELECT * FROM users WHERE email = ?', [inputStr]);
+    } else {
+      // Mobile number lookup (supports riders logging in with phone)
+      const phoneDigits = inputStr.replace(/\D/g, '');
+      const phoneCandidate = phoneDigits.length >= 10 ? phoneDigits.slice(-10) : phoneDigits;
+      const fallbackEmail = phoneCandidate ? `${phoneCandidate}@hotel.com` : inputStr;
+
+      users = await query(
+        `SELECT * FROM users 
+         WHERE phone = ? 
+            OR phone = ?
+            OR phone LIKE ?
+            OR email = ?
+         ORDER BY CASE WHEN role = 'DRIVER' THEN 0 ELSE 1 END, id DESC`,
+        [inputStr, phoneCandidate, `%${phoneCandidate}`, fallbackEmail]
+      );
+    }
+
     if (users.length === 0) {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }

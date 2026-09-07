@@ -18,7 +18,6 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterRestaurantPage from './pages/auth/RegisterRestaurantPage';
 
 // Driver Pages (Phase 2)
-import DriverApplicationPage from './pages/driver/DriverApplicationPage';
 import DriverLoginPage from './pages/driver/DriverLoginPage';
 import DriverDashboardPage from './pages/driver/DriverDashboardPage';
 
@@ -47,6 +46,7 @@ import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
 import StaffManagementPage from './pages/admin/StaffManagementPage';
 import AdminSubscriptionPage from './pages/admin/AdminSubscriptionPage';
 import WalletManagementPage from './pages/admin/WalletManagementPage';
+import AdminDriverPayoutsPage from './pages/admin/AdminDriverPayoutsPage';
 
 // Offline Restaurant, Hotel Accommodation & KOT Pages
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
@@ -212,8 +212,8 @@ const HomeRedirect = () => {
           <a href="/admin/login" className="px-6 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl transition-all text-sm font-bold shadow-md shadow-[#3A7D7C]/20">
             Admin Portal Login
           </a>
-          <a href="/driver/apply" className="px-6 py-3 bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] rounded-xl transition-all text-sm font-bold shadow-2xs">
-            Delivery Partner 🛵
+          <a href="/driver/login" className="px-6 py-3 bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] rounded-xl transition-all text-sm font-bold shadow-2xs">
+            Delivery Partner Login 🛵
           </a>
         </div>
       </div>
@@ -262,8 +262,9 @@ export default function App() {
         <Route path="/order/table/:token" element={<CustomerQRMenuPage />} />
         <Route path="/order/:orderId/track" element={<CustomerOrderTrackingPage />} />
 
-        {/* Public Rider Application & Driver Auth (Phase 2) */}
-        <Route path="/driver/apply" element={<DriverApplicationPage />} />
+        {/* Driver Auth & Duty Dashboard (No public registration; drivers provisioned by Restaurant Admin) */}
+        <Route path="/driver/apply" element={<Navigate to="/driver/login" replace />} />
+        <Route path="/driver/register" element={<Navigate to="/driver/login" replace />} />
         <Route path="/driver/login" element={<DriverLoginPage />} />
         <Route path="/driver/dashboard" element={
           <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']} loginPath="/driver/login">
@@ -273,8 +274,8 @@ export default function App() {
         {/* Rider aliases */}
         <Route path="/rider" element={<RiderRedirect />} />
         <Route path="/rider/login" element={<DriverLoginPage />} />
-        <Route path="/rider/apply" element={<DriverApplicationPage />} />
-        <Route path="/rider/register" element={<DriverApplicationPage />} />
+        <Route path="/rider/apply" element={<Navigate to="/driver/login" replace />} />
+        <Route path="/rider/register" element={<Navigate to="/driver/login" replace />} />
         <Route path="/rider/dashboard" element={
           <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']} loginPath="/driver/login">
             <DriverDashboardPage />
@@ -375,6 +376,14 @@ export default function App() {
             </FeatureRoute>
           </ProtectedRoute>
         } />
+        <Route path="/admin/:slug/driver-payouts" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
+            <FeatureRoute featureKey="delivery_fleet">
+              <AdminDriverPayoutsPage />
+            </FeatureRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/driver-payouts" element={<AdminRedirect />} />
         <Route path="/admin/:slug/deliveries" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN']}>
             <FeatureRoute featureKey="delivery_fleet">

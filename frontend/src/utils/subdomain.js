@@ -51,11 +51,7 @@ export function getSubdomainSlug(hostname = (typeof window !== 'undefined' ? win
 export function getRestaurantPublicUrl(restaurant, path = '') {
   if (!restaurant) return '/';
 
-  const isCustomEnabled = Boolean(restaurant.custom_subdomain_enabled);
-  const customSlug = restaurant.custom_subdomain_slug || restaurant.slug;
-  const randomSlug = restaurant.random_slug || restaurant.slug || 'aK8xP2qZ';
-
-  const activeSlug = isCustomEnabled && customSlug ? customSlug : randomSlug;
+  const activeSlug = restaurant.slug || restaurant.custom_subdomain_slug || restaurant.random_slug || 'restaurant';
 
   if (typeof window === 'undefined') {
     return `https://jattamkommerce.com/restaurant/${activeSlug}${path}`;
@@ -64,37 +60,23 @@ export function getRestaurantPublicUrl(restaurant, path = '') {
   const host = window.location.host; // e.g. jattamkommerce.com or localhost:5173
   const protocol = window.location.protocol; // e.g. https:
 
-  // Production subdomain URL
-  if (host.includes('jattamkommerce.com')) {
-    return `${protocol}//${activeSlug}.jattamkommerce.com${path}`;
-  }
-
-  // Localhost subdomain URL
-  if (host.includes('localhost')) {
-    const port = window.location.port ? `:${window.location.port}` : '';
-    return `${protocol}//${activeSlug}.localhost${port}${path}`;
-  }
-
   // Standard fallback path URL
   return `${protocol}//${host}/restaurant/${activeSlug}${path}`;
 }
 
 /**
- * Format displayed slug label (shows if custom subdomain is unlocked or random slug)
+ * Format displayed slug label
  */
 export function getDisplayedSlugDetails(restaurant) {
   if (!restaurant) return { activeSlug: '', isCustom: false, label: '' };
 
-  const isCustom = Boolean(restaurant.custom_subdomain_enabled);
-  const activeSlug = isCustom && restaurant.custom_subdomain_slug
-    ? restaurant.custom_subdomain_slug
-    : (restaurant.random_slug || restaurant.slug || 'aK8xP2qZ');
+  const activeSlug = restaurant.slug || restaurant.custom_subdomain_slug || restaurant.random_slug || 'restaurant';
 
   return {
     activeSlug,
-    isCustom,
-    randomSlug: restaurant.random_slug || 'aK8xP2qZ',
+    isCustom: true,
+    randomSlug: restaurant.random_slug || activeSlug,
     customSlug: restaurant.custom_subdomain_slug || restaurant.slug,
-    label: isCustom ? '⭐ Custom Subdomain Unlocked (₹99/mo)' : '🔒 Free Tier (Random Alphanumeric Subdomain)'
+    label: '⭐ Active Storefront Website'
   };
 }

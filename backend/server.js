@@ -55,23 +55,8 @@ const corsOptions = {
     return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Request-Id',
-    'x-request-id',
-    'X-Idempotency-Key',
-    'x-idempotency-key',
-    'X-Guest-Token',
-    'x-guest-token',
-    'X-Guest-Identity-Token',
-    'x-guest-identity-token',
-    'X-Requested-With',
-    'x-client-platform',
-    'Accept',
-    'Origin'
-  ]
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS']
+  // Note: allowedHeaders is omitted so cors dynamically reflects req.headers['access-control-request-headers']
 };
 
 // ──────────────────────────────────────────────────────────

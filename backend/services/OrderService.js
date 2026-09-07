@@ -349,6 +349,17 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
     } catch (wErr) {
       console.warn('[Wallet] Error activating pending credit upon delivery:', wErr.message);
     }
+
+    // Driver Compensation: Credit commission and delivery incentive to driver wallet
+    try {
+      const driverPayoutController = require('../controllers/driverPayoutController');
+      await driverPayoutController.creditDriverDeliveryEarnings({
+        ...order,
+        order_status: 'DELIVERED'
+      });
+    } catch (dpErr) {
+      console.warn('[Driver Payout] Error crediting delivery earnings:', dpErr.message);
+    }
   } else if (newStatus === 'DELIVERY_FAILED') {
     notifTitle = 'Delivery Issue Update ⚠️';
     notifMsg = `There was an issue delivering order #${order.order_number}. The restaurant team is resolving it.`;

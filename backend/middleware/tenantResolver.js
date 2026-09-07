@@ -23,13 +23,13 @@ async function tenantResolver(req, res, next) {
     }
 
     if (subdomain && !RESERVED_SUBDOMAINS.has(subdomain)) {
-      // Find restaurant matching custom_subdomain_slug (if custom_subdomain_enabled=1), random_slug, or fallback slug
+      // Find restaurant matching custom_subdomain_slug, slug, or random_slug
       const restaurants = await query(
         `SELECT id, name, slug, random_slug, custom_subdomain_enabled, custom_subdomain_slug, status
          FROM restaurants
-         WHERE (custom_subdomain_enabled = 1 AND LOWER(custom_subdomain_slug) = ?)
-            OR LOWER(random_slug) = ?
+         WHERE LOWER(custom_subdomain_slug) = ?
             OR LOWER(slug) = ?
+            OR LOWER(random_slug) = ?
          LIMIT 1`,
         [subdomain, subdomain, subdomain]
       );
