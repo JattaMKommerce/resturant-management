@@ -24,7 +24,7 @@ export default function LoginPage() {
       if (res.success) {
         const r = res.user?.role;
         if (r === 'DELIVERY_DRIVER' || r === 'DRIVER') {
-          setError('This account is registered as a Delivery Partner. Please sign in at the Delivery Partner Portal (/driver/login) or use an Admin account.');
+          navigate('/driver/dashboard');
           return;
         }
         if (r === 'SUPER_ADMIN') {
@@ -59,9 +59,9 @@ export default function LoginPage() {
             <div className="w-14 h-14 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-bold mx-auto shadow-md shadow-[#3A7D7C]/20">
               <ShieldCheck className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-extrabold text-[#1F2937] tracking-tight mt-3">Admin Sign In</h2>
+            <h2 className="text-2xl font-extrabold text-[#1F2937] tracking-tight mt-3">Portal Sign In</h2>
             <p className="text-xs text-[#64748B]">
-              Sign in to access your Restaurant Admin Console and manage operations
+              Sign in with your Email or Mobile Number to access your dashboard
             </p>
           </div>
 
@@ -73,13 +73,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4 text-xs">
             <div>
-              <label className="block font-bold text-[#1F2937] mb-1">Email Address</label>
+              <label className="block font-bold text-[#1F2937] mb-1">Email or Mobile Number</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="admin@hotel.com"
+                  placeholder="admin@hotel.com or mobile number"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-medium placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3A7D7C]/20 focus:border-[#3A7D7C] transition-colors"

@@ -41,7 +41,7 @@ export default function DriverLoginPage() {
             <Bike className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-extrabold text-[#1F2937] mt-3 tracking-tight">Delivery Partner Portal</h2>
-          <p className="text-xs text-[#64748B] mt-1">Sign in with your Email (Gmail) and Password to start deliveries</p>
+          <p className="text-xs text-[#64748B] mt-1">Sign in with your Mobile Number and Password to access your dashboard</p>
         </div>
 
         {error && (
@@ -53,7 +53,7 @@ export default function DriverLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold text-[#1F2937] mb-1">Email / Gmail or Mobile Number *</label>
+            <label className="block font-bold text-[#1F2937] mb-1">Mobile Number or Email *</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -61,7 +61,7 @@ export default function DriverLoginPage() {
                 required
                 value={loginInput}
                 onChange={(e) => setLoginInput(e.target.value)}
-                placeholder="your.email@gmail.com or mobile"
+                placeholder="e.g. 9876543210 or your email"
                 className="w-full pl-10 pr-4 py-3 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-medium placeholder:text-[#94A3B8] focus:ring-2 focus:ring-[#3A7D7C]/20 focus:border-[#3A7D7C] focus:outline-none transition-colors"
               />
             </div>
@@ -92,16 +92,16 @@ export default function DriverLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-extrabold text-xs text-white rounded-xl transition-all shadow-md shadow-[#3A7D7C]/20 flex items-center justify-center gap-2 mt-4"
+            className="w-full py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-extrabold text-xs text-white rounded-xl transition-all shadow-md shadow-[#3A7D7C]/20 flex items-center justify-center gap-2 mt-4 cursor-pointer"
           >
-            {loading ? 'Signing In...' : 'Sign In to Rider Duty'} <ArrowRight className="w-4 h-4" />
+            {loading ? 'Signing In...' : 'Sign In to Driver Dashboard'} <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
         <div className="pt-4 border-t border-[#D7E5E8] text-center space-y-2">
           <p className="text-xs text-[#64748B] font-medium">Driver accounts are provisioned directly by your restaurant manager.</p>
           <p className="text-[11px] text-slate-400">Please contact your hotel or restaurant administrator for your duty login credentials.</p>
-          <p className="text-[10px] text-[#3A7D7C] font-semibold block pt-1">Demo Rider: driver1@hotel.com / driver123</p>
+          <p className="text-[11px] text-[#3A7D7C] font-semibold block pt-1">Sign in with your Mobile Number and the Password set by your manager</p>
         </div>
 
       </div>

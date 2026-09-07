@@ -465,7 +465,7 @@ export default function DriverDashboardPage() {
   const handleToggleOnline = async () => {
     setError('');
 
-    if (availabilityStatus === 'OFFLINE' && assignedRestaurants.length === 0) {
+    if (availabilityStatus === 'OFFLINE' && assignedRestaurants.length === 0 && !driver?.restaurant_id && !driver?.assigned_restaurant_id) {
       setError('You are not assigned to any restaurant yet. Click "Apply More" to partner with a restaurant first.');
       setShowApplyModal(true);
       return;

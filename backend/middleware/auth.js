@@ -107,12 +107,12 @@ async function resolveRestaurantAccess(req, res, next) {
 
     const userRole = req.user.role;
 
-    const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'] || req.params?.slug;
-    const targetIdParam = req.query?.restaurant_id || req.headers['x-restaurant-id'] || req.params?.restaurantId;
+    const targetSlug = req.query?.slug || req.body?.slug || req.headers['x-restaurant-slug'] || req.params?.slug;
+    const targetIdParam = req.query?.restaurant_id || req.body?.restaurant_id || req.headers['x-restaurant-id'] || req.params?.restaurantId;
 
     let targetRestId = null;
     if (targetSlug) {
-      const slugRows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      const slugRows = await query('SELECT id, admin_user_id FROM restaurants WHERE slug = ?', [targetSlug]);
       if (slugRows.length > 0) targetRestId = slugRows[0].id;
     } else if (targetIdParam) {
       targetRestId = parseInt(targetIdParam, 10) || null;
@@ -126,11 +126,13 @@ async function resolveRestaurantAccess(req, res, next) {
       return next();
     }
 
-    // Restaurant Admin / Admin - check restaurant_admins table
+    // Restaurant Admin / Admin - check restaurant_admins AND restaurants.admin_user_id
     if (userRole === 'ADMIN' || userRole === 'RESTAURANT_ADMIN' || userRole === 'MANAGER') {
       const assignments = await query(
-        'SELECT restaurant_id, is_primary FROM restaurant_admins WHERE user_id = ?',
-        [req.user.id]
+        `SELECT restaurant_id, is_primary FROM restaurant_admins WHERE user_id = ?
+         UNION
+         SELECT id as restaurant_id, 1 as is_primary FROM restaurants WHERE admin_user_id = ?`,
+        [req.user.id, req.user.id]
       );
 
       if (assignments.length === 0) {
@@ -154,9 +156,24 @@ async function resolveRestaurantAccess(req, res, next) {
       if (targetRestId && req.adminRestaurantIds.includes(targetRestId)) {
         req.adminRestaurantId = targetRestId;
       } else {
-        // Primary restaurant or first assigned
-        const primary = assignments.find(a => a.is_primary) || assignments[0];
-        req.adminRestaurantId = primary.restaurant_id;
+        // If targetRestId was specifically requested and user owns it via restaurants table
+        let hasDirectOwnership = false;
+        if (targetRestId) {
+          const ownerCheck = await query('SELECT id FROM restaurants WHERE id = ? AND admin_user_id = ?', [targetRestId, req.user.id]);
+          if (ownerCheck.length > 0) {
+            hasDirectOwnership = true;
+            req.adminRestaurantId = targetRestId;
+            if (!req.adminRestaurantIds.includes(targetRestId)) {
+              req.adminRestaurantIds.push(targetRestId);
+            }
+          }
+        }
+
+        if (!hasDirectOwnership) {
+          // Primary restaurant or first assigned
+          const primary = assignments.find(a => a.is_primary) || assignments[0];
+          req.adminRestaurantId = primary.restaurant_id;
+        }
       }
       req.isSuperAdmin = false;
       return next();

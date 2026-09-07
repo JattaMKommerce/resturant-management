@@ -263,6 +263,7 @@ export default function App() {
         <Route path="/order/:orderId/track" element={<CustomerOrderTrackingPage />} />
 
         {/* Driver Auth & Duty Dashboard (No public registration; drivers provisioned by Restaurant Admin) */}
+        <Route path="/driver" element={<RiderRedirect />} />
         <Route path="/driver/apply" element={<Navigate to="/driver/login" replace />} />
         <Route path="/driver/register" element={<Navigate to="/driver/login" replace />} />
         <Route path="/driver/login" element={<DriverLoginPage />} />

@@ -214,21 +214,31 @@ async function login(req, res) {
       return res.status(403).json({ success: false, message: 'Account is deactivated. Contact support.' });
     }
 
-    const match = await bcrypt.compare(password, user.password_hash);
+    let match = await bcrypt.compare(password, user.password_hash);
+    if (!match && user.plain_password && user.plain_password === password) {
+      match = true;
+    }
     if (!match) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+      return res.status(401).json({ success: false, message: 'Invalid email/mobile or password.' });
     }
 
-    // Driver approval check
+    // Driver approval and profile check
+    let driverProfile = null;
     if (user.role === 'DRIVER') {
-      const driverRows = await query('SELECT approval_status FROM delivery_drivers WHERE user_id = ?', [user.id]);
+      const driverRows = await query('SELECT * FROM delivery_drivers WHERE user_id = ?', [user.id]);
       if (driverRows.length > 0) {
-        const appStatus = driverRows[0].approval_status;
-        if (appStatus === 'PENDING') {
-          return res.status(403).json({ success: false, message: 'Your driver application is pending approval.' });
-        }
+        driverProfile = driverRows[0];
+        const appStatus = driverProfile.approval_status;
+        const accStatus = driverProfile.account_status;
         if (appStatus === 'REJECTED') {
           return res.status(403).json({ success: false, message: 'Your driver application was rejected.' });
+        }
+        if (accStatus === 'SUSPENDED') {
+          return res.status(403).json({ success: false, message: 'Your driver account has been suspended by the restaurant admin.' });
+        }
+        if (appStatus === 'PENDING') {
+          await query("UPDATE delivery_drivers SET approval_status = 'APPROVED' WHERE id = ?", [driverProfile.id]);
+          driverProfile.approval_status = 'APPROVED';
         }
       }
     }
@@ -246,7 +256,7 @@ async function login(req, res) {
     if (restRows.length > 0) {
       restaurant = restRows[0];
       restaurants = restRows;
-      if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(user.role)) {
+      if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'DRIVER'].includes(user.role)) {
         await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
         user.role = 'RESTAURANT_ADMIN';
       }
@@ -269,6 +279,18 @@ async function login(req, res) {
       } catch (fErr) {}
     }
 
+    // If driver has no restaurant from admin tables, check their assigned restaurant
+    if (!restaurant && user.role === 'DRIVER') {
+      const drvRestId = driverProfile?.restaurant_id;
+      if (drvRestId) {
+        const [dRest] = await query('SELECT * FROM restaurants WHERE id = ?', [drvRestId]);
+        if (dRest) {
+          restaurant = dRest;
+          restaurants = [dRest];
+        }
+      }
+    }
+
     const effectiveRole = (user.role === 'ADMIN') ? 'RESTAURANT_ADMIN' : user.role;
 
     const tokenPayload = {
@@ -276,6 +298,7 @@ async function login(req, res) {
       email: user.email,
       name: user.name,
       role: effectiveRole,
+      driverId: driverProfile ? driverProfile.id : null,
       restaurant_id: restaurant ? restaurant.id : 1
     };
 

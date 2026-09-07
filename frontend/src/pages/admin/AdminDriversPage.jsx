@@ -57,7 +57,9 @@ export default function AdminDriversPage() {
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/drivers');
+      const res = await api.get('/admin/drivers', {
+        params: { slug }
+      });
       if (res.data.success) {
         setDrivers(res.data.drivers || []);
       }
@@ -78,7 +80,9 @@ export default function AdminDriversPage() {
     }
     setLoadingDetail(true);
     try {
-      const res = await api.get(`/admin/drivers/${id}`);
+      const res = await api.get(`/admin/drivers/${id}`, {
+        params: { slug }
+      });
       if (res.data.success && res.data.driver) {
         setDriverDetail(res.data.driver);
       } else {
@@ -112,7 +116,8 @@ export default function AdminDriversPage() {
         phone,
         vehicle_type: vehicleType,
         vehicle_number: vehicleNumber,
-        license_number: licenseNumber
+        license_number: licenseNumber,
+        slug
       });
 
       if (res.data.success) {
@@ -122,7 +127,7 @@ export default function AdminDriversPage() {
         setPhone('');
         setVehicleNumber('');
         setLicenseNumber('');
-        fetchDrivers();
+        await fetchDrivers();
       }
     } catch (err) {
       setFormError(err.response?.data?.message || err.message || 'Error creating driver account.');
