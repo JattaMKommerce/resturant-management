@@ -204,31 +204,29 @@ export function playServiceChime(type = 'call_waiter') {
       });
 
     } else if (type === 'unclaimed_order_alert' || type === 'urgent_alarm') {
-      // 🚨 URGENT UNCLAIMED ORDER ALARM (>5m with no rider)
-      // Rapid alternating urgent pulse: A5 (880Hz) and D6 (1174.66Hz)
-      const pulses = [
-        { freq: 880.00, time: 0.00, dur: 0.18, gain: 0.45 },
-        { freq: 1174.66, time: 0.18, dur: 0.22, gain: 0.50 },
-        { freq: 880.00, time: 0.42, dur: 0.18, gain: 0.45 },
-        { freq: 1174.66, time: 0.60, dur: 0.45, gain: 0.55 }
+      // 🛎️ Warm, gentle notification chime for unclaimed orders (pure sine wave, soft pleasant volume)
+      // Dual soft bell tones: E5 (659.25Hz) -> A5 (880Hz) at calm gain (0.16)
+      const chimes = [
+        { freq: 659.25, time: 0.00, dur: 0.55, gain: 0.16 }, // E5
+        { freq: 880.00, time: 0.20, dur: 0.85, gain: 0.18 }  // A5
       ];
 
-      pulses.forEach((p) => {
-        const startTime = now + p.time;
+      chimes.forEach((c) => {
+        const startTime = now + c.time;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(p.freq, startTime);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(c.freq, startTime);
 
-        gain.gain.setValueAtTime(p.gain, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + p.dur);
+        gain.gain.setValueAtTime(c.gain, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + c.dur);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
 
         osc.start(startTime);
-        osc.stop(startTime + p.dur);
+        osc.stop(startTime + c.dur);
       });
     }
   } catch (e) {

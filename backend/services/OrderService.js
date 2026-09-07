@@ -1,7 +1,7 @@
 const { getConnection, query } = require('../config/db');
 const { validateDeliveryRadius } = require('./LocationService');
 const { notifyKitchen } = require('./KitchenIntegrationService');
-const { sendNotification } = require('./NotificationService');
+const { sendNotification, getSocketIO } = require('./NotificationService');
 const { updateGuestInfo } = require('../middleware/guestIdentity');
 
 const VALID_STATUSES = [
@@ -257,6 +257,28 @@ async function createOrder(orderPayload) {
       });
     } catch (kErr) {
       console.warn('[ORDER SERVICE] Kitchen auto-dispatch warning:', kErr.message);
+    }
+
+    // Broadcast new available order to active delivery drivers fleet
+    try {
+      const io = getSocketIO();
+      if (io) {
+        const driverOrderPayload = {
+          orderId,
+          orderNumber,
+          restaurantId: restaurant.id,
+          restaurantName: restaurant.name,
+          customerName,
+          totalAmount,
+          deliveryAddress,
+          createdAt: new Date()
+        };
+        io.to(`restaurant_drivers_${restaurant.id}`).emit('available_orders_updated', driverOrderPayload);
+        io.to(`restaurant_${restaurant.id}`).emit('available_orders_updated', driverOrderPayload);
+        io.emit('available_orders_updated', driverOrderPayload);
+      }
+    } catch (dErr) {
+      console.warn('[ORDER SERVICE] Driver dispatch notification warning:', dErr.message);
     }
 
     return {

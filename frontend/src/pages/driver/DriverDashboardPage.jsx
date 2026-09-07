@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import api from '../../api/axios';
 import OrderMap from '../../components/OrderMap';
+import { playServiceChime } from '../../utils/audio';
 
 function getOrderLast5(orderNum) {
   if (!orderNum) return '-----';
@@ -253,12 +254,20 @@ export default function DriverDashboardPage() {
     fetchWalletHistory(start, end);
   };
 
-  // Join driver room and listen for real-time wallet events
+  // Join driver room and listen for real-time wallet & order events
   useEffect(() => {
     if (driver?.id && joinRoom) {
       joinRoom(`driver_${driver.id}`);
+      if (driver.restaurant_id) {
+        joinRoom(`restaurant_drivers_${driver.restaurant_id}`);
+      }
+      if (Array.isArray(assignedRestaurants)) {
+        assignedRestaurants.forEach(r => {
+          if (r.id) joinRoom(`restaurant_drivers_${r.id}`);
+        });
+      }
     }
-  }, [driver?.id, joinRoom]);
+  }, [driver?.id, driver?.restaurant_id, assignedRestaurants, joinRoom]);
 
   useEffect(() => {
     if (!socket) return;
@@ -271,14 +280,23 @@ export default function DriverDashboardPage() {
       setSuccessMsg(`🎉 Payout settled by Hotel Admin! (Receipt #${data?.settlementNumber || ''}). Current wallet has been refreshed to ₹0.00.`);
     };
 
+    const onAvailableOrdersUpdated = () => {
+      fetchAvailableOrdersPool();
+      if (availabilityStatus === 'AVAILABLE' && !activeDelivery) {
+        playServiceChime('new_order');
+      }
+    };
+
     socket.on('driver_wallet_updated', onWalletUpdate);
     socket.on('driver_wallet_refreshed', onWalletRefreshed);
+    socket.on('available_orders_updated', onAvailableOrdersUpdated);
 
     return () => {
       socket.off('driver_wallet_updated', onWalletUpdate);
       socket.off('driver_wallet_refreshed', onWalletRefreshed);
+      socket.off('available_orders_updated', onAvailableOrdersUpdated);
     };
-  }, [socket]);
+  }, [socket, availabilityStatus, activeDelivery]);
 
   const fetchAvailableOrdersPool = async (restFilter = selectedRestaurantFilter) => {
     try {

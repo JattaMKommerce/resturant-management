@@ -1499,7 +1499,11 @@ async function applyToRestaurant(req, res) {
           [driver.id]
         );
 
-        let restIds = assignments.map(a => a.restaurant_id);
+        const restIdSet = new Set(assignments.map(a => a.restaurant_id));
+        if (driver.restaurant_id) {
+          restIdSet.add(driver.restaurant_id);
+        }
+        let restIds = Array.from(restIdSet);
 
         // If specific restaurant filter is requested
         if (req.query.restaurant_id) {

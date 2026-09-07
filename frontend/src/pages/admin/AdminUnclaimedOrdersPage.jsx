@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -35,6 +35,7 @@ export default function AdminUnclaimedOrdersPage() {
   const [selectedOrderForDriver, setSelectedOrderForDriver] = useState(null);
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [nowTimestamp, setNowTimestamp] = useState(Date.now());
+  const alertedOrderIdsRef = useRef(new Set());
 
   // Update clock every second for live countdown / elapsed seconds
   useEffect(() => {
@@ -54,8 +55,20 @@ export default function AdminUnclaimedOrdersPage() {
       if (orderRes.data.success) {
         const newOrders = orderRes.data.orders || [];
         setOrders(newOrders);
-        if (newOrders.length > 0 && soundEnabled) {
+
+        // Alert ONLY when a brand new unclaimed order appears that hasn't been alerted yet
+        const unalertedOrders = newOrders.filter(o => !alertedOrderIdsRef.current.has(o.id));
+        if (unalertedOrders.length > 0 && soundEnabled) {
+          unalertedOrders.forEach(o => alertedOrderIdsRef.current.add(o.id));
           playServiceChime('unclaimed_order_alert');
+        }
+
+        // Clean up resolved orders from memory
+        const currentIds = new Set(newOrders.map(o => o.id));
+        for (const id of alertedOrderIdsRef.current) {
+          if (!currentIds.has(id)) {
+            alertedOrderIdsRef.current.delete(id);
+          }
         }
       }
 
@@ -94,7 +107,6 @@ export default function AdminUnclaimedOrdersPage() {
     if (!window.confirm('Mark this order for Hotel In-House Delivery (Self-Delivery)?')) return;
     setActionLoadingId(orderId);
     try {
-      unlockAudio();
       const res = await api.post(`/admin/orders/${orderId}/self-deliver`);
       if (res.data.success) {
         alert('✅ Order claimed! It is now marked as Out for Delivery by Hotel Staff.');
@@ -111,7 +123,6 @@ export default function AdminUnclaimedOrdersPage() {
     if (!selectedOrderForDriver || !selectedDriverId) return;
     setActionLoadingId(selectedOrderForDriver.id);
     try {
-      unlockAudio();
       const res = await api.post(`/admin/orders/${selectedOrderForDriver.id}/assign-driver`, {
         driver_id: selectedDriverId
       });
