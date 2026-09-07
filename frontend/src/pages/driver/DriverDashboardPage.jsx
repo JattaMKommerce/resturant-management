@@ -100,12 +100,63 @@ export default function DriverDashboardPage() {
     setShowUploadDocsModal(true);
   };
 
-  const handleFileChange = (e, setter) => {
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      if (file.type === 'application/pdf') {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1280;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => resolve(readerEvent.target.result);
+        img.src = readerEvent.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e, setter) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setter(reader.result);
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await compressImage(file);
+      if (dataUrl) setter(dataUrl);
+    } catch (err) {
+      console.warn('Image compression fallback:', err);
+      const reader = new FileReader();
+      reader.onload = () => setter(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleUploadDocuments = async (e) => {
@@ -137,7 +188,12 @@ export default function DriverDashboardPage() {
         }, 1200);
       }
     } catch (err) {
-      setDocsFormError(err.response?.data?.message || 'Failed to upload documents.');
+      console.error('Document upload error:', err);
+      const msg = err.response?.data?.message || 
+                  (err.response?.status === 413 ? 'Uploaded images are too large. Please select smaller photos.' : null) || 
+                  err.message || 
+                  'Failed to upload documents.';
+      setDocsFormError(msg);
     } finally {
       setUploadingDocs(false);
     }

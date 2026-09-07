@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getConnection, query } = require('../config/db');
@@ -8,6 +10,34 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
+
+function saveBase64File(base64Str, prefix, driverId) {
+  if (!base64Str || typeof base64Str !== 'string') return null;
+  if (!base64Str.startsWith('data:')) {
+    if (base64Str.startsWith('/') || base64Str.startsWith('http')) {
+      return { path: base64Str, buffer: null };
+    }
+    return null;
+  }
+  try {
+    const matches = base64Str.match(/^data:([A-Za-z0-9-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return null;
+    const mime = matches[1].toLowerCase();
+    const ext = mime.includes('png') ? 'png' : mime.includes('pdf') ? 'pdf' : mime.includes('webp') ? 'webp' : 'jpg';
+    const buffer = Buffer.from(matches[2], 'base64');
+    const uploadDir = path.join(__dirname, '../uploads/drivers');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const filename = `${prefix}_${driverId}_${Date.now()}.${ext}`;
+    const filePath = path.join(uploadDir, filename);
+    fs.writeFileSync(filePath, buffer);
+    return { path: `/uploads/drivers/${filename}`, buffer };
+  } catch (err) {
+    console.error(`Error saving base64 file for ${prefix}:`, err);
+    return null;
+  }
+}
 
 function toDataUrl(data, defaultMime = 'image/jpeg') {
   if (!data) return null;
@@ -320,16 +350,46 @@ async function uploadDriverDocuments(req, res) {
     const params = [];
 
     if (selfie) {
-      updates.push('selfie_data = ?');
-      params.push(selfie);
+      const saved = saveBase64File(selfie, 'selfie', driver.id);
+      if (saved) {
+        updates.push('selfie_path = ?');
+        params.push(saved.path);
+        if (saved.buffer) {
+          updates.push('selfie_data = ?');
+          params.push(saved.buffer);
+        }
+      } else if (selfie.startsWith('/') || selfie.startsWith('http')) {
+        updates.push('selfie_path = ?');
+        params.push(selfie);
+      }
     }
     if (license) {
-      updates.push('license_data = ?');
-      params.push(license);
+      const saved = saveBase64File(license, 'license', driver.id);
+      if (saved) {
+        updates.push('license_path = ?');
+        params.push(saved.path);
+        if (saved.buffer) {
+          updates.push('license_data = ?');
+          params.push(saved.buffer);
+        }
+      } else if (license.startsWith('/') || license.startsWith('http')) {
+        updates.push('license_path = ?');
+        params.push(license);
+      }
     }
     if (aadhaar) {
-      updates.push('aadhaar_data = ?');
-      params.push(aadhaar);
+      const saved = saveBase64File(aadhaar, 'aadhaar', driver.id);
+      if (saved) {
+        updates.push('aadhaar_path = ?');
+        params.push(saved.path);
+        if (saved.buffer) {
+          updates.push('aadhaar_data = ?');
+          params.push(saved.buffer);
+        }
+      } else if (aadhaar.startsWith('/') || aadhaar.startsWith('http')) {
+        updates.push('aadhaar_path = ?');
+        params.push(aadhaar);
+      }
     }
     if (license_number) {
       updates.push('license_number = ?');
