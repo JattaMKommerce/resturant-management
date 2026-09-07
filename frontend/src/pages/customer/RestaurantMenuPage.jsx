@@ -40,6 +40,11 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const [activeOrder, setActiveOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (getItemCount() === 0) setCartDrawerOpen(false);
+  }, [cartItems]);
 
   useEffect(() => {
     if (slug) {
@@ -366,7 +371,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className={`max-w-5xl mx-auto px-4 pt-6 transition-all duration-300 ${itemCount > 0 ? 'pb-44 sm:pb-36' : 'pb-16'}`}>
         {mainTab === 'stay' ? (
           <AccommodationCustomerTab restaurant={restaurant} slug={slug} />
         ) : (
@@ -478,25 +483,144 @@ export default function RestaurantMenuPage({ overrideSlug }) {
         )}
       </div>
 
-      {/* Floating Cart Bar */}
+      {/* Floating Cart & Checkout Bar */}
       {itemCount > 0 && canOrder && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none">
-          <div className="max-w-5xl mx-auto pointer-events-auto">
+        <aside
+          aria-label="Shopping Cart Summary"
+          className="fixed bottom-3 left-3 right-3 sm:bottom-6 sm:right-6 sm:left-auto sm:w-[400px] md:w-[440px] z-40 pointer-events-auto animate-in slide-in-from-bottom-4 duration-200"
+        >
+          <div className="bg-slate-900/95 backdrop-blur-xl border border-white/15 p-2.5 sm:p-3 rounded-2xl shadow-2xl shadow-black/60 flex items-center justify-between gap-3 text-white">
+            {/* Left: Cart Info & Quick Drawer Trigger */}
             <button
-              onClick={() => navigate(`/restaurant/${slug}/checkout`)}
-              className={`w-full flex items-center justify-between ${template.buttonStyle} px-6 py-4 rounded-2xl shadow-2xl transition-all active:scale-[0.98]`}
+              onClick={() => setCartDrawerOpen(true)}
+              className="flex items-center gap-2.5 text-left hover:opacity-90 transition-all cursor-pointer group py-1 pl-1"
+              title="View Cart Items"
             >
-              <div className="flex items-center gap-3">
-                <div className="bg-black/20 rounded-xl p-2">
-                  <ShoppingCart className="w-5 h-5" />
-                </div>
-                <span className="font-bold text-sm">{itemCount} {itemCount === 1 ? 'item' : 'items'} in cart</span>
+              <div className="relative p-2.5 rounded-xl bg-white/10 group-hover:bg-white/15 transition-colors">
+                <ShoppingCart className="w-5 h-5 text-amber-400" />
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 text-slate-950 text-[11px] font-black rounded-full flex items-center justify-center shadow-xs">
+                  {itemCount}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-base">₹{subtotal.toFixed(0)}</span>
-                <ChevronRight className="w-5 h-5" />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-base text-white tracking-tight">₹{subtotal.toFixed(0)}</span>
+                  <span className="text-[10px] text-amber-300 font-bold bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">
+                    {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium flex items-center gap-0.5 group-hover:text-amber-300 transition-colors">
+                  View items <ChevronRight className="w-3 h-3 inline" />
+                </span>
               </div>
             </button>
+
+            {/* Right: Checkout Button */}
+            <button
+              onClick={() => navigate(`/restaurant/${slug}/checkout`)}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-black shadow-lg transition-all active:scale-[0.98] cursor-pointer ${template.buttonStyle}`}
+            >
+              <span>Checkout</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Slide-Up Mini-Cart Drawer / Modal */}
+      {cartDrawerOpen && itemCount > 0 && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 p-0 sm:p-4">
+          {/* Backdrop dismiss */}
+          <div className="absolute inset-0" onClick={() => setCartDrawerOpen(false)} />
+          
+          <div className="relative w-full max-w-lg bg-slate-900 border border-white/15 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden z-10 animate-in slide-in-from-bottom-6 duration-200 flex flex-col max-h-[85vh]">
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-slate-950/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-white">Your Cart Summary</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">{itemCount} {itemCount === 1 ? 'dish selected' : 'dishes selected'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCartDrawerOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Close cart preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cart Items List */}
+            <div className="p-4 overflow-y-auto space-y-3 flex-1 divide-y divide-white/5 custom-scrollbar">
+              {cartItems.map(item => (
+                <div key={item.id} className="pt-3 first:pt-0 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className={`w-3 h-3 flex items-center justify-center rounded-xs border shrink-0 ${item.is_veg ? 'border-emerald-500' : 'border-rose-500'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${item.is_veg ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-xs text-white truncate">{item.name}</p>
+                      <p className="text-[11px] text-amber-400/90 font-semibold">₹{item.price} each</p>
+                    </div>
+                  </div>
+
+                  {/* Quantity Controls */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1 bg-slate-800 border border-white/10 rounded-xl px-1 py-0.5">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="p-1 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Reduce quantity"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="font-bold text-xs px-2 text-white">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="p-1 hover:bg-white/10 rounded-lg text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Increase quantity"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <span className="font-mono font-extrabold text-xs text-white w-14 text-right">
+                      ₹{(item.price * item.quantity).toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="p-4 border-t border-white/10 bg-slate-950/80 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-medium">Item Subtotal</span>
+                <span className="font-black text-base text-white">₹{subtotal.toFixed(0)}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => setCartDrawerOpen(false)}
+                  className="w-full py-3 px-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all text-center cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <span>+ Add More Dishes</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setCartDrawerOpen(false);
+                    navigate(`/restaurant/${slug}/checkout`);
+                  }}
+                  className={`w-full py-3 px-3 rounded-xl ${template.buttonStyle} text-xs font-black shadow-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1.5`}
+                >
+                  <span>Checkout ➔</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
