@@ -306,6 +306,15 @@ async function login(req, res) {
       expiresIn: process.env.JWT_EXPIRES_IN || '7d'
     });
 
+    const cookieOptions = {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    };
+    res.cookie('hotel_token', token, cookieOptions);
+    res.cookie('token', token, cookieOptions);
+
     res.json({
       success: true,
       token,

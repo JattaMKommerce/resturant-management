@@ -107,6 +107,11 @@ export default function AdminDriversPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem('hotel_token');
+    if (!token) {
+      setFormError('Your admin session has expired. Please log in again to add drivers.');
+      return;
+    }
     setFormLoading(true);
     setFormError('');
 
@@ -133,7 +138,11 @@ export default function AdminDriversPage() {
         await fetchDrivers();
       }
     } catch (err) {
-      setFormError(err.response?.data?.message || err.message || 'Error creating driver account.');
+      if (err.response?.status === 401) {
+        setFormError('Your admin session has expired. Please log in again to add drivers.');
+      } else {
+        setFormError(err.response?.data?.message || err.message || 'Error creating driver account.');
+      }
     } finally {
       setFormLoading(false);
     }
@@ -534,9 +543,19 @@ export default function AdminDriversPage() {
               </div>
 
               {formError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-700 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  {formError}
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-700 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                  {(formError.toLowerCase().includes('session') || formError.toLowerCase().includes('token') || formError.toLowerCase().includes('log in')) && (
+                    <a
+                      href={`/admin/login?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname : '/admin')}`}
+                      className="self-start px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-black text-[11px] transition-colors"
+                    >
+                      Log In to Admin Portal →
+                    </a>
+                  )}
                 </div>
               )}
 

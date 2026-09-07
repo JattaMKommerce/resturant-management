@@ -8,15 +8,30 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
  * Middleware to verify JWT token and attach user to req.user
  */
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  let token = null;
 
+  // 1. Authorization header (standard or fallback names)
+  const authHeader = req.headers['authorization'] || req.headers['x-authorization'] || req.headers['x-access-token'] || req.headers['auth-token'];
+  if (authHeader) {
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (typeof authHeader === 'string') {
+      token = authHeader;
+    }
+  }
+
+  // 2. Cookie fallback
+  if (!token && req.cookies) {
+    token = req.cookies.hotel_token || req.cookies.token || req.cookies.jwt;
+  }
+
+  // 3. Query parameter fallback
   if (!token && req.query && req.query.token) {
     token = req.query.token;
   }
 
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Authentication token required.' });
+    return res.status(401).json({ success: false, message: 'Authentication token required. Please log in again.' });
   }
 
   try {
@@ -25,15 +40,19 @@ function authenticateToken(req, res, next) {
       decoded = jwt.verify(token, JWT_SECRET);
     } catch (e1) {
       try {
-        decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026');
+        decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026_change_in_production');
       } catch (e2) {
-        decoded = jwt.verify(token, 'super_secret_jwt_key_hotel_management_2026');
+        try {
+          decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026');
+        } catch (e3) {
+          decoded = jwt.verify(token, 'super_secret_jwt_key_hotel_management_2026');
+        }
       }
     }
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+    return res.status(401).json({ success: false, message: 'Invalid or expired token. Please log in again.' });
   }
 }
 

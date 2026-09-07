@@ -13,6 +13,12 @@ PassengerStartupFile server.js
   RewriteEngine On
   RewriteBase /
 
+  # Pass Authorization header to Node.js / Passenger backend
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  <IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+  </IfModule>
+
   # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
   RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]

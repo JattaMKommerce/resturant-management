@@ -30,6 +30,8 @@ api.interceptors.request.use(
     const token = localStorage.getItem('hotel_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      config.headers['x-authorization'] = `Bearer ${token}`;
+      config.headers['x-access-token'] = token;
     }
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];

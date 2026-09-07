@@ -9,15 +9,22 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
  * Uniform Authentication Middleware for KOT and Table/Operations routes
  */
 async function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  let token = null;
+  const authHeader = req.headers['authorization'] || req.headers['x-authorization'] || req.headers['x-access-token'] || req.headers['auth-token'];
+  if (authHeader) {
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (typeof authHeader === 'string') {
+      token = authHeader;
+    }
+  }
 
   if (!token && req.cookies) {
     token = req.cookies.token || req.cookies.hotel_token || req.cookies.jwt;
   }
 
   if (!token) {
-    return sendError(res, 'Access denied. No authentication token provided.', 401);
+    return sendError(res, 'Access denied. No authentication token provided. Please log in again.', 401);
   }
 
   try {
@@ -26,9 +33,13 @@ async function authenticateToken(req, res, next) {
       decoded = jwt.verify(token, JWT_SECRET);
     } catch (e1) {
       try {
-        decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026');
+        decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026_change_in_production');
       } catch (e2) {
-        decoded = jwt.verify(token, 'super_secret_jwt_key_hotel_management_2026');
+        try {
+          decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026');
+        } catch (e3) {
+          decoded = jwt.verify(token, 'super_secret_jwt_key_hotel_management_2026');
+        }
       }
     }
     req.user = decoded;
