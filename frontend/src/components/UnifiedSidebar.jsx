@@ -33,7 +33,8 @@ import {
   MessageSquare,
   Store,
   AlertTriangle,
-  Gift
+  Gift,
+  IndianRupee
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -119,6 +120,7 @@ export default function UnifiedSidebar({
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
     { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users, featureKey: 'delivery_fleet' },
+    { name: 'Driver Money & Payouts', path: `/admin/${activeSlug}/driver-payouts`, icon: IndianRupee, featureKey: 'delivery_fleet' },
     { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
     { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
     { name: '🎁 Kratu Rewards & Wallet', path: '/admin/wallet', icon: Gift, featureKey: 'rewards_wallet' },

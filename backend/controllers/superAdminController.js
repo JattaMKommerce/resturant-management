@@ -150,10 +150,10 @@ async function createRestaurant(req, res) {
     }
 
     const result = await query(
-      `INSERT INTO restaurants (name, slug, phone, email, address, city, state, area, postal_code,
+      `INSERT INTO restaurants (name, slug, custom_subdomain_slug, custom_subdomain_enabled, phone, email, address, city, state, area, postal_code,
         status, website_status, is_online_ordering_enabled)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'DRAFT', 0)`,
-      [name, slug, phone || null, email || null, address || null, city || null, state || null, area || null, postal_code || null]
+       VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'DRAFT', 0)`,
+      [name, slug, slug, phone || null, email || null, address || null, city || null, state || null, area || null, postal_code || null]
     );
 
     // Auto-provision 7-Day Free Trial

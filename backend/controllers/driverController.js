@@ -947,35 +947,64 @@ async function createAdminDriver(req, res) {
       });
     }
 
-    const driverEmail = email && email.trim() 
+    const cleanPhone = phone.trim();
+    let driverEmail = email && email.trim() 
       ? email.trim().toLowerCase() 
-      : `${phone.trim().replace(/\D/g, '')}@hotel.com`;
+      : `${cleanPhone.replace(/\D/g, '')}@hotel.com`;
 
     const targetRestId = restaurant_id || req.adminRestaurantId || (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 1;
 
-    // Check existing user
-    const existingUsers = await query(
-      'SELECT id FROM users WHERE email = ? OR phone = ?',
-      [driverEmail, phone.trim()]
+    // Check existing user: prioritize matching email, then existing DRIVER with this phone
+    const existingUsersByEmail = await query(
+      'SELECT id, role FROM users WHERE email = ?',
+      [driverEmail]
     );
+
+    let existingDriverUser = null;
+    if (existingUsersByEmail.length > 0) {
+      existingDriverUser = existingUsersByEmail[0];
+    } else {
+      const existingDriversByPhone = await query(
+        'SELECT id, role FROM users WHERE phone = ? AND role = "DRIVER"',
+        [cleanPhone]
+      );
+      if (existingDriversByPhone.length > 0) {
+        existingDriverUser = existingDriversByPhone[0];
+      }
+    }
 
     let userId;
     const userPassword = password && password.trim() ? password.trim() : 'driver123';
     const hash = await bcrypt.hash(userPassword, 10);
 
-    if (existingUsers.length > 0) {
-      userId = existingUsers[0].id;
+    if (existingDriverUser) {
+      userId = existingDriverUser.id;
       await query(
-        `UPDATE users SET role = 'DRIVER', status = 'ACTIVE', password_hash = ?, plain_password = ? WHERE id = ?`,
-        [hash, userPassword, userId]
+        `UPDATE users SET name = ?, phone = ?, role = 'DRIVER', status = 'ACTIVE', password_hash = ?, plain_password = ? WHERE id = ?`,
+        [name.trim(), cleanPhone, hash, userPassword, userId]
       );
     } else {
-      const userRes = await query(
-        `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-         VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
-        [name.trim(), driverEmail, hash, userPassword, phone.trim()]
-      );
-      userId = userRes.insertId;
+      try {
+        const userRes = await query(
+          `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
+           VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
+          [name.trim(), driverEmail, hash, userPassword, cleanPhone]
+        );
+        userId = userRes.insertId;
+      } catch (insertErr) {
+        if (insertErr.code === 'ER_DUP_ENTRY') {
+          // If email collides with another non-driver user, generate a unique rider email
+          driverEmail = `${cleanPhone.replace(/\D/g, '')}_${Date.now()}@hotel.com`;
+          const retryRes = await query(
+            `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
+             VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
+            [name.trim(), driverEmail, hash, userPassword, cleanPhone]
+          );
+          userId = retryRes.insertId;
+        } else {
+          throw insertErr;
+        }
+      }
     }
 
     // Check existing delivery_drivers profile
@@ -994,7 +1023,7 @@ async function createAdminDriver(req, res) {
          WHERE id = ?`,
         [
           targetRestId,
-          name.trim(), phone.trim(), driverEmail,
+          name.trim(), cleanPhone, driverEmail,
           vehicle_type || 'Bike', vehicle_number.trim(),
           license_number || null, driverId
         ]
@@ -1007,7 +1036,7 @@ async function createAdminDriver(req, res) {
           account_status, availability_status, approval_status, kyc_status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED', 'PENDING')`,
         [
-          userId, targetRestId, name.trim(), phone.trim(), driverEmail,
+          userId, targetRestId, name.trim(), cleanPhone, driverEmail,
           vehicle_type || 'Bike', vehicle_number.trim(), license_number || null
         ]
       );
@@ -1021,6 +1050,21 @@ async function createAdminDriver(req, res) {
        ON DUPLICATE KEY UPDATE status = 'ACTIVE', approved_at = NOW()`,
       [driverId, targetRestId]
     );
+
+    // Auto-provision initial Driver Payout Settings (Salary, Commission %, Incentive)
+    try {
+      await query(
+        `INSERT INTO driver_payout_settings (
+           restaurant_id, driver_id, has_salary, salary_amount,
+           has_commission, commission_percentage,
+           has_incentive, incentive_amount
+         ) VALUES (?, ?, 0, 0.00, 1, 5.00, 1, 20.00)
+         ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+        [targetRestId, driverId]
+      );
+    } catch (payErr) {
+      console.warn('Payout settings auto-provision notice:', payErr.message);
+    }
 
     res.status(201).json({
       success: true,

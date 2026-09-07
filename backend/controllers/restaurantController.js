@@ -4,13 +4,18 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 // Ensure database columns for subdomain change tracking exist
 (async function ensureSubdomainColumns() {
   try {
-    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changed INT DEFAULT 0`);
-  } catch (e) {}
-  try {
-    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changes_this_month INT NOT NULL DEFAULT 0`);
-  } catch (e) {}
-  try {
-    await query(`ALTER TABLE restaurants ADD COLUMN subdomain_last_reset_month VARCHAR(7) DEFAULT NULL`);
+    const cols = await query("SHOW COLUMNS FROM restaurants LIKE 'subdomain_changed'");
+    if (cols.length === 0) {
+      await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changed INT DEFAULT 0`);
+    }
+    const cols2 = await query("SHOW COLUMNS FROM restaurants LIKE 'subdomain_changes_this_month'");
+    if (cols2.length === 0) {
+      await query(`ALTER TABLE restaurants ADD COLUMN subdomain_changes_this_month INT NOT NULL DEFAULT 0`);
+    }
+    const cols3 = await query("SHOW COLUMNS FROM restaurants LIKE 'subdomain_last_reset_month'");
+    if (cols3.length === 0) {
+      await query(`ALTER TABLE restaurants ADD COLUMN subdomain_last_reset_month VARCHAR(7) DEFAULT NULL`);
+    }
   } catch (e) {}
 })();
 
@@ -41,25 +46,16 @@ async function getRestaurantBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
     
-    // 1. Primary lookup: Match random_slug, or enabled custom_subdomain_slug
+    // 1. Primary lookup: Match slug, custom_subdomain_slug, or random_slug
     let rows = await query(
       `SELECT r.* FROM restaurants r
-       WHERE LOWER(r.random_slug) = ?
-          OR (r.custom_subdomain_enabled = 1 AND LOWER(r.custom_subdomain_slug) = ?)
-          OR (r.custom_subdomain_enabled = 1 AND LOWER(r.slug) = ?)`,
+       WHERE LOWER(r.slug) = ?
+          OR LOWER(r.custom_subdomain_slug) = ?
+          OR LOWER(r.random_slug) = ?`,
       [slug, slug, slug]
     );
 
-    // 2. Secondary lookup if not matched directly
-    if (rows.length === 0) {
-      rows = await query(
-        `SELECT r.* FROM restaurants r
-         WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
-        [slug, slug, slug]
-      );
-    }
-
-    // 3. Fallback to active restaurant
+    // 2. Fallback to active/published restaurant if specific slug not found
     if (rows.length === 0) {
       rows = await query(
         `SELECT r.* FROM restaurants r
@@ -73,17 +69,7 @@ async function getRestaurantBySlug(req, res) {
 
     const rest = rows[0];
 
-    // Lock custom name URLs on free tier if ₹99/mo add-on is NOT active
-    if (!rest.custom_subdomain_enabled && slug !== String(rest.random_slug || '').toLowerCase()) {
-      return res.status(403).json({
-        success: false,
-        locked: true,
-        message: `Custom restaurant name URLs (e.g. /restaurant/${rest.slug}) are locked on the free tier. Upgrade to the ₹99/mo Custom Subdomain Plan to unlock your restaurant name in URLs!`,
-        random_slug: rest.random_slug
-      });
-    }
-
-    // Always serve active restaurant publicly
+    // Always serve active restaurant publicly without locking
     res.json({
       success: true,
       restaurant: {

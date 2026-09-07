@@ -40,7 +40,6 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const [activeOrder, setActiveOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lockedInfo, setLockedInfo] = useState(null);
 
   useEffect(() => {
     if (slug) {
@@ -68,7 +67,6 @@ export default function RestaurantMenuPage({ overrideSlug }) {
     try {
       setLoading(true);
       setError(null);
-      setLockedInfo(null);
       const restRes = await api.get(`/restaurants/${slug}`);
 
       if (restRes.data && restRes.data.success && restRes.data.restaurant) {
@@ -101,11 +99,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
 
     } catch (err) {
       console.error('Error loading restaurant menu data:', err);
-      if (err.response?.data?.locked) {
-        setLockedInfo(err.response.data);
-      } else {
-        setError(err.response?.data?.message || 'Restaurant not found or unavailable.');
-      }
+      setError(err.response?.data?.message || 'Restaurant not found or unavailable.');
     } finally {
       setLoading(false);
     }
@@ -156,28 +150,6 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xs font-bold text-[#64748B] mt-3">Loading storefront...</p>
-      </div>
-    );
-  }
-
-  if (lockedInfo) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center font-sans">
-        <div className="w-16 h-16 rounded-2xl bg-[#EAF4F7] text-[#3A7D7C] flex items-center justify-center mb-4 border border-[#D7E5E8] shadow-xs">
-          <Utensils className="w-8 h-8 stroke-[2.2]" />
-        </div>
-        <h2 className="text-2xl font-black text-[#1F2937] mb-2">Storefront Link Updated</h2>
-        <p className="text-[#64748B] text-xs max-w-sm leading-relaxed mb-6 font-medium">
-          This digital menu link has moved. Please click below to view the active restaurant menu.
-        </p>
-        {lockedInfo.random_slug && (
-          <button
-            onClick={() => navigate(`/restaurant/${lockedInfo.random_slug}`)}
-            className="px-6 py-3 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
-          >
-            Open Restaurant Menu ↗
-          </button>
-        )}
       </div>
     );
   }

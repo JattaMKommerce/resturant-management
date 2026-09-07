@@ -4,9 +4,10 @@ import {
   Bike, Power, MapPin, Phone, CheckCircle2, Navigation, AlertTriangle,
   Package, Clock, RefreshCw, LogOut, Shield, DollarSign, User, ListOrdered,
   Store, Plus, ArrowRight, Check, Sparkles, Building2, Zap, AlertCircle,
-  ShieldCheck, FileText, Calendar
+  ShieldCheck, FileText, Calendar, IndianRupee, Banknote, Layers, Filter
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 import api from '../../api/axios';
 import OrderMap from '../../components/OrderMap';
 
@@ -31,6 +32,7 @@ function formatOrderDate(dateStr) {
 
 export default function DriverDashboardPage() {
   const { user, logout } = useAuth();
+  const { socket, joinRoom } = useSocket();
   const navigate = useNavigate();
 
   const [driver, setDriver] = useState(null);
@@ -40,6 +42,17 @@ export default function DriverDashboardPage() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [selectedRestaurantFilter, setSelectedRestaurantFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
+
+  // Driver Wallet & Payouts State
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletData, setWalletData] = useState(null);
+  const [loadingWallet, setLoadingWallet] = useState(false);
+  const [walletHistory, setWalletHistory] = useState([]);
+  const [walletSettlements, setWalletSettlements] = useState([]);
+  const [walletDatePreset, setWalletDatePreset] = useState('ALL');
+  const [walletStartDate, setWalletStartDate] = useState('');
+  const [walletEndDate, setWalletEndDate] = useState('');
+  const [walletTab, setWalletTab] = useState('BREAKDOWN'); // 'BREAKDOWN' | 'TRANSACTIONS' | 'SETTLEMENTS'
 
   // Order History Inspection Modal State
   const [showOrdersHistoryModal, setShowOrdersHistoryModal] = useState(false);
@@ -172,6 +185,9 @@ export default function DriverDashboardPage() {
         setAssignedRestaurants(profRes.data.assignedRestaurants || []);
       }
 
+      // Fetch driver wallet
+      fetchDriverWallet();
+
       // Fetch available pool
       fetchAvailableOrdersPool();
 
@@ -182,6 +198,87 @@ export default function DriverDashboardPage() {
       setLoading(false);
     }
   };
+
+  const fetchDriverWallet = async () => {
+    try {
+      setLoadingWallet(true);
+      const res = await api.get('/driver/wallet');
+      if (res.data?.success) {
+        setWalletData(res.data.wallet);
+      }
+    } catch (err) {
+      console.error('Failed to load wallet:', err);
+    } finally {
+      setLoadingWallet(false);
+    }
+  };
+
+  const fetchWalletHistory = async (start = walletStartDate, end = walletEndDate) => {
+    try {
+      const params = {};
+      if (start) params.startDate = start;
+      if (end) params.endDate = end;
+      const res = await api.get('/driver/wallet/history', { params });
+      if (res.data?.success) {
+        setWalletHistory(res.data.transactions || []);
+        setWalletSettlements(res.data.settlements || []);
+      }
+    } catch (err) {
+      console.error('Failed to load wallet history:', err);
+    }
+  };
+
+  const handleWalletDatePreset = (preset) => {
+    setWalletDatePreset(preset);
+    let start = '';
+    let end = '';
+    const now = new Date();
+
+    if (preset === 'TODAY') {
+      start = now.toISOString().split('T')[0];
+      end = start;
+    } else if (preset === 'WEEK') {
+      const weekAgo = new Date();
+      weekAgo.setDate(now.getDate() - 7);
+      start = weekAgo.toISOString().split('T')[0];
+      end = now.toISOString().split('T')[0];
+    } else if (preset === 'MONTH') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = monthStart.toISOString().split('T')[0];
+      end = now.toISOString().split('T')[0];
+    }
+
+    setWalletStartDate(start);
+    setWalletEndDate(end);
+    fetchWalletHistory(start, end);
+  };
+
+  // Join driver room and listen for real-time wallet events
+  useEffect(() => {
+    if (driver?.id && joinRoom) {
+      joinRoom(`driver_${driver.id}`);
+    }
+  }, [driver?.id, joinRoom]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onWalletUpdate = () => {
+      fetchDriverWallet();
+    };
+    const onWalletRefreshed = (data) => {
+      fetchDriverWallet();
+      fetchWalletHistory();
+      setSuccessMsg(`🎉 Payout settled by Hotel Admin! (Receipt #${data?.settlementNumber || ''}). Current wallet has been refreshed to ₹0.00.`);
+    };
+
+    socket.on('driver_wallet_updated', onWalletUpdate);
+    socket.on('driver_wallet_refreshed', onWalletRefreshed);
+
+    return () => {
+      socket.off('driver_wallet_updated', onWalletUpdate);
+      socket.off('driver_wallet_refreshed', onWalletRefreshed);
+    };
+  }, [socket]);
 
   const fetchAvailableOrdersPool = async (restFilter = selectedRestaurantFilter) => {
     try {
@@ -736,6 +833,56 @@ export default function DriverDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* DRIVER WALLET & EARNINGS HERO CARD */}
+        <div 
+          onClick={() => { setShowWalletModal(true); fetchWalletHistory(); }}
+          className="p-5 rounded-3xl bg-gradient-to-br from-white via-white to-emerald-50/40 border-2 border-emerald-300 shadow-md hover:shadow-lg transition-all cursor-pointer space-y-3 group"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform">
+                <IndianRupee className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-black text-emerald-800 tracking-wider block">
+                  My Wallet & Payouts
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-slate-900">
+                    ₹{walletData?.total_collectible?.toLocaleString('en-IN') || '0'}
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    walletData?.has_pending_payout
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                      : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  }`}>
+                    {walletData?.has_pending_payout ? 'Ready to Collect' : 'Up to Date'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button className="px-3.5 py-2 bg-emerald-600 group-hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 shrink-0">
+              Open Wallet <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Admin Collection Notice */}
+          {walletData?.has_pending_payout ? (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-2.5 text-xs text-amber-900 font-bold">
+              <span className="text-base shrink-0">🔔</span>
+              <span className="truncate">
+                {walletData?.admin_collection_notice || 'Please collect your salary/payout from the hotel admin desk.'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium px-1">
+              <span>✓ Wallet is refreshed. New delivery earnings update live.</span>
+              <span className="font-bold text-slate-700">Lifetime Settled: ₹{walletData?.lifetime_settled?.toLocaleString('en-IN') || 0}</span>
+            </div>
+          )}
+        </div>
 
         {/* RIDER DELIVERY SCORECARD */}
         <div className="grid grid-cols-3 gap-3">
@@ -1653,6 +1800,338 @@ export default function DriverDashboardPage() {
                 className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DRIVER WALLET MODAL: 3 SECTIONS BREAKDOWN + ADMIN NOTICE + DATE FILTERS    */}
+      {/* ========================================================================= */}
+      {showWalletModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="max-w-xl w-full bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] space-y-4">
+            
+            {/* Modal Top Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-600/20">
+                  <IndianRupee className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    My Wallet & Payouts
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Live balance, compensation breakdown, and payout receipts
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { fetchDriverWallet(); fetchWalletHistory(); }}
+                  disabled={loadingWallet}
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors cursor-pointer"
+                  title="Refresh Wallet"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingWallet ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={() => setShowWalletModal(false)}
+                  className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* HERO BALANCE CARD */}
+            <div className="p-5 rounded-3xl bg-gradient-to-br from-[#3A7D7C] to-[#245251] text-white shadow-lg shadow-[#3A7D7C]/20 space-y-3 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">
+                  Total Collectible Balance
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black tracking-wider uppercase border border-white/20">
+                  {walletData?.has_pending_payout ? 'Ready for Collection' : 'Wallet Settled'}
+                </span>
+              </div>
+              
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl sm:text-4xl font-black tracking-tight">
+                  ₹{walletData?.total_collectible?.toLocaleString('en-IN') || '0'}
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-white/20 flex items-center justify-between text-xs text-emerald-100 font-medium">
+                <span>Lifetime Settled: <strong>₹{walletData?.lifetime_settled?.toLocaleString('en-IN') || 0}</strong></span>
+                <span>Delivered: <strong>{walletData?.delivered_orders_count || 0} Orders</strong></span>
+              </div>
+            </div>
+
+            {/* 🔔 ADMIN COLLECTION NOTICE: Prominent notification */}
+            {walletData?.has_pending_payout && (
+              <div className="p-3.5 bg-amber-500/10 border-2 border-amber-400/80 rounded-2xl flex items-start gap-3 text-amber-950 shrink-0">
+                <span className="text-xl">🔔</span>
+                <div className="space-y-0.5 text-xs">
+                  <span className="font-black block text-amber-900">
+                    Collect From Hotel Admin Desk:
+                  </span>
+                  <p className="font-semibold text-amber-800 leading-snug">
+                    {walletData?.admin_collection_notice}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Tabs Selector: Breakdown vs History */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl shrink-0">
+              <button
+                onClick={() => setWalletTab('BREAKDOWN')}
+                className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  walletTab === 'BREAKDOWN'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Earnings Breakdown
+              </button>
+              <button
+                onClick={() => setWalletTab('TRANSACTIONS')}
+                className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  walletTab === 'TRANSACTIONS'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Ledger History ({walletHistory.length})
+              </button>
+              <button
+                onClick={() => setWalletTab('SETTLEMENTS')}
+                className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  walletTab === 'SETTLEMENTS'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Disbursements ({walletSettlements.length})
+              </button>
+            </div>
+
+            {/* TAB 1: SECTIONAL BREAKDOWN */}
+            {walletTab === 'BREAKDOWN' && (
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                
+                {/* SECTION 1: FIXED SALARY */}
+                <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                        <Banknote className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">1. Base Fixed Salary</h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {walletData?.sections?.salary?.enabled
+                            ? walletData?.sections?.salary?.description
+                            : 'No fixed base salary configured'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-slate-900">
+                      ₹{walletData?.sections?.salary?.accrued_amount?.toLocaleString('en-IN') || 0}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Pay Frequency: <strong>{walletData?.sections?.salary?.frequency || 'MONTHLY'}</strong></span>
+                    <span className="font-bold text-emerald-700">
+                      {walletData?.sections?.salary?.enabled ? 'Active Scheme' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* SECTION 2: PARCEL COMMISSION */}
+                <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">2. Parcel Delivery Commission</h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {walletData?.sections?.commission?.enabled
+                            ? walletData?.sections?.commission?.description
+                            : 'No commission configured'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-slate-900">
+                      ₹{walletData?.sections?.commission?.accrued_amount?.toLocaleString('en-IN') || 0}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Delivered Parcels: <strong>{walletData?.delivered_orders_count || 0} Completed</strong></span>
+                    <span className="font-bold text-blue-700">
+                      {walletData?.sections?.commission?.enabled ? `${walletData?.sections?.commission?.percentage}% Per Parcel` : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* SECTION 3: DELIVERY INCENTIVE */}
+                <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">3. Delivery Incentive Bonus</h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {walletData?.sections?.incentive?.enabled
+                            ? walletData?.sections?.incentive?.description
+                            : 'No incentive configured'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-slate-900">
+                      ₹{walletData?.sections?.incentive?.accrued_amount?.toLocaleString('en-IN') || 0}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Bonus Rule: <strong>Per Completed Order</strong></span>
+                    <span className="font-bold text-purple-700">
+                      {walletData?.sections?.incentive?.enabled ? `₹${walletData?.sections?.incentive?.amount} / Order` : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 2: DATE-FILTERED TRANSACTIONS LEDGER */}
+            {walletTab === 'TRANSACTIONS' && (
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                
+                {/* DATE FILTER PILLS */}
+                <div className="flex items-center gap-1.5 flex-wrap pb-1">
+                  {['ALL', 'TODAY', 'WEEK', 'MONTH'].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => handleWalletDatePreset(preset)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                        walletDatePreset === preset
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {preset === 'ALL' ? 'All Time' : preset === 'TODAY' ? 'Today' : preset === 'WEEK' ? 'Last 7 Days' : 'This Month'}
+                    </button>
+                  ))}
+                </div>
+
+                {walletHistory.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 space-y-2">
+                    <FileText className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="text-xs font-bold text-slate-700">No earnings recorded</p>
+                    <p className="text-[11px] text-slate-400">Complete deliveries to earn commissions and bonuses.</p>
+                  </div>
+                ) : (
+                  walletHistory.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                          tx.entry_type === 'CREDIT_SALARY'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : tx.entry_type === 'CREDIT_COMMISSION'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {tx.entry_type === 'CREDIT_SALARY' ? <Banknote className="w-4 h-4" /> : tx.entry_type === 'CREDIT_COMMISSION' ? <Layers className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-900 block truncate">
+                            {tx.description}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {new Date(tx.created_at).toLocaleString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="font-black text-slate-900 text-sm block">
+                          +₹{parseFloat(tx.amount).toLocaleString('en-IN')}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          tx.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {tx.status === 'PAID' ? '✓ Paid' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: PAST SETTLEMENT DISBURSEMENT RECEIPTS */}
+            {walletTab === 'SETTLEMENTS' && (
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {walletSettlements.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 space-y-2">
+                    <CheckCircle2 className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="text-xs font-bold text-slate-700">No past payouts settled yet</p>
+                    <p className="text-[11px] text-slate-400">When the hotel admin settles your payout, disbursement receipts are saved here.</p>
+                  </div>
+                ) : (
+                  walletSettlements.map((settle) => (
+                    <div
+                      key={settle.id}
+                      className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-black text-slate-900 text-xs">
+                          Receipt: {settle.settlement_number}
+                        </span>
+                        <span className="font-black text-emerald-700 text-sm">
+                          ₹{parseFloat(settle.net_amount).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 flex items-center justify-between">
+                        <span>Paid Via: <strong>{settle.payment_method}</strong></span>
+                        <span>Date: {new Date(settle.settled_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      </div>
+                      {settle.reference_note && (
+                        <p className="text-[11px] text-slate-500 italic bg-white p-2 rounded-lg border border-emerald-100">
+                          Admin Note: {settle.reference_note}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Hotel: <strong>{walletData?.restaurant_name || 'Admin Desk'}</strong>
+              </span>
+              <button
+                onClick={() => setShowWalletModal(false)}
+                className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Close Wallet
               </button>
             </div>
 

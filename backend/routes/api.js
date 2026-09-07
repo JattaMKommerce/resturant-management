@@ -18,6 +18,7 @@ const riderAppController = require('../controllers/riderApplicationController');
 const notificationController = require('../controllers/notificationController');
 const superAdminController = require('../controllers/superAdminController');
 const staffController = require('../controllers/staffController');
+const driverPayoutController = require('../controllers/driverPayoutController');
 const pushRoutes = require('./pushRoutes');
 
 // Rate limiters
@@ -97,6 +98,8 @@ router.post('/driver/orders/:id/delivery-failed', ...driverAuth, driverControlle
 router.get('/driver/available-restaurants', ...driverAuth, driverController.getAvailableRestaurants);
 router.post('/driver/apply-restaurant', ...driverAuth, driverController.applyToRestaurant);
 router.post('/driver/connect-all-restaurants', ...driverAuth, driverController.connectAllRestaurants);
+router.get('/driver/wallet', ...driverAuth, driverPayoutController.getDriverWallet);
+router.get('/driver/wallet/history', ...driverAuth, driverPayoutController.getDriverWalletHistory);
 
 // ═══════════════════════════════════════════════
 // 6. CUSTOMER ORDER ROUTES (Guest Identity)
@@ -227,6 +230,12 @@ router.post('/admin/riders', ...adminAuth, driverController.createAdminDriver);
 router.get('/admin/riders/:id', ...adminAuth, driverController.getAdminDriverById);
 router.patch('/admin/riders/:id/status', ...adminAuth, driverController.updateDriverStatus);
 router.patch('/admin/drivers/:id/status', ...adminAuth, driverController.updateDriverStatus);
+
+// Driver Money, Compensation & Payouts (Wallet & Settling)
+router.get('/admin/driver-payouts', ...adminAuth, driverPayoutController.getAdminDriverPayouts);
+router.get('/admin/driver-payouts/:driverId', ...adminAuth, driverPayoutController.getDriverPayoutDetails);
+router.post('/admin/driver-payouts/:driverId/settings', ...adminAuth, driverPayoutController.updateDriverPayoutSettings);
+router.post('/admin/driver-payouts/:driverId/settle', ...adminAuth, driverPayoutController.settleDriverPayout);
 
 // ═══════════════════════════════════════════════
 // 10. NOTIFICATIONS

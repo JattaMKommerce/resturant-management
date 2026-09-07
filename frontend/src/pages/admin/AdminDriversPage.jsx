@@ -125,7 +125,7 @@ export default function AdminDriversPage() {
         fetchDrivers();
       }
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Error creating driver account.');
+      setFormError(err.response?.data?.message || err.message || 'Error creating driver account.');
     } finally {
       setFormLoading(false);
     }
