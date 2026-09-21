@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { 
   ShoppingBag, 
   Search, 
@@ -25,9 +25,10 @@ import { useSocket } from '../../context/SocketContext';
 import { playServiceChime, unlockAudio } from '../../utils/audio';
 
 export default function AdminOrdersPage() {
+  const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id');
-  const { socket } = useSocket();
+  const { socket, joinRoom } = useSocket();
 
   const [orders, setOrders] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -59,7 +60,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrdersAndDrivers();
-  }, [statusFilter]);
+  }, [statusFilter, slug]);
 
   // 3-Second Fast Auto-Refresh Ticker
   useEffect(() => {
@@ -74,11 +75,19 @@ export default function AdminOrdersPage() {
     }, 1000);
 
     return () => clearInterval(ticker);
-  }, [statusFilter]);
+  }, [statusFilter, slug]);
 
   // Live Socket Listener for Order Delivery & Status Updates
   useEffect(() => {
     if (!socket) return;
+
+    if (joinRoom) {
+      joinRoom('admin_room');
+      joinRoom('admin');
+      if (slug) {
+        joinRoom(`restaurant_admin_${slug}`);
+      }
+    }
 
     const handleLiveOrderUpdate = () => {
       fetchOrdersAndDrivers(false);
@@ -102,7 +111,7 @@ export default function AdminOrdersPage() {
       socket.off('order_status_updated', handleLiveOrderUpdate);
       socket.off('new_order', handleNewOrder);
     };
-  }, [socket, statusFilter]);
+  }, [socket, statusFilter, slug]);
 
   const fetchOrdersAndDrivers = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -110,9 +119,11 @@ export default function AdminOrdersPage() {
     try {
       if (showLoading) setLoading(true);
       let url = '/admin/orders';
-      if (statusFilter !== 'ALL') {
-        url += `?status=${statusFilter}`;
-      }
+      const params = [];
+      if (slug) params.push(`slug=${encodeURIComponent(slug)}`);
+      if (statusFilter !== 'ALL') params.push(`status=${statusFilter}`);
+      if (params.length > 0) url += `?${params.join('&')}`;
+
       const res = await api.get(url);
       if (res.data.success) {
         setOrders(res.data.orders);
@@ -142,7 +153,11 @@ export default function AdminOrdersPage() {
 
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
-      await api.patch(`/admin/orders/${orderId}/status`, { status: newStatus });
+      const payload = { status: newStatus };
+      if (assigningDriverId) {
+        payload.driver_id = assigningDriverId;
+      }
+      await api.patch(`/admin/orders/${orderId}/status`, payload);
       fetchOrdersAndDrivers();
       if (selectedOrder && selectedOrder.id === orderId) {
         const updatedRes = await api.get(`/orders/${orderId}`);
@@ -531,11 +546,42 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
               ) : (
-                <div className="p-3.5 bg-[#EAF4F7] rounded-xl border border-[#D7E5E8] text-xs text-[#3A7D7C] flex items-center gap-2.5">
-                  <span className="text-base">⚡</span>
-                  <div>
-                    <span className="font-bold block">Self-Service Dispatch Active</span>
-                    <span className="text-[11px] text-[#64748B]">Online delivery drivers can claim and deliver this order directly from their dashboard.</span>
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-[#EAF4F7] rounded-xl border border-[#D7E5E8] text-xs text-[#3A7D7C] flex items-center gap-2.5">
+                    <span className="text-base">⚡</span>
+                    <div>
+                      <span className="font-bold block">Self-Service Dispatch Active</span>
+                      <span className="text-[11px] text-[#64748B]">Online delivery drivers can claim and deliver this order directly from their dashboard.</span>
+                    </div>
+                  </div>
+
+                  {/* Manual Dedicated Rider Assignment */}
+                  <div className="p-3 bg-white rounded-xl border border-[#D7E5E8] space-y-2">
+                    <label className="block text-xs font-bold text-[#1F2937]">
+                      Or Assign Dedicated Hotel Rider Directly:
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={assigningDriverId}
+                        onChange={(e) => setAssigningDriverId(e.target.value)}
+                        className="flex-1 p-2 bg-slate-50 border border-[#D7E5E8] rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#3A7D7C]"
+                      >
+                        <option value="">Choose Dedicated Rider...</option>
+                        {drivers.map(drv => (
+                          <option key={drv.id} value={drv.id}>
+                            {drv.full_name || drv.name || 'Rider'} ({drv.vehicle_type || 'Bike'} - {drv.availability_status || 'AVAILABLE'})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => handleAssignDriver(selectedOrder.id)}
+                        disabled={!assigningDriverId}
+                        className="px-3.5 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] disabled:bg-slate-200 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                      >
+                        Assign Rider
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

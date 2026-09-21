@@ -72,26 +72,27 @@ export default function UnifiedSidebar({
   const [accommodationOpen, setAccommodationOpen] = useState(true);
   const [unclaimedCount, setUnclaimedCount] = useState(0);
 
-  // Poll for unclaimed orders (>5m) for visual notification light & badge (NO AUDIO IN SIDEBAR)
+  // Poll for unclaimed / new orders for visual notification light & badge (NO AUDIO IN SIDEBAR)
   useEffect(() => {
     let isMounted = true;
     const checkUnclaimed = async () => {
       try {
-        const res = await api.get('/admin/orders/unclaimed');
+        const querySlug = activeSlug ? `?slug=${encodeURIComponent(activeSlug)}` : '';
+        const res = await api.get(`/admin/orders/unclaimed${querySlug}`);
         if (res.data?.success && isMounted) {
-          const count = res.data.count || 0;
+          const count = res.data.count || (res.data.orders ? res.data.orders.length : 0);
           setUnclaimedCount(count);
         }
       } catch (e) {}
     };
 
     checkUnclaimed();
-    const interval = setInterval(checkUnclaimed, 15000);
+    const interval = setInterval(checkUnclaimed, 4000);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [activeSlug]);
 
   // Feature Guard Helper
   const features = restaurant?.features || {};
@@ -104,7 +105,7 @@ export default function UnifiedSidebar({
   const onlineNavItems = [
     { name: 'Live Orders & Dispatch', path: `/admin/${activeSlug}`, icon: Activity, exact: true, featureKey: 'online_ordering' },
     {
-      name: 'Unclaimed Orders (>5m)',
+      name: 'Unclaimed / New Orders',
       path: `/admin/${activeSlug}/unclaimed`,
       icon: AlertTriangle,
       badge: unclaimedCount > 0 ? `${unclaimedCount} Urgent` : null,

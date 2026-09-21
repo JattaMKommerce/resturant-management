@@ -411,14 +411,38 @@ async function getMe(req, res) {
   }
 }
 
-// In-memory OTP store (10 minute expiry)
+// In-memory OTP store fallback / fast cache
 const customerOtpStore = new Map();
+
+let isCustomerOtpTableEnsured = false;
+async function ensureCustomerOtpsTable() {
+  if (isCustomerOtpTableEnsured) return;
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS customer_otps (
+        phone VARCHAR(20) PRIMARY KEY,
+        otp VARCHAR(10) NOT NULL,
+        expires_at BIGINT NOT NULL,
+        name VARCHAR(100) NULL,
+        restaurant_id INT NULL,
+        verified_at BIGINT NULL,
+        last_token TEXT NULL,
+        last_user TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    isCustomerOtpTableEnsured = true;
+  } catch (err) {
+    console.warn('[OTP Table Ensure Warning]:', err.message);
+  }
+}
 
 /**
  * Send Customer Mobile/WhatsApp OTP
  */
 async function customerSendOtp(req, res) {
   try {
+    await ensureCustomerOtpsTable();
     const { phone, name, restaurantId } = req.body;
     if (!phone) {
       return res.status(400).json({ success: false, message: 'Please provide a valid mobile number.' });
@@ -429,21 +453,50 @@ async function customerSendOtp(req, res) {
       return res.status(400).json({ success: false, message: 'Please enter a valid 10-digit mobile number.' });
     }
 
-    // Check if user already exists
-    const [existing] = await query('SELECT id, name, phone FROM users WHERE phone LIKE ? LIMIT 1', [`%${cleanPhone}%`]);
-    const isNewUser = !existing;
+    // Check if customer profile already exists
+    const [existingCust] = await query(
+      'SELECT id, name, phone FROM users WHERE (phone LIKE ? OR phone = ?) AND role = "CUSTOMER" LIMIT 1',
+      [`%${cleanPhone}%`, cleanPhone]
+    );
+    const [anyUser] = !existingCust ? await query(
+      'SELECT id, name, phone FROM users WHERE phone LIKE ? OR phone = ? LIMIT 1',
+      [`%${cleanPhone}%`, cleanPhone]
+    ) : [null];
+
+    const isNewUser = !existingCust;
 
     // Generate 4-digit OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000;
+    const expiresAt = Date.now() + 30 * 60 * 1000; // 30-minute generous window
+    const customerName = (existingCust?.name) || (anyUser?.name) || (name?.trim()) || 'Customer';
 
+    // 1. In-memory fast cache
     customerOtpStore.set(cleanPhone, {
       otp,
       expiresAt,
-      name: (existing?.name) || (name?.trim()) || 'Customer'
+      name: customerName,
+      restaurantId: restaurantId || null
     });
 
-    console.log(`📲 [WhatsApp/OTP] Verification code for ${cleanPhone}: ${otp}`);
+    // 2. Persistent MySQL store
+    try {
+      await query(`
+        INSERT INTO customer_otps (phone, otp, expires_at, name, restaurant_id, verified_at, last_token, last_user)
+        VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)
+        ON DUPLICATE KEY UPDATE
+          otp = VALUES(otp),
+          expires_at = VALUES(expires_at),
+          name = VALUES(name),
+          restaurant_id = VALUES(restaurant_id),
+          verified_at = NULL,
+          last_token = NULL,
+          last_user = NULL
+      `, [cleanPhone, otp, expiresAt, customerName, restaurantId || null]);
+    } catch (dbErr) {
+      console.warn('[customerSendOtp] MySQL OTP persistence warning:', dbErr.message);
+    }
+
+    console.log(`📲 [WhatsApp/OTP] Verification code for ${cleanPhone}: ${otp} (Master code: 1234)`);
 
     // Fetch restaurant name if available
     let restaurantName = 'Hotel & Restaurant';
@@ -464,7 +517,7 @@ async function customerSendOtp(req, res) {
       success: true,
       phone: cleanPhone,
       isNewUser,
-      existingName: existing?.name || null,
+      existingName: existingCust?.name || anyUser?.name || null,
       otpPreview: otp, // For seamless 1-tap testing
       whatsappDeepLink,
       message: isNewUser ? 'Welcome! Enter the code sent to your mobile.' : 'Welcome back! Enter the verification code.'
@@ -480,6 +533,7 @@ async function customerSendOtp(req, res) {
  */
 async function customerVerifyOtp(req, res) {
   try {
+    await ensureCustomerOtpsTable();
     const { phone, otp, name, restaurantId } = req.body;
     const cleanPhone = String(phone || '').replace(/[^0-9]/g, '').slice(-10);
 
@@ -487,56 +541,116 @@ async function customerVerifyOtp(req, res) {
       return res.status(400).json({ success: false, message: 'Phone and OTP are required.' });
     }
 
-    const stored = customerOtpStore.get(cleanPhone);
     const submittedOtp = String(otp).trim();
+
+    // 1. Try in-memory store
+    let stored = customerOtpStore.get(cleanPhone);
+
+    // 2. Fallback to MySQL database
+    if (!stored) {
+      try {
+        const [dbRow] = await query('SELECT * FROM customer_otps WHERE phone = ? LIMIT 1', [cleanPhone]);
+        if (dbRow) {
+          stored = {
+            otp: String(dbRow.otp).trim(),
+            expiresAt: Number(dbRow.expires_at),
+            name: dbRow.name,
+            restaurantId: dbRow.restaurant_id,
+            verifiedAt: dbRow.verified_at ? Number(dbRow.verified_at) : null,
+            lastToken: dbRow.last_token,
+            lastUser: dbRow.last_user ? (typeof dbRow.last_user === 'string' ? JSON.parse(dbRow.last_user) : dbRow.last_user) : null
+          };
+          customerOtpStore.set(cleanPhone, stored);
+        }
+      } catch (dbReadErr) {
+        console.warn('[customerVerifyOtp] DB lookup warning:', dbReadErr.message);
+      }
+    }
 
     console.log(`🔍 [Verify OTP Attempt] Phone: ${cleanPhone} | Submitted: "${submittedOtp}" | Stored: "${stored?.otp}" | Expired: ${stored ? (Date.now() > stored.expiresAt) : 'No store'}`);
 
-    // If already verified within last 60 seconds (prevents double-submit race condition)
-    if (stored && stored.lastToken && stored.verifiedAt && (Date.now() - stored.verifiedAt < 60000)) {
-      return res.json({
-        success: true,
-        token: stored.lastToken,
-        user: stored.lastUser,
-        message: `Welcome, ${stored.lastUser?.name || 'Customer'}!`
-      });
-    }
+    // Universal master demo OTP '1234' works for all numbers
+    const isUniversalMaster = (submittedOtp === '1234');
+    const isStoredOtpMatch = Boolean(stored && stored.otp === submittedOtp);
+    const isNotExpired = Boolean(stored && Date.now() <= (Number(stored.expiresAt) + 15 * 60 * 1000));
 
-    // Allow generated OTP or universal master test OTP '1234'
-    const isValid = (stored && stored.otp === submittedOtp && Date.now() <= stored.expiresAt) || (submittedOtp === '1234');
+    // Valid if universal code OR matching OTP within expiration window (even if verified previously in this session)
+    const isValid = isUniversalMaster || (isStoredOtpMatch && isNotExpired);
 
     if (!isValid) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired OTP code. Please try again.' });
+      if (isStoredOtpMatch && !isNotExpired) {
+        return res.status(400).json({ success: false, message: 'OTP code has expired. Please click Resend Code to receive a new one.' });
+      }
+      return res.status(400).json({ success: false, message: 'Invalid OTP code. Please check the 4-digit code or enter 1234.' });
     }
 
-    // Look for existing user
-    let [user] = await query('SELECT id, name, email, phone, role FROM users WHERE phone LIKE ? LIMIT 1', [`%${cleanPhone}%`]);
+    // 1. Look for existing user with role = 'CUSTOMER'
+    let [user] = await query(
+      'SELECT id, name, email, phone, role FROM users WHERE (phone = ? OR phone LIKE ?) AND role = "CUSTOMER" LIMIT 1',
+      [cleanPhone, `%${cleanPhone}%`]
+    );
 
     if (!user) {
-      // Create new customer account
-      const customerName = name?.trim() || stored?.name || 'Customer';
+      // Check if there is another user account to adopt their name if not provided
+      const [anyUser] = await query(
+        'SELECT name FROM users WHERE phone = ? OR phone LIKE ? LIMIT 1',
+        [cleanPhone, `%${cleanPhone}%`]
+      );
+
+      const customerName = name?.trim() || anyUser?.name || stored?.name || 'Customer';
       const fakeEmail = `customer_${cleanPhone}@hotel.com`;
       const tempPassHash = await bcrypt.hash(cleanPhone, 8);
 
-      const ins = await query(
-        `INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, 'CUSTOMER', 'ACTIVE')`,
-        [customerName, fakeEmail, tempPassHash, cleanPhone]
-      );
-      user = {
-        id: ins.insertId,
-        name: customerName,
-        email: fakeEmail,
-        phone: cleanPhone,
-        role: 'CUSTOMER'
-      };
-    } else if (name && name.trim() && user.name === 'Customer') {
-      // Update name if customer gave a real name
-      await query('UPDATE users SET name = ? WHERE id = ?', [name.trim(), user.id]);
-      user.name = name.trim();
+      try {
+        const ins = await query(
+          `INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, 'CUSTOMER', 'ACTIVE')`,
+          [customerName, fakeEmail, tempPassHash, cleanPhone]
+        );
+        user = {
+          id: ins.insertId,
+          name: customerName,
+          email: fakeEmail,
+          phone: cleanPhone,
+          role: 'CUSTOMER'
+        };
+      } catch (insErr) {
+        // Handle duplicate email or concurrent race condition
+        const [existingCust] = await query(
+          'SELECT id, name, email, phone, role FROM users WHERE email = ? LIMIT 1',
+          [fakeEmail]
+        );
+        if (existingCust) {
+          user = existingCust;
+        } else {
+          const uniqueEmail = `customer_${cleanPhone}_${Date.now()}@hotel.com`;
+          const ins2 = await query(
+            `INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, 'CUSTOMER', 'ACTIVE')`,
+            [customerName, uniqueEmail, tempPassHash, cleanPhone]
+          );
+          user = {
+            id: ins2.insertId,
+            name: customerName,
+            email: uniqueEmail,
+            phone: cleanPhone,
+            role: 'CUSTOMER'
+          };
+        }
+      }
+    } else {
+      // If customer provided a real name, update it if currently generic
+      if (name && name.trim() && (user.name === 'Customer' || !user.name)) {
+        await query('UPDATE users SET name = ? WHERE id = ?', [name.trim(), user.id]);
+        user.name = name.trim();
+      }
+      // Ensure phone is normalized
+      if (!user.phone || user.phone !== cleanPhone) {
+        await query('UPDATE users SET phone = ? WHERE id = ?', [cleanPhone, user.id]);
+        user.phone = cleanPhone;
+      }
     }
 
     // Ensure wallet account exists for this customer at this restaurant
-    const tenantId = restaurantId || 1;
+    const tenantId = restaurantId || stored?.restaurantId || 1;
     try {
       const walletService = require('../services/walletService');
       await walletService.getOrCreateAccount(tenantId, user.id, cleanPhone);
@@ -544,25 +658,44 @@ async function customerVerifyOtp(req, res) {
       console.warn('[Customer OTP] Wallet account ensure warning:', wErr.message);
     }
 
-    // Sign JWT
+    // Sign JWT with role CUSTOMER
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name, role: 'CUSTOMER', phone: user.phone },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
 
-    // Save for idempotency window (prevent duplicate submit race conditions)
+    // Save for idempotency & multi-tab sessions
+    const verifiedAt = Date.now();
+    const cleanUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: 'CUSTOMER'
+    };
+
     if (stored) {
       stored.lastToken = token;
-      stored.lastUser = user;
-      stored.verifiedAt = Date.now();
+      stored.lastUser = cleanUser;
+      stored.verifiedAt = verifiedAt;
+    }
+
+    try {
+      await query(`
+        UPDATE customer_otps
+        SET verified_at = ?, last_token = ?, last_user = ?
+        WHERE phone = ?
+      `, [verifiedAt, token, JSON.stringify(cleanUser), cleanPhone]);
+    } catch (dbUpdateErr) {
+      console.warn('[customerVerifyOtp] DB update warning:', dbUpdateErr.message);
     }
 
     return res.json({
       success: true,
       token,
-      user,
-      message: `Welcome, ${user.name}!`
+      user: cleanUser,
+      message: `Welcome, ${cleanUser.name}!`
     });
   } catch (err) {
     console.error('customerVerifyOtp error:', err);

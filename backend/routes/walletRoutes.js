@@ -5,15 +5,25 @@ const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const { query } = require('../config/db');
 
 // Optional customer authenticator for checkout / public customer screens
+// Optional customer authenticator for checkout / public customer screens
 function optionalAuth(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  const authHeader = req.headers['authorization'] || req.headers['x-authorization'] || req.headers['x-access-token'] || req.headers['auth-token'];
+  let token = null;
+  if (authHeader) {
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (typeof authHeader === 'string') {
+      token = authHeader;
+    }
+  }
+  if (!token && req.cookies) {
+    token = req.cookies.hotel_token || req.cookies.token || req.cookies.jwt;
+  }
   if (!token && req.query && req.query.token) token = req.query.token;
   if (!token) return next();
 
   try {
     const jwt = require('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
     req.user = jwt.decode(token);
   } catch (e) {}
   next();
@@ -32,9 +42,18 @@ function optionalAuth(req, res, next) {
 router.get('/customer/statement', optionalAuth, async (req, res) => {
   try {
     const tenantId = req.query.tenantId || req.query.restaurantId || 1;
-    const customerId = req.user?.id || req.query.customerId || 2; // Default to demo customer if guest
+    let customerId = req.user?.id || req.query.customerId || null;
+    const phone = req.query.phone || req.user?.phone || null;
 
-    const statement = await walletService.getStatement(tenantId, customerId);
+    if (!customerId && phone) {
+      const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+      if (cleanPhone.length >= 10) {
+        const [u] = await query('SELECT id FROM users WHERE phone LIKE ? OR phone = ? LIMIT 1', [`%${cleanPhone}%`, cleanPhone]);
+        if (u) customerId = u.id;
+      }
+    }
+
+    const statement = await walletService.getStatement(tenantId, customerId, phone);
     return res.json({ success: true, data: statement });
   } catch (err) {
     console.error('GET /wallet/customer/statement error:', err);
@@ -48,11 +67,20 @@ router.get('/customer/statement', optionalAuth, async (req, res) => {
  */
 router.post('/checkout/quote', optionalAuth, async (req, res) => {
   try {
-    const { tenantId, orderAmount, customerId } = req.body;
-    const activeCustomerId = req.user?.id || customerId || 2;
+    const { tenantId, orderAmount, customerId, customerPhone } = req.body;
+    let activeCustomerId = req.user?.id || customerId || null;
+    const phone = customerPhone || req.user?.phone || null;
+
+    if (!activeCustomerId && phone) {
+      const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+      if (cleanPhone.length >= 10) {
+        const [u] = await query('SELECT id FROM users WHERE phone LIKE ? OR phone = ? LIMIT 1', [`%${cleanPhone}%`, cleanPhone]);
+        if (u) activeCustomerId = u.id;
+      }
+    }
 
     const cashbackCalculation = await walletService.calculateCashback(tenantId || 1, orderAmount, activeCustomerId);
-    const statement = await walletService.getStatement(tenantId || 1, activeCustomerId);
+    const statement = await walletService.getStatement(tenantId || 1, activeCustomerId, phone);
 
     // Max redemption cap (e.g. max 50% of bill or total available rewards, whichever is less)
     const maxRedemptionPercentage = cashbackCalculation.maxRedemptionPercentage || 50;

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Plus, Bike, Edit2, Phone, Mail, ShieldCheck, X, AlertTriangle,
   CheckCircle2, Clock, Package, Eye, ChevronRight, RefreshCw,
-  Search, ShieldAlert, Award, Calendar, DollarSign, MapPin, User,
-  FileText, ExternalLink, Store
+  Search, ShieldAlert, Award, Calendar, DollarSign, IndianRupee,
+  ArrowRight, MapPin, User, FileText, ExternalLink, Store
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -805,6 +805,63 @@ export default function AdminDriversPage() {
                           <span className="text-sm font-black text-slate-900 block mt-1">{driverDetail.availability_status}</span>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Live Driver Wallet & Compensation Summary */}
+                    <div className="p-4 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-slate-50 rounded-2xl border border-emerald-200/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                            <IndianRupee className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-xs font-black text-emerald-950 uppercase tracking-wider">
+                            Wallet & Compensation Summary
+                          </span>
+                        </div>
+                        <Link
+                          to={`/admin/${slug || 'hotel'}/driver-payouts`}
+                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 hover:underline"
+                        >
+                          Manage Payouts <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <div className="p-2.5 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                          <span className="text-[9px] uppercase font-bold text-slate-400 block">Total Due</span>
+                          <span className="text-sm font-black text-emerald-700 block mt-0.5">
+                            ₹{driverDetail.wallet_summary?.total_collectible?.toLocaleString('en-IN') || '0'}
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
+                          <span className="text-[9px] uppercase font-bold text-slate-400 block">Salary</span>
+                          <span className="text-xs font-black text-slate-800 block mt-0.5">
+                            ₹{driverDetail.wallet_summary?.pending_salary?.toLocaleString('en-IN') || '0'}
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
+                          <span className="text-[9px] uppercase font-bold text-slate-400 block">Commission</span>
+                          <span className="text-xs font-black text-slate-800 block mt-0.5">
+                            ₹{driverDetail.wallet_summary?.pending_commission?.toLocaleString('en-IN') || '0'}
+                          </span>
+                        </div>
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs">
+                          <span className="text-[9px] uppercase font-bold text-slate-400 block">Incentives</span>
+                          <span className="text-xs font-black text-slate-800 block mt-0.5">
+                            ₹{driverDetail.wallet_summary?.pending_incentive?.toLocaleString('en-IN') || '0'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {driverDetail.compensation_settings && (
+                        <div className="flex flex-wrap items-center justify-between text-[11px] text-emerald-900 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-100 font-medium gap-1">
+                          <span>Salary: <strong>{driverDetail.compensation_settings.has_salary ? `₹${parseFloat(driverDetail.compensation_settings.salary_amount || 0).toLocaleString('en-IN')}/mo` : 'None'}</strong></span>
+                          <span>•</span>
+                          <span>Commission: <strong>{driverDetail.compensation_settings.has_commission ? `${driverDetail.compensation_settings.commission_percentage}%` : 'None'}</strong></span>
+                          <span>•</span>
+                          <span>Incentive: <strong>{driverDetail.compensation_settings.has_incentive ? `₹${driverDetail.compensation_settings.incentive_amount}/trip` : 'None'}</strong></span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Active Order if any */}

@@ -157,11 +157,25 @@ async function createOrder(orderPayload) {
   const grossTotal = subtotal + taxAmount + deliveryFee;
   const totalAmount = Math.max(0, Math.round((grossTotal - discountAmount) * 100) / 100);
 
+  // Resolve actual customer ID if not provided directly
+  let actualCustomerId = customerId || null;
+  if (!actualCustomerId && customerPhone) {
+    const cleanPhone = String(customerPhone).replace(/[^0-9]/g, '').slice(-10);
+    if (cleanPhone.length >= 10) {
+      const [u] = await query('SELECT id FROM users WHERE phone LIKE ? OR phone = ? LIMIT 1', [`%${cleanPhone}%`, cleanPhone]);
+      if (u) actualCustomerId = u.id;
+    }
+  }
+
   const orderNumber = generateOrderNumber();
   const conn = await getConnection();
 
   try {
     await conn.beginTransaction();
+
+    const safeDeliveryArea = (deliveryArea && String(deliveryArea).trim())
+      || (deliveryAddress ? String(deliveryAddress).trim().slice(0, 50) : '')
+      || 'Standard Delivery';
 
     const [orderRes] = await conn.query(
       `INSERT INTO orders (
@@ -173,9 +187,9 @@ async function createOrder(orderPayload) {
         payment_method, payment_status, order_status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING')`,
       [
-        orderNumber, restaurant.id, customerIdentityId || null, customerId || null,
+        orderNumber, restaurant.id, customerIdentityId || null, actualCustomerId || null,
         customerName, customerPhone,
-        deliveryAddress, deliveryArea, deliveryLandmark || null, deliveryInstructions || null,
+        deliveryAddress, safeDeliveryArea, deliveryLandmark || null, deliveryInstructions || null,
         customerLatitude || null, customerLongitude || null, radiusValidation?.distanceKm || null,
         subtotal, taxAmount, deliveryFee, discountAmount, totalAmount,
         paymentMethod
@@ -211,11 +225,11 @@ async function createOrder(orderPayload) {
       }
 
       // 2. Calculate and create PENDING cashback (Slide 05: unlocks only upon delivery)
-      const earned = await walletService.calculateCashback(restaurant.id, subtotal, customerId);
+      const earned = await walletService.calculateCashback(restaurant.id, subtotal, actualCustomerId);
       if (earned.eligible && earned.cashbackAmount > 0) {
         await walletService.createPendingCredit(
           restaurant.id,
-          customerId || 2,
+          actualCustomerId || null,
           orderId,
           earned.cashbackAmount,
           customerPhone
@@ -372,11 +386,16 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
       console.warn('[Wallet] Error activating pending credit upon delivery:', wErr.message);
     }
 
-    // Driver Compensation: Credit commission and delivery incentive to driver wallet
+    // Driver Compensation: Credit commission, delivery incentive, and salary to driver wallet
     try {
+      let deliveryOrder = order;
+      if (!deliveryOrder.assigned_driver_id) {
+        const [fresh] = await query('SELECT * FROM orders WHERE id = ?', [orderId]);
+        if (fresh) deliveryOrder = fresh;
+      }
       const driverPayoutController = require('../controllers/driverPayoutController');
       await driverPayoutController.creditDriverDeliveryEarnings({
-        ...order,
+        ...deliveryOrder,
         order_status: 'DELIVERED'
       });
     } catch (dpErr) {

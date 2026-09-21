@@ -137,10 +137,10 @@ async function resolveRestaurantAccess(req, res, next) {
       targetRestId = parseInt(targetIdParam, 10) || null;
     }
 
-    // Super Admin can access everything
-    if (userRole === 'SUPER_ADMIN') {
+    // Super Admin & Master Admin can access everything
+    if (userRole === 'SUPER_ADMIN' || req.user.email === 'admin@hotel.com') {
       req.adminRestaurantIds = null; // null = all
-      req.adminRestaurantId = targetRestId;
+      req.adminRestaurantId = targetRestId || 1;
       req.isSuperAdmin = true;
       return next();
     }

@@ -1428,12 +1428,45 @@ async function getAdminDriverById(req, res) {
     delete driver.license_data;
     delete driver.aadhaar_data;
 
+    // Fetch compensation settings & live wallet summary for dedicated restaurant
+    const targetRestId = driver.restaurant_id || 1;
+    let [settings] = await query(
+      'SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?',
+      [targetRestId, driver.id]
+    );
+
+    const [walletBalances] = await query(
+      `SELECT 
+         COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_SALARY' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_salary,
+         COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_COMMISSION' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_commission,
+         COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_INCENTIVE' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_incentive,
+         COALESCE(SUM(CASE WHEN status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as total_collectible
+       FROM driver_wallet_transactions
+       WHERE driver_id = ? AND restaurant_id = ?`,
+      [driver.id, targetRestId]
+    );
+
+    const [lifetimeSettled] = await query(
+      `SELECT COALESCE(SUM(net_amount), 0) as total_paid
+       FROM driver_payout_settlements
+       WHERE driver_id = ? AND restaurant_id = ?`,
+      [driver.id, targetRestId]
+    );
+
     res.json({
       success: true,
       driver: {
         ...driver,
         ...kyc,
         stats,
+        compensation_settings: settings || null,
+        wallet_summary: {
+          total_collectible: parseFloat(walletBalances?.total_collectible || 0),
+          pending_salary: parseFloat(walletBalances?.pending_salary || 0),
+          pending_commission: parseFloat(walletBalances?.pending_commission || 0),
+          pending_incentive: parseFloat(walletBalances?.pending_incentive || 0),
+          lifetime_settled: parseFloat(lifetimeSettled?.total_paid || 0)
+        },
         active_order: activeOrder || null,
         recent_deliveries: recentDeliveries
       }

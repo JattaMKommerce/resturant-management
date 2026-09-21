@@ -48,20 +48,26 @@ async function sendNotification({ userId, restaurantId, orderId, customerIdentit
         ioInstance.to(`user_${userId}`).emit('notification', notificationData);
       }
 
-      // 3. Admin ONLY gets alerted when a NEW order arrives
+      // 3. Admin gets alerted when a NEW order arrives
       if (isNewOrder) {
         if (restaurantId) {
           ioInstance.to(`restaurant_admin_${restaurantId}`).emit('admin_notification', notificationData);
           ioInstance.to(`restaurant_admin_${restaurantId}`).emit('new_order', notificationData);
+          ioInstance.to(`restaurant_${restaurantId}`).emit('new_order', notificationData);
         }
         ioInstance.to('admin_room').emit('admin_notification', notificationData);
         ioInstance.to('admin_room').emit('new_order', notificationData);
+        ioInstance.to('admin').emit('new_order', notificationData);
+        ioInstance.emit('new_order', notificationData);
       } else {
         // Send order status sync to admin table view without triggering toast/bell popup
         if (restaurantId) {
           ioInstance.to(`restaurant_admin_${restaurantId}`).emit('order_status_updated', notificationData);
+          ioInstance.to(`restaurant_${restaurantId}`).emit('order_status_updated', notificationData);
         }
         ioInstance.to('admin_room').emit('order_status_updated', notificationData);
+        ioInstance.to('admin').emit('order_status_updated', notificationData);
+        ioInstance.emit('order_status_updated', notificationData);
       }
     }
 

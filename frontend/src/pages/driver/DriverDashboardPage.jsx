@@ -272,10 +272,14 @@ export default function DriverDashboardPage() {
     }
   };
 
-  const fetchDriverWallet = async () => {
+  const fetchDriverWallet = async (restId = selectedRestaurantFilter) => {
     try {
       setLoadingWallet(true);
-      const res = await api.get('/driver/wallet');
+      const params = {};
+      if (restId && restId !== 'ALL') {
+        params.restaurant_id = restId;
+      }
+      const res = await api.get('/driver/wallet', { params });
       if (res.data?.success) {
         setWalletData(res.data.wallet);
       }
@@ -286,11 +290,12 @@ export default function DriverDashboardPage() {
     }
   };
 
-  const fetchWalletHistory = async (start = walletStartDate, end = walletEndDate) => {
+  const fetchWalletHistory = async (start = walletStartDate, end = walletEndDate, restId = selectedRestaurantFilter) => {
     try {
       const params = {};
       if (start) params.startDate = start;
       if (end) params.endDate = end;
+      if (restId && restId !== 'ALL') params.restaurant_id = restId;
       const res = await api.get('/driver/wallet/history', { params });
       if (res.data?.success) {
         setWalletHistory(res.data.transactions || []);
@@ -730,6 +735,8 @@ export default function DriverDashboardPage() {
         setActiveDelivery(null);
         setAvailabilityStatus('AVAILABLE');
         await fetchDriverDashboard();
+        fetchDriverWallet();
+        fetchWalletHistory();
         fetchAvailableOrdersPool();
       }
     } catch (err) {

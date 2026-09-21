@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel & Restaurant Management System - Modern Digital Solutions</title>
+    <meta name="description" content="Complete Hotel & Restaurant Management Platform with Online Ordering, QR Menu, Kitchen Display System, and Delivery Management">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Animations -->
+    <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css">
+</head>
+<body>
+    
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <div class="nav-brand">
+                <div class="logo-icon">HMS</div>
+                <span class="brand-name">Hotel & Restaurant Suite</span>
+            </div>
+            
+            <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#products" class="nav-link">Products</a></li>
+                <li><a href="#pricing" class="nav-link">Pricing</a></li>
+                <li><a href="#testimonials" class="nav-link">Testimonials</a></li>
+                <li><a href="#contact" class="nav-link">Contact</a></li>
+                <li><a href="/admin/login" class="btn-login">Login</a></li>
+                <li><a href="/register-restaurant" class="btn-primary">Get Started</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-background">
+            <div class="gradient-overlay"></div>
+            <div class="animated-shapes">
+                <div class="shape shape-1"></div>
+                <div class="shape shape-2"></div>
+                <div class="shape shape-3"></div>
+            </div>
+        </div>
+        
+        <div class="container hero-container">
+            <div class="hero-content" data-aos="fade-right">
+                <div class="badge">🚀 All-in-One Solution</div>
+                <h1 class="hero-title">
+                    Transform Your <span class="gradient-text">Restaurant & Hotel</span> Business
+                </h1>
+                <p class="hero-description">
+                    Complete digital management platform with online ordering, QR table menus, 
+                    kitchen display system, delivery tracking, and hotel room service integration.
+                </p>
+                
+                <div class="hero-buttons">
+                    <a href="/register-restaurant" class="btn btn-hero-primary">
+                        Start Free Trial
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                    <a href="#demo" class="btn btn-hero-secondary">
+                        Watch Demo
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </a>
+                </div>
+                
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <h3>500+</h3>
+                        <p>Active Restaurants</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>50K+</h3>
+                        <p>Orders Daily</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>98%</h3>
+                        <p>Satisfaction Rate</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-image" data-aos="fade-left">
+                <div class="image-wrapper">
+                    <img src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=1200&q=80" alt="Restaurant Dashboard" class="dashboard-img">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="badge">✨ Powerful Features</div>
+                <h2 class="section-title">Everything You Need to <span class="gradient-text">Succeed</span></h2>
+                <p class="section-description">
+                    Comprehensive tools designed specifically for modern restaurants and hotels
+                </p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="0">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                    </div>
+                    <h3>Online Ordering</h3>
+                    <p>Beautiful branded website with online ordering, menu management, and customer tracking</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            <path d="M3 9h18M9 21V9"></path>
+                        </svg>
+                    </div>
+                    <h3>QR Table Menus</h3>
+                    <p>Contactless ordering with QR codes for dine-in customers. No app download required</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                    </div>
+                    <h3>Delivery Tracking</h3>
+                    <p>Real-time GPS tracking for delivery orders with driver management system</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="0">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                    </div>
+                    <h3>Kitchen Display (KDS)</h3>
+                    <p>Digital kitchen order tickets with preparation tracking and timing alerts</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Hotel Integration</h3>
+                    <p>Room service ordering with guest folio billing and accommodation management</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <h3>Staff Management</h3>
+                    <p>Multi-role access control for waiters, chefs, managers, and delivery partners</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="0">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 20V10M12 20V4M6 20v-6"></path>
+                        </svg>
+                    </div>
+                    <h3>Inventory Control</h3>
+                    <p>Recipe management, stock tracking, supplier management, and expiry alerts</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                    </div>
+                    <h3>Billing & Payments</h3>
+                    <p>Integrated payment gateway with COD, online payments, and room charge options</p>
+                </div>
+                
+                <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+                        </svg>
+                    </div>
+                    <h3>Analytics & Reports</h3>
+                    <p>Detailed insights on sales, popular items, peak hours, and performance metrics</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products" id="products">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="badge">🎯 Product Suite</div>
+                <h2 class="section-title">Choose Your <span class="gradient-text">Perfect Solution</span></h2>
+                <p class="section-description">
+                    Flexible options to match your business needs
+                </p>
+            </div>
+            
+            <div class="products-grid">
+                <div class="product-card" data-aos="flip-left">
+                    <div class="product-image">
+                        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80" alt="Restaurant Only">
+                        <div class="product-badge">Most Popular</div>
+                    </div>
+                    <div class="product-content">
+                        <h3>Restaurant Only</h3>
+                        <p>Complete restaurant management with online ordering, QR menus, kitchen display, and delivery tracking</p>
+                        <ul class="product-features">
+                            <li>✅ Online Ordering Website</li>
+                            <li>✅ QR Table Ordering</li>
+                            <li>✅ Kitchen Display System</li>
+                            <li>✅ Delivery Management</li>
+                            <li>✅ Menu & Category Management</li>
+                            <li>✅ Staff Portal Access</li>
+                        </ul>
+                        <a href="/register-restaurant" class="btn btn-product">Get Started</a>
+                    </div>
+                </div>
+                
+                <div class="product-card featured" data-aos="flip-left" data-aos-delay="200">
+                    <div class="product-image">
+                        <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80" alt="Restaurant + Hotel">
+                        <div class="product-badge premium">Premium</div>
+                    </div>
+                    <div class="product-content">
+                        <h3>Restaurant + Hotel</h3>
+                        <p>Full-suite solution with restaurant management PLUS hotel room service and accommodation features</p>
+                        <ul class="product-features">
+                            <li>✅ Everything in Restaurant Only</li>
+                            <li>✅ Hotel Room Management</li>
+                            <li>✅ Room Service Ordering</li>
+                            <li>✅ Guest Folio Billing</li>
+                            <li>✅ Check-in/Check-out</li>
+                            <li>✅ Multi-Property Support</li>
+                        </ul>
+                        <a href="/register-restaurant" class="btn btn-product-premium">Get Started</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="badge">📋 Simple Process</div>
+                <h2 class="section-title">Get Started in <span class="gradient-text">3 Easy Steps</span></h2>
+            </div>
+            
+            <div class="steps-grid">
+                <div class="step-card" data-aos="fade-right" data-aos-delay="0">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">
+                        <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=80" alt="Sign Up">
+                    </div>
+                    <h3>Sign Up & Setup</h3>
+                    <p>Create your account, add restaurant details, and upload your menu in minutes</p>
+                </div>
+                
+                <div class="step-card" data-aos="fade-up" data-aos-delay="200">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">
+                        <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&q=80" alt="Customize">
+                    </div>
+                    <h3>Customize & Launch</h3>
+                    <p>Design your website, generate QR codes, and configure payment options</p>
+                </div>
+                
+                <div class="step-card" data-aos="fade-left" data-aos-delay="400">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">
+                        <img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?w=400&q=80" alt="Grow">
+                    </div>
+                    <h3>Accept & Grow</h3>
+                    <p>Start receiving orders and watch your business grow with real-time insights</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="badge">💰 Transparent Pricing</div>
+                <h2 class="section-title">Plans That <span class="gradient-text">Scale With You</span></h2>
+                <p class="section-description">
+                    No hidden fees. Cancel anytime. 30-day free trial on all plans.
+                </p>
+            </div>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card" data-aos="fade-up" data-aos-delay="0">
+                    <div class="pricing-header">
+                        <h3>Starter</h3>
+                        <p>Perfect for small restaurants</p>
+                    </div>
+                    <div class="pricing-price">
+                        <span class="currency">₹</span>
+                        <span class="amount">2,999</span>
+                        <span class="period">/month</span>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Online Ordering Website</li>
+                        <li>✅ Up to 50 Menu Items</li>
+                        <li>✅ 500 Orders/Month</li>
+                        <li>✅ QR Table Ordering</li>
+                        <li>✅ Basic Analytics</li>
+                        <li>✅ 3 Staff Accounts</li>
+                        <li>✅ Email Support</li>
+                    </ul>
+                    <a href="/register-restaurant" class="btn btn-pricing">Start Free Trial</a>
+                </div>
+                
+                <div class="pricing-card featured" data-aos="fade-up" data-aos-delay="200">
+                    <div class="popular-tag">Most Popular</div>
+                    <div class="pricing-header">
+                        <h3>Professional</h3>
+                        <p>For growing restaurants</p>
+                    </div>
+                    <div class="pricing-price">
+                        <span class="currency">₹</span>
+                        <span class="amount">5,999</span>
+                        <span class="period">/month</span>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Everything in Starter</li>
+                        <li>✅ Unlimited Menu Items</li>
+                        <li>✅ Unlimited Orders</li>
+                        <li>✅ Kitchen Display System</li>
+                        <li>✅ Delivery Management</li>
+                        <li>✅ Advanced Analytics</li>
+                        <li>✅ 10 Staff Accounts</li>
+                        <li>✅ Priority Support</li>
+                    </ul>
+                    <a href="/register-restaurant" class="btn btn-pricing-featured">Start Free Trial</a>
+                </div>
+                
+                <div class="pricing-card" data-aos="fade-up" data-aos-delay="400">
+                    <div class="pricing-header">
+                        <h3>Enterprise</h3>
+                        <p>For hotels & chains</p>
+                    </div>
+                    <div class="pricing-price">
+                        <span class="currency">₹</span>
+                        <span class="amount">12,999</span>
+                        <span class="period">/month</span>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Everything in Professional</li>
+                        <li>✅ Hotel Room Service</li>
+                        <li>✅ Guest Folio Billing</li>
+                        <li>✅ Inventory Management</li>
+                        <li>✅ Recipe Management</li>
+                        <li>✅ Multi-Location Support</li>
+                        <li>✅ Unlimited Staff</li>
+                        <li>✅ Dedicated Support</li>
+                    </ul>
+                    <a href="/register-restaurant" class="btn btn-pricing">Start Free Trial</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials" id="testimonials">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="badge">⭐ Success Stories</div>
+                <h2 class="section-title">What Our <span class="gradient-text">Clients Say</span></h2>
+            </div>
+            
+            <div class="testimonials-grid">
+                <div class="testimonial-card" data-aos="zoom-in" data-aos-delay="0">
+                    <div class="testimonial-header">
+                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&q=80" alt="Rajesh Kumar" class="testimonial-avatar">
+                        <div>
+                            <h4>Rajesh Kumar</h4>
+                            <p>Owner, Spice Garden</p>
+                        </div>
+                        <div class="testimonial-stars">★★★★★</div>
+                    </div>
+                    <p class="testimonial-text">
+                        "This platform transformed our restaurant! Online orders increased by 60% in just 2 months. 
+                        The QR table ordering feature is absolutely loved by our customers."
+                    </p>
+                </div>
+                
+                <div class="testimonial-card" data-aos="zoom-in" data-aos-delay="200">
+                    <div class="testimonial-header">
+                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80" alt="Priya Sharma" class="testimonial-avatar">
+                        <div>
+                            <h4>Priya Sharma</h4>
+                            <p>Manager, Grand Palace Hotel</p>
+                        </div>
+                        <div class="testimonial-stars">★★★★★</div>
+                    </div>
+                    <p class="testimonial-text">
+                        "The hotel integration is seamless! Room service orders go directly to the kitchen, 
+                        and billing to guest folios is automatic. Saved us countless hours."
+                    </p>
+                </div>
+                
+                <div class="testimonial-card" data-aos="zoom-in" data-aos-delay="400">
+                    <div class="testimonial-header">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80" alt="Amit Patel" class="testimonial-avatar">
+                        <div>
+                            <h4>Amit Patel</h4>
+                            <p>Head Chef, Urban Bistro</p>
+                        </div>
+                        <div class="testimonial-stars">★★★★★</div>
+                    </div>
+                    <p class="testimonial-text">
+                        "The kitchen display system is a game-changer! No more paper tickets, 
+                        everything is digital and organized. Our kitchen efficiency improved dramatically."
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content" data-aos="zoom-in">
+                <h2>Ready to Transform Your Business?</h2>
+                <p>Join 500+ restaurants and hotels already growing with our platform</p>
+                <div class="cta-buttons">
+                    <a href="/register-restaurant" class="btn btn-cta-primary">Start Free Trial - No Credit Card Required</a>
+                    <a href="#contact" class="btn btn-cta-secondary">Schedule a Demo</a>
+                </div>
+                <p class="cta-note">✨ 30-day free trial • Cancel anytime • No setup fees</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="badge">📞 Get In Touch</div>
+                <h2 class="section-title">Let's <span class="gradient-text">Connect</span></h2>
+            </div>
+            
+            <div class="contact-grid">
+                <div class="contact-info" data-aos="fade-right">
+                    <h3>Have Questions?</h3>
+                    <p>Our team is here to help you get started. Reach out and we'll respond within 24 hours.</p>
+                    
+                    <div class="contact-methods">
+                        <div class="contact-method">
+                            <div class="method-icon">📧</div>
+                            <div>
+                                <h4>Email</h4>
+                                <p>support@hotelrestaurantsuite.com</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="method-icon">📱</div>
+                            <div>
+                                <h4>Phone</h4>
+                                <p>+91 98765 43210</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-method">
+                            <div class="method-icon">📍</div>
+                            <div>
+                                <h4>Office</h4>
+                                <p>Mumbai, Maharashtra, India</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form class="contact-form" data-aos="fade-left" id="contactForm">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" required placeholder="John Doe">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required placeholder="john@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="business">Business Type</label>
+                        <select id="business" name="business">
+                            <option value="">Select type</option>
+                            <option value="restaurant">Restaurant</option>
+                            <option value="hotel">Hotel</option>
+                            <option value="both">Restaurant + Hotel</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" rows="4" placeholder="Tell us about your needs..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-form-submit">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <div class="logo-icon">HMS</div>
+                        <span class="brand-name">Hotel & Restaurant Suite</span>
+                    </div>
+                    <p>Complete digital management platform for modern restaurants and hotels.</p>
+                    <div class="social-links">
+                        <a href="#" aria-label="Facebook">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="Twitter">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="LinkedIn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                            </svg>
+                        </a>
+                        <a href="#" aria-label="Instagram">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#products">Products</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#demo">Demo</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#testimonials">Testimonials</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="#careers">Careers</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#blog">Blog</a></li>
+                        <li><a href="#help">Help Center</a></li>
+                        <li><a href="#docs">Documentation</a></li>
+                        <li><a href="#api">API</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#privacy">Privacy Policy</a></li>
+                        <li><a href="#terms">Terms of Service</a></li>
+                        <li><a href="#security">Security</a></li>
+                        <li><a href="#compliance">Compliance</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 Hotel & Restaurant Management Suite. All rights reserved.</p>
+                <p>Made with ❤️ in India</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -298,6 +298,16 @@ class WalletService {
         [tenantId, `%${cleanPhone}%`]
       );
       account = acc;
+      if (account && customerId && !account.customer_id) {
+        await query('UPDATE wallet_accounts SET customer_id = ? WHERE id = ?', [customerId, account.id]);
+        account.customer_id = customerId;
+      }
+    }
+
+    if (account && customerPhone && !account.customer_phone) {
+      const cleanPhone = String(customerPhone).replace(/[^0-9]/g, '').slice(-10);
+      await query('UPDATE wallet_accounts SET customer_phone = ? WHERE id = ?', [cleanPhone, account.id]);
+      account.customer_phone = cleanPhone;
     }
 
     if (!account) {
@@ -896,9 +906,9 @@ class WalletService {
    * 11. GET CUSTOMER STATEMENT (Slide 14)
    * Customer Screen: Available cashback, Pending cashback, Expiring soon, Statement history.
    */
-  async getStatement(tenantId, customerId) {
+  async getStatement(tenantId, customerId = null, customerPhone = null) {
     try {
-      const account = await this.getOrCreateAccount(tenantId, customerId);
+      const account = await this.getOrCreateAccount(tenantId, customerId, customerPhone);
 
       // Active available lots with expiry
       const availableLots = await query(

@@ -27,7 +27,7 @@ export const SocketProvider = ({ children }) => {
       if (host === 'localhost' || host === '127.0.0.1') {
         SOCKET_URL = 'http://localhost:5000';
       } else {
-        SOCKET_URL = 'https://jattamkommerce.com';
+        SOCKET_URL = window.location.origin;
       }
     }
 

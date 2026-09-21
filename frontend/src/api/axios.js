@@ -9,7 +9,7 @@ function resolveApiBaseUrl() {
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:5000/api/v1';
     }
-    return 'https://jattamkommerce.com/api/v1';
+    return `${window.location.origin}/api/v1`;
   }
   return 'https://jattamkommerce.com/api/v1';
 }
@@ -27,7 +27,21 @@ const api = axios.create({
 // Request Interceptor: Attach JWT Bearer token if available & properly handle FormData
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('hotel_token');
+    let token = localStorage.getItem('hotel_token');
+
+    // Token isolation: If on customer storefront or customer API call, use customer token
+    const isCustomerRoute = (typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/restaurant/')) ||
+      config.url?.includes('/customer/') ||
+      config.url?.includes('/auth/customer/') ||
+      config.url?.includes('/wallet/customer/') ||
+      config.url?.includes('/guest/');
+    const isExplicitAdminCall = config.url?.includes('/admin/') || config.url?.includes('/superadmin/') || config.url?.includes('/driver/') || config.url?.includes('/waiter/') || config.url?.includes('/kitchen/');
+
+    if (isCustomerRoute && !isExplicitAdminCall) {
+      const custToken = localStorage.getItem('hotel_customer_token');
+      if (custToken) token = custToken;
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       config.headers['x-authorization'] = `Bearer ${token}`;

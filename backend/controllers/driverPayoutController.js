@@ -1,5 +1,5 @@
 const { query, getConnection } = require('../config/db');
-const { getSocketIO } = require('../services/NotificationService');
+const { getSocketIO, sendNotification } = require('../services/NotificationService');
 
 /**
  * Helper to ensure restaurant tenant isolation for Admin operations
@@ -23,29 +23,80 @@ async function getTargetRestaurantId(req) {
 }
 
 /**
- * 1. Automatic Delivery Commission & Incentive Crediting
+ * 1. Automatic Delivery Commission & Incentive Crediting & Monthly Salary Sync
  * Called whenever an order is marked DELIVERED
  */
 async function creditDriverDeliveryEarnings(order) {
   try {
-    if (!order || !order.assigned_driver_id || !order.restaurant_id) return null;
+    if (!order || !order.id) return null;
 
-    const driverId = order.assigned_driver_id;
-    const restaurantId = order.restaurant_id;
+    // 1. Resolve Driver ID & Fresh Order Data if needed
+    let driverId = order.assigned_driver_id || order.driver_id || null;
+    let restaurantId = order.restaurant_id || null;
+    let orderNumber = order.order_number || `#${order.id}`;
+    let orderTotal = parseFloat(order.total_amount || 0);
 
-    // 1. Fetch compensation settings for this driver
-    const [settings] = await query(
+    if (!driverId || !restaurantId || !orderTotal) {
+      const [freshOrder] = await query(
+        'SELECT id, order_number, restaurant_id, assigned_driver_id, total_amount FROM orders WHERE id = ?',
+        [order.id]
+      );
+      if (freshOrder) {
+        if (!driverId) driverId = freshOrder.assigned_driver_id;
+        if (!restaurantId) restaurantId = freshOrder.restaurant_id;
+        if (!orderNumber || orderNumber === `#${order.id}`) orderNumber = freshOrder.order_number || `#${order.id}`;
+        if (!orderTotal) orderTotal = parseFloat(freshOrder.total_amount || 0);
+      }
+    }
+
+    if (!driverId) {
+      console.warn(`[Driver Payout] Cannot credit earnings for Order #${order.id}: No assigned driver.`);
+      return null;
+    }
+
+    // 2. Resolve Driver & Dedicated Restaurant
+    const [driverRow] = await query(
+      'SELECT id, user_id, restaurant_id, full_name FROM delivery_drivers WHERE id = ?',
+      [driverId]
+    );
+
+    if (!driverRow) {
+      console.warn(`[Driver Payout] Driver #${driverId} not found in delivery_drivers.`);
+      return null;
+    }
+
+    if (!restaurantId) {
+      restaurantId = driverRow.restaurant_id || 1;
+    }
+
+    // 3. Fetch compensation settings for this driver in this restaurant (or auto-provision dedicated package)
+    let [settings] = await query(
       `SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?`,
       [restaurantId, driverId]
     );
 
-    if (!settings) return null;
+    if (!settings) {
+      // Auto-provision standard compensation package for this driver's dedicated restaurant
+      await query(
+        `INSERT INTO driver_payout_settings 
+         (restaurant_id, driver_id, has_salary, salary_amount, salary_frequency, has_commission, commission_percentage, has_incentive, incentive_amount, incentive_type, notes, created_at, updated_at)
+         VALUES (?, ?, 1, 15000.00, 'MONTHLY', 1, 10.00, 1, 25.00, 'PER_ORDER', 'Auto-provisioned dedicated restaurant package', NOW(), NOW())
+         ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+        [restaurantId, driverId]
+      );
+      [settings] = await query(
+        `SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?`,
+        [restaurantId, driverId]
+      );
+    }
 
-    const orderNumber = order.order_number || `#${order.id}`;
-    const orderTotal = parseFloat(order.total_amount || 0);
+    // 4. Ensure Monthly/Period Salary is Active in Driver's Wallet
+    await syncDriverSalaryForPeriod(restaurantId, driverId, settings);
 
-    // 2. Parcel Commission Calculation
-    if (settings.has_commission && parseFloat(settings.commission_percentage || 0) > 0) {
+    let totalCreditedThisDelivery = 0;
+
+    // 5. Parcel Commission Calculation
+    if (settings && settings.has_commission && parseFloat(settings.commission_percentage || 0) > 0) {
       const commPct = parseFloat(settings.commission_percentage);
       const commAmount = Math.round((orderTotal * (commPct / 100)) * 100) / 100;
 
@@ -70,12 +121,13 @@ async function creditDriverDeliveryEarnings(order) {
               `Parcel Delivery Commission (${commPct}%) for Order ${orderNumber}`
             ]
           );
+          totalCreditedThisDelivery += commAmount;
         }
       }
     }
 
-    // 3. Delivery Incentive Calculation
-    if (settings.has_incentive && parseFloat(settings.incentive_amount || 0) > 0) {
+    // 6. Delivery Incentive Bonus Calculation
+    if (settings && settings.has_incentive && parseFloat(settings.incentive_amount || 0) > 0) {
       const incentiveAmt = parseFloat(settings.incentive_amount);
 
       // Idempotency check
@@ -98,16 +150,42 @@ async function creditDriverDeliveryEarnings(order) {
             `Delivery Incentive Bonus for Order ${orderNumber}`
           ]
         );
+        totalCreditedThisDelivery += incentiveAmt;
       }
     }
 
-    // Broadcast wallet update event to driver and admin rooms
+    // 7. Real-time Multi-Channel Event Broadcast
     try {
       const io = getSocketIO();
       if (io) {
-        io.emit('driver_wallet_updated', { driverId, restaurantId, orderId: order.id });
+        const payload = {
+          driverId,
+          restaurantId,
+          orderId: order.id,
+          orderNumber,
+          totalCredited: totalCreditedThisDelivery
+        };
+        io.emit('driver_wallet_updated', payload);
+        io.to(`driver_${driverId}`).emit('driver_wallet_updated', payload);
+        io.to(`restaurant_drivers_${restaurantId}`).emit('driver_wallet_updated', payload);
       }
     } catch (e) {}
+
+    // 8. In-App Notification to Rider
+    if (driverRow.user_id && totalCreditedThisDelivery > 0) {
+      try {
+        const [ordRow] = await query('SELECT id FROM orders WHERE id = ?', [order.id]);
+        await sendNotification({
+          userId: driverRow.user_id,
+          restaurantId,
+          orderId: ordRow ? order.id : null,
+          title: '💰 Delivery Earnings Credited!',
+          message: `+₹${totalCreditedThisDelivery.toFixed(2)} added to your wallet for Order ${orderNumber}. Keep it up!`
+        });
+      } catch (nErr) {
+        // Silently catch notification warning
+      }
+    }
 
     return true;
   } catch (err) {
@@ -207,18 +285,20 @@ async function getAdminDriverPayouts(req, res) {
       );
 
       if (!settings) {
-        settings = {
-          has_salary: 0,
-          salary_amount: 0,
-          salary_frequency: 'MONTHLY',
-          has_commission: 0,
-          commission_percentage: 0,
-          has_incentive: 0,
-          incentive_amount: 0,
-          incentive_type: 'PER_ORDER'
-        };
-      } else {
-        // Sync salary if configured
+        await query(
+          `INSERT INTO driver_payout_settings 
+           (restaurant_id, driver_id, has_salary, salary_amount, salary_frequency, has_commission, commission_percentage, has_incentive, incentive_amount, incentive_type, notes, created_at, updated_at)
+           VALUES (?, ?, 1, 15000.00, 'MONTHLY', 1, 10.00, 1, 25.00, 'PER_ORDER', 'Auto-provisioned dedicated restaurant package', NOW(), NOW())
+           ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+          [targetRestId, drv.id]
+        );
+        [settings] = await query(
+          `SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?`,
+          [targetRestId, drv.id]
+        );
+      }
+
+      if (settings) {
         await syncDriverSalaryForPeriod(targetRestId, drv.id, settings);
       }
 
@@ -632,7 +712,10 @@ async function getDriverWallet(req, res) {
       return res.status(404).json({ success: false, message: 'Driver profile not found.' });
     }
 
-    const restaurantId = driver.restaurant_id || 1;
+    const targetRestId = req.query?.restaurant_id 
+      ? parseInt(req.query.restaurant_id, 10) 
+      : (driver.restaurant_id || 1);
+    const restaurantId = (!isNaN(targetRestId) && targetRestId > 0) ? targetRestId : (driver.restaurant_id || 1);
 
     // Fetch restaurant name for notice
     const [restaurant] = await query(
@@ -640,11 +723,25 @@ async function getDriverWallet(req, res) {
       [restaurantId]
     );
 
-    // Fetch compensation configuration
+    // Fetch compensation configuration (or auto-provision dedicated package)
     let [settings] = await query(
       `SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?`,
       [restaurantId, driver.id]
     );
+
+    if (!settings) {
+      await query(
+        `INSERT INTO driver_payout_settings 
+         (restaurant_id, driver_id, has_salary, salary_amount, salary_frequency, has_commission, commission_percentage, has_incentive, incentive_amount, incentive_type, notes, created_at, updated_at)
+         VALUES (?, ?, 1, 15000.00, 'MONTHLY', 1, 10.00, 1, 25.00, 'PER_ORDER', 'Auto-provisioned dedicated restaurant package', NOW(), NOW())
+         ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+        [restaurantId, driver.id]
+      );
+      [settings] = await query(
+        `SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?`,
+        [restaurantId, driver.id]
+      );
+    }
 
     if (settings) {
       await syncDriverSalaryForPeriod(restaurantId, driver.id, settings);
@@ -749,7 +846,10 @@ async function getDriverWalletHistory(req, res) {
       return res.status(404).json({ success: false, message: 'Driver profile not found.' });
     }
 
-    const restaurantId = driver.restaurant_id || 1;
+    const targetRestId = req.query?.restaurant_id 
+      ? parseInt(req.query.restaurant_id, 10) 
+      : (driver.restaurant_id || 1);
+    const restaurantId = (!isNaN(targetRestId) && targetRestId > 0) ? targetRestId : (driver.restaurant_id || 1);
 
     let sql = `
       SELECT * FROM driver_wallet_transactions

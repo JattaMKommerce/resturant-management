@@ -257,6 +257,7 @@ async function initDatabase(options = {}) {
       'DELIVERED','REJECTED','CANCELLED','DELIVERY_FAILED'
     ) NOT NULL DEFAULT 'PENDING'`);
         await conn.query(`ALTER TABLE orders MODIFY COLUMN payment_status ENUM('PENDING','COMPLETED','FAILED','REFUNDED') NOT NULL DEFAULT 'PENDING'`);
+        await conn.query(`ALTER TABLE orders MODIFY COLUMN delivery_area VARCHAR(100) NULL DEFAULT 'Standard Delivery'`);
         await conn.query(`ALTER TABLE payments MODIFY COLUMN payment_method VARCHAR(50) NOT NULL DEFAULT 'CASH'`);
         await conn.query(`ALTER TABLE restaurant_orders MODIFY COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'UNPAID'`);
         await conn.query(`ALTER TABLE bills MODIFY COLUMN payment_status VARCHAR(50) NOT NULL DEFAULT 'UNPAID'`);
@@ -734,8 +735,11 @@ async function initDatabase(options = {}) {
         await conn.query(`UPDATE delivery_drivers SET approval_status = 'APPROVED', account_status = 'ACTIVE', is_active = 1`);
         console.log('✅ Approved and activated all delivery drivers');
 
-        // Ensure restaurant 1 links
-        await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 1)', [adminUserId]);
+        // Ensure restaurant links for master admin across all restaurants
+        const [allRests] = await conn.query('SELECT id FROM restaurants');
+        for (const r of allRests) {
+          await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, ?, ?)', [adminUserId, r.id, r.id === 1 ? 1 : 0]);
+        }
         await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [chefId]);
         await conn.query('INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, 1, 0)', [waiterId]);
       } catch (e) {

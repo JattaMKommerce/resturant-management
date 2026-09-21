@@ -5,7 +5,19 @@ const { validateRestaurantAccess } = require('../middleware/auth');
 async function placeOrder(req, res) {
   try {
     const guestIdentityId = req.guestIdentity?.id || null;
-    const customerId = req.user?.id || null;
+    let customerId = req.user?.id || req.body.customerId || null;
+
+    // If customerId is not explicit, lookup existing registered customer by phone
+    if (!customerId && req.body.customerPhone) {
+      const cleanPhone = String(req.body.customerPhone).replace(/[^0-9]/g, '').slice(-10);
+      if (cleanPhone.length >= 10) {
+        const [foundUser] = await query(
+          'SELECT id FROM users WHERE phone LIKE ? OR phone = ? LIMIT 1',
+          [`%${cleanPhone}%`, cleanPhone]
+        );
+        if (foundUser) customerId = foundUser.id;
+      }
+    }
 
     const orderData = {
       ...req.body,
@@ -96,11 +108,17 @@ async function getUserOrders(req, res) {
 async function getAllOrders(req, res) {
   try {
     const { status, payment_method, search, date } = req.query;
-    let restId = req.adminRestaurantId;
-    if (!restId && (req.query?.slug || req.headers['x-restaurant-slug'])) {
-      const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+    const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+    let restId = null;
+    if (targetSlug) {
       const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
       if (rows.length > 0) restId = rows[0].id;
+    }
+    if (!restId && req.query?.restaurant_id) {
+      restId = parseInt(req.query.restaurant_id, 10) || null;
+    }
+    if (!restId) {
+      restId = req.adminRestaurantId;
     }
 
     if (!restId && !req.isSuperAdmin) {
@@ -152,16 +170,19 @@ async function getAllOrders(req, res) {
 async function updateOrderStatus(req, res) {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, driver_id } = req.body;
     const userId = req.user ? req.user.id : null;
 
     // Verify admin owns this order's restaurant
-    if (!req.isSuperAdmin) {
-      const [order] = await query('SELECT restaurant_id FROM orders WHERE id = ?', [id]);
-      if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
-      if (!validateRestaurantAccess(order.restaurant_id, req)) {
-        return res.status(403).json({ success: false, message: 'Access denied to this order.' });
-      }
+    const [order] = await query('SELECT restaurant_id, assigned_driver_id FROM orders WHERE id = ?', [id]);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+
+    if (!req.isSuperAdmin && !validateRestaurantAccess(order.restaurant_id, req)) {
+      return res.status(403).json({ success: false, message: 'Access denied to this order.' });
+    }
+
+    if (driver_id) {
+      await query('UPDATE orders SET assigned_driver_id = ? WHERE id = ?', [driver_id, id]);
     }
 
     const result = await OrderService.updateOrderStatus(id, status, userId, notes);
@@ -192,14 +213,17 @@ async function assignDriver(req, res) {
 
 async function getDashboardKPIs(req, res) {
   try {
-    let restId = req.adminRestaurantId;
-    if (!restId && (req.query?.slug || req.headers['x-restaurant-slug'])) {
-      const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+    const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+    let restId = null;
+    if (targetSlug) {
       const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
       if (rows.length > 0) restId = rows[0].id;
     }
     if (!restId && (req.query?.restaurant_id || req.headers['x-restaurant-id'])) {
       restId = parseInt(req.query?.restaurant_id || req.headers['x-restaurant-id'], 10) || null;
+    }
+    if (!restId) {
+      restId = req.adminRestaurantId;
     }
 
     if (!restId && !req.isSuperAdmin) {
@@ -1023,7 +1047,18 @@ async function getUnifiedHistory(req, res) {
  */
 async function getUnclaimedOrders(req, res) {
   try {
-    let restId = req.query.restaurant_id || req.adminRestaurantId;
+    const targetSlug = req.query?.slug || req.headers['x-restaurant-slug'];
+    let restId = null;
+    if (targetSlug) {
+      const rows = await query('SELECT id FROM restaurants WHERE slug = ?', [targetSlug]);
+      if (rows.length > 0) restId = rows[0].id;
+    }
+    if (!restId && req.query?.restaurant_id) {
+      restId = parseInt(req.query.restaurant_id, 10) || null;
+    }
+    if (!restId) {
+      restId = req.adminRestaurantId;
+    }
     if (!restId) {
       const [firstRest] = await query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
       restId = firstRest ? firstRest.id : 1;
@@ -1042,9 +1077,8 @@ async function getUnclaimedOrders(req, res) {
        WHERE o.restaurant_id = ?
          AND o.assigned_driver_id IS NULL
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
-         AND o.created_at <= NOW() - INTERVAL 5 MINUTE
          AND o.created_at >= NOW() - INTERVAL 24 HOUR
-       ORDER BY o.created_at ASC`,
+       ORDER BY o.created_at DESC`,
       [restId]
     );
 

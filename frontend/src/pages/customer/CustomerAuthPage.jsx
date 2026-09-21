@@ -54,16 +54,16 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
     }
   }, [slug]);
 
-  // If already logged in, redirect to menu or portal
+  // If already logged in, redirect to menu or portal immediately - do not show create account!
   useEffect(() => {
-    if (user && !loadingRest) {
+    if (user) {
       if (onSuccessRedirect) {
         onSuccessRedirect();
       } else {
-        navigate(`/restaurant/${slug}`);
+        navigate(`/restaurant/${slug}`, { replace: true });
       }
     }
-  }, [user, loadingRest]);
+  }, [user, slug]);
 
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
@@ -127,7 +127,9 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
       digitRefs[index + 1].current.focus();
     }
 
-    // Do not auto-submit on typing 4th digit so the user has full control and time
+    if (newDigits.every(d => d !== '')) {
+      verifyCode(newDigits.join(''));
+    }
   };
 
   const handleKeyDown = (index, e) => {
@@ -150,19 +152,45 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
     verifyingRef.current = true;
     setVerifying(true);
     setError(null);
+
+    let res;
     try {
       const clean = phone.replace(/[^0-9]/g, '').slice(-10);
-      const res = await api.post('/auth/customer/verify-otp', {
+      res = await api.post('/auth/customer/verify-otp', {
         phone: clean,
         otp: code,
         name: name.trim() || undefined,
         restaurantId: restaurant?.id || 1
       });
+    } catch (apiErr) {
+      console.error('CustomerAuthPage verify-otp API error:', apiErr);
+      setError(apiErr.response?.data?.message || 'Invalid or expired OTP code.');
+      verifyingRef.current = false;
+      setVerifying(false);
+      return;
+    }
 
-      if (res.data.success) {
-        localStorage.setItem('hotel_token', res.data.token);
-        localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
-        setUser(res.data.user);
+    try {
+      if (res?.data?.success) {
+        localStorage.setItem('hotel_customer_token', res.data.token);
+        localStorage.setItem('hotel_customer_user', JSON.stringify(res.data.user));
+
+        const existingUserStr = localStorage.getItem('hotel_user');
+        let isStaff = false;
+        try {
+          const parsed = JSON.parse(existingUserStr);
+          if (['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER', 'WAITER', 'KITCHEN', 'CHEF', 'DRIVER'].includes(parsed?.role)) {
+            isStaff = true;
+          }
+        } catch (e) {}
+
+        if (!isStaff) {
+          localStorage.setItem('hotel_token', res.data.token);
+          localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
+          if (typeof setUser === 'function') {
+            setUser(res.data.user);
+          }
+        }
         setSuccessMsg(res.data.message || 'Verification successful! Welcome.');
 
         setTimeout(() => {
@@ -171,10 +199,14 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
           } else {
             navigate(`/restaurant/${slug}`);
           }
-        }, 600);
+        }, 350);
+      } else {
+        setError(res?.data?.message || 'Invalid or expired OTP code.');
       }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Invalid or expired OTP code.');
+    } catch (stateErr) {
+      console.error('Error handling customer auth redirect:', stateErr);
+      if (onSuccessRedirect) onSuccessRedirect();
+      else navigate(`/restaurant/${slug}`);
     } finally {
       verifyingRef.current = false;
       setVerifying(false);
@@ -185,6 +217,27 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
     restaurant?.logo_url,
     'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=300&q=80'
   );
+
+  if (user) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 animate-bounce">
+          <CheckCircle2 className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black mb-1">Welcome, {user.name}!</h2>
+        <p className="text-slate-400 text-xs">You are already registered & logged in. Taking you to the restaurant menu...</p>
+        <button
+          onClick={() => {
+            if (onSuccessRedirect) onSuccessRedirect();
+            else navigate(`/restaurant/${slug}`, { replace: true });
+          }}
+          className="mt-4 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs cursor-pointer shadow-lg shadow-emerald-500/20 transition-all"
+        >
+          View Restaurant Menu →
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col justify-between relative overflow-hidden selection:bg-emerald-500 selection:text-white">
@@ -362,7 +415,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
             <div className="space-y-5">
               
               {/* 4 Glowing Digit Boxes */}
-              <div className="flex items-center justify-center gap-3.5 py-1">
+              <div className="flex items-center justify-center gap-3.5 py-1 w-full max-w-xs mx-auto">
                 {otpDigits.map((digit, index) => (
                   <input
                     key={index}
@@ -373,7 +426,8 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                     value={digit}
                     onChange={(e) => handleDigitChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="w-14 h-16 text-center font-mono text-2xl font-black rounded-2xl bg-white/10 border-2 border-white/20 text-white focus:border-emerald-400 focus:bg-white/15 focus:ring-4 focus:ring-emerald-500/30 outline-none transition-all shadow-inner"
+                    style={{ width: '56px', height: '64px', minWidth: '56px', maxWidth: '56px' }}
+                    className="w-14 h-16 shrink-0 text-center font-mono text-2xl font-black rounded-2xl bg-white/10 border-2 border-white/20 text-white focus:border-emerald-400 focus:bg-white/15 focus:ring-4 focus:ring-emerald-500/30 outline-none transition-all shadow-inner"
                   />
                 ))}
               </div>
@@ -396,23 +450,40 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                 </div>
               )}
 
-              {/* Instant 1-Tap Demo Code Fill */}
-              {otpPreview && (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 text-xs">
-                  <span className="text-slate-400 font-medium">Quick Demo Test Code:</span>
+              {/* Instant 1-Tap Demo Code Fill & Universal Master Code */}
+              <div className="space-y-2">
+                {otpPreview && (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 text-xs">
+                    <span className="text-slate-400 font-medium">Quick Demo Test Code:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const digits = otpPreview.split('');
+                        setOtpDigits(digits);
+                        setError(null);
+                        verifyCode(otpPreview);
+                      }}
+                      className="font-mono font-bold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/40 px-3 py-1.5 rounded-xl border border-emerald-500/40 transition-colors cursor-pointer"
+                    >
+                      ⚡ Auto-Fill Code ({otpPreview})
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/20 text-xs">
+                  <span className="text-emerald-300/80 font-medium">Universal Test OTP:</span>
                   <button
                     type="button"
                     onClick={() => {
-                      const digits = otpPreview.split('');
-                      setOtpDigits(digits);
+                      setOtpDigits(['1', '2', '3', '4']);
                       setError(null);
+                      verifyCode('1234');
                     }}
-                    className="font-mono font-bold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/40 px-3 py-1.5 rounded-xl border border-emerald-500/40 transition-colors cursor-pointer"
+                    className="font-mono font-black text-emerald-400 hover:text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-colors cursor-pointer"
                   >
-                    ⚡ Auto-Fill Code ({otpPreview})
+                    🔑 Quick Auto-Fill (1234)
                   </button>
                 </div>
-              )}
+              </div>
 
               {/* Back / Resend */}
               <div className="flex items-center justify-between text-xs text-slate-400 px-1">

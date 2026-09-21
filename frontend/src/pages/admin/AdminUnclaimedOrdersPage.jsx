@@ -65,8 +65,8 @@ export default function AdminUnclaimedOrdersPage() {
   const fetchUnclaimedOrders = async () => {
     try {
       const [orderRes, driverRes] = await Promise.all([
-        api.get('/admin/orders/unclaimed'),
-        api.get('/admin/drivers').catch(() => ({ data: { drivers: [] } }))
+        api.get(`/admin/orders/unclaimed${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`),
+        api.get(`/admin/drivers${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`).catch(() => ({ data: { drivers: [] } }))
       ]);
 
       if (orderRes.data.success) {
@@ -95,24 +95,28 @@ export default function AdminUnclaimedOrdersPage() {
 
   useEffect(() => {
     fetchUnclaimedOrders();
-    const pollInterval = setInterval(fetchUnclaimedOrders, 10000);
+    const pollInterval = setInterval(fetchUnclaimedOrders, 4000);
 
     return () => clearInterval(pollInterval);
-  }, [soundEnabled]);
+  }, [soundEnabled, slug]);
 
   useEffect(() => {
     if (!socket) return;
     const handleUpdate = () => fetchUnclaimedOrders();
+    socket.on('new_order', handleUpdate);
+    socket.on('admin_notification', handleUpdate);
     socket.on('notification', handleUpdate);
     socket.on('order_update', handleUpdate);
     socket.on('order_updated', handleUpdate);
 
     return () => {
+      socket.off('new_order', handleUpdate);
+      socket.off('admin_notification', handleUpdate);
       socket.off('notification', handleUpdate);
       socket.off('order_update', handleUpdate);
       socket.off('order_updated', handleUpdate);
     };
-  }, [socket]);
+  }, [socket, slug]);
 
   const handleSelfDeliver = async (orderId) => {
     if (!window.confirm('Mark this order for Hotel In-House Delivery (Self-Delivery)?')) return;

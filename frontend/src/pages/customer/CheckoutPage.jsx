@@ -11,12 +11,12 @@ export default function CheckoutPage({ overrideSlug }) {
   const slug = overrideSlug || params.slug;
   const navigate = useNavigate();
   const { cartItems, getSubtotal, updateQuantity, removeFromCart, clearCart, getItemCount } = useCart();
-  const { guestInfo } = useAuth();
+  const { user, guestInfo } = useAuth();
 
   const [restaurant, setRestaurant] = useState(null);
   const [formData, setFormData] = useState({
-    customerName: guestInfo?.customerName || '',
-    customerPhone: guestInfo?.customerPhone || '',
+    customerName: user?.name || guestInfo?.customerName || '',
+    customerPhone: user?.phone || guestInfo?.customerPhone || '',
     deliveryAddress: '',
     deliveryArea: '',
     deliveryLandmark: '',
@@ -36,10 +36,11 @@ export default function CheckoutPage({ overrideSlug }) {
 
   useEffect(() => {
     loadRestaurant();
-    // Pre-fill from returning guest
-    if (guestInfo?.customerName) setFormData(f => ({ ...f, customerName: guestInfo.customerName }));
-    if (guestInfo?.customerPhone) setFormData(f => ({ ...f, customerPhone: guestInfo.customerPhone }));
-  }, [slug]);
+    if (user?.name) setFormData(f => ({ ...f, customerName: f.customerName || user.name }));
+    if (user?.phone) setFormData(f => ({ ...f, customerPhone: f.customerPhone || user.phone }));
+    if (guestInfo?.customerName && !user?.name) setFormData(f => ({ ...f, customerName: f.customerName || guestInfo.customerName }));
+    if (guestInfo?.customerPhone && !user?.phone) setFormData(f => ({ ...f, customerPhone: f.customerPhone || guestInfo.customerPhone }));
+  }, [slug, user]);
 
   const loadRestaurant = async () => {
     try {
@@ -66,12 +67,15 @@ export default function CheckoutPage({ overrideSlug }) {
 
   const loadRewardsQuote = async () => {
     try {
+      const phoneParam = user?.phone || formData.customerPhone || '';
       const [qRes, sRes] = await Promise.all([
         api.post('/wallet/checkout/quote', {
           tenantId: restaurant.id,
-          orderAmount: subtotal
+          orderAmount: subtotal,
+          customerId: user?.id || undefined,
+          customerPhone: phoneParam || undefined
         }),
-        api.get(`/wallet/customer/statement?tenantId=${restaurant.id}`)
+        api.get(`/wallet/customer/statement?tenantId=${restaurant.id}${phoneParam ? `&phone=${encodeURIComponent(phoneParam)}` : ''}`)
       ]);
       if (qRes.data.success) setRewardsQuote(qRes.data.data);
       if (sRes.data.success) setRewardsStatement(sRes.data.data);
@@ -118,6 +122,7 @@ export default function CheckoutPage({ overrideSlug }) {
       const payload = {
         restaurantId: restaurant?.id,
         restaurantSlug: restaurant?.slug || restaurant?.random_slug || slug,
+        customerId: user?.id || undefined,
         customerName: formData.customerName,
         customerPhone: formData.customerPhone,
         deliveryAddress: formData.deliveryAddress,

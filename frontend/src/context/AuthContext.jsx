@@ -129,8 +129,8 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, restaurant, restaurants, guestInfo,
-      setRestaurant, updateRestaurant, updateSuiteMode, loading,
+      user, setUser, restaurant, setRestaurant, restaurants, setRestaurants, guestInfo, setGuestInfo,
+      updateRestaurant, updateSuiteMode, loading,
       login, register, registerRestaurant, logout
     }}>
       {children}

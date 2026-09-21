@@ -33,7 +33,12 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const { user } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [customerRewards, setCustomerRewards] = useState(null);
-  const [guestBypass, setGuestBypass] = useState(false);
+
+  useEffect(() => {
+    if ((searchParams.get('auth') || searchParams.get('login') || searchParams.get('signup')) && !user) {
+      setAuthModalOpen(true);
+    }
+  }, [searchParams, user]);
 
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -182,16 +187,6 @@ export default function RestaurantMenuPage({ overrideSlug }) {
     );
   }
 
-  // FIRST STEP GATEKEEPER: Show Login or Sign Up page first if customer is not signed in
-  if (!user && !guestBypass) {
-    return (
-      <CustomerAuthPage
-        overrideSlug={slug}
-        onSkip={() => setGuestBypass(true)}
-        onSuccessRedirect={() => setGuestBypass(true)}
-      />
-    );
-  }
 
   const template = getTemplateById(restaurant?.template_id);
   const subtotal = getSubtotal();

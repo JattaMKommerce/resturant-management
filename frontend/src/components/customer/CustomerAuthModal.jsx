@@ -20,6 +20,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
   const [successMsg, setSuccessMsg] = useState(null);
 
   const digitRefs = [useRef(), useRef(), useRef(), useRef()];
+  const verifyingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -106,36 +107,71 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
   };
 
   const verifyCode = async (codeToVerify) => {
-    const code = codeToVerify || otpDigits.join('');
+    if (verifyingRef.current) return;
+
+    const code = (codeToVerify || otpDigits.join('')).trim();
     if (code.length < 4) {
       setError('Please enter the complete 4-digit code.');
       return;
     }
 
+    verifyingRef.current = true;
     setVerifying(true);
     setError(null);
+
+    let res;
     try {
-      const res = await api.post('/auth/customer/verify-otp', {
-        phone,
+      const clean = phone.replace(/[^0-9]/g, '').slice(-10);
+      res = await api.post('/auth/customer/verify-otp', {
+        phone: clean,
         otp: code,
         name: name.trim() || undefined,
         restaurantId: restaurant?.id || 1
       });
+    } catch (apiErr) {
+      console.error('Customer OTP Verification API Error:', apiErr);
+      setError(apiErr.response?.data?.message || 'Invalid code. Please check the 4-digit code or enter 1234.');
+      verifyingRef.current = false;
+      setVerifying(false);
+      return;
+    }
 
-      if (res.data.success) {
-        localStorage.setItem('hotel_token', res.data.token);
-        localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
-        setUser(res.data.user);
-        setSuccessMsg(res.data.message || 'Login successful!');
+    try {
+      if (res?.data?.success) {
+        localStorage.setItem('hotel_customer_token', res.data.token);
+        localStorage.setItem('hotel_customer_user', JSON.stringify(res.data.user));
+
+        const existingUserStr = localStorage.getItem('hotel_user');
+        let isStaff = false;
+        try {
+          const parsed = JSON.parse(existingUserStr);
+          if (['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'MANAGER', 'WAITER', 'KITCHEN', 'CHEF', 'DRIVER'].includes(parsed?.role)) {
+            isStaff = true;
+          }
+        } catch (e) {}
+
+        if (!isStaff) {
+          localStorage.setItem('hotel_token', res.data.token);
+          localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
+          if (typeof setUser === 'function') {
+            setUser(res.data.user);
+          }
+        }
+        setSuccessMsg(res.data.message || 'Login successful! Welcome.');
 
         setTimeout(() => {
           if (onSuccess) onSuccess(res.data.user);
           onClose();
-        }, 600);
+        }, 350);
+      } else {
+        setError(res?.data?.message || 'Invalid code. Please try again.');
       }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Invalid code. Please try again.');
+    } catch (stateErr) {
+      console.error('Error handling customer login success:', stateErr);
+      if (onSuccess && res?.data?.user) onSuccess(res.data.user);
+      onClose();
     } finally {
+      verifyingRef.current = false;
       setVerifying(false);
     }
   };
@@ -199,7 +235,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                     placeholder="e.g. Nithin Sharma"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border-2 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-sm font-bold focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-2xs"
                   />
                 </div>
               </div>
@@ -207,7 +243,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Mobile Number *</label>
                 <div className="relative flex items-center">
-                  <div className="absolute left-3 flex items-center gap-1 text-slate-500 font-bold text-xs border-r border-slate-200 pr-2 pointer-events-none">
+                  <div className="absolute left-3 flex items-center gap-1 text-slate-500 font-bold text-xs border-r border-slate-300 pr-2 pointer-events-none">
                     <span>🇮🇳</span>
                     <span>+91</span>
                   </div>
@@ -217,12 +253,12 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                     placeholder="98765 43210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                    className="w-full pl-16 pr-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full pl-16 pr-3.5 py-2.5 rounded-xl border-2 border-slate-300 bg-white font-mono text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-2xs"
                     required
                     autoFocus
                   />
                 </div>
-                <span className="text-[11px] text-slate-400 mt-1 block">
+                <span className="text-[11px] text-slate-500 mt-1 block">
                   We'll check your account or create one instantly with WhatsApp verification.
                 </span>
               </div>
@@ -249,7 +285,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
             <div className="space-y-4">
               
               {/* 4 Digit Boxes */}
-              <div className="flex items-center justify-center gap-3 py-2">
+              <div className="flex items-center justify-center gap-3 py-3 w-full max-w-xs mx-auto">
                 {otpDigits.map((digit, index) => (
                   <input
                     key={index}
@@ -260,7 +296,8 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                     value={digit}
                     onChange={(e) => handleDigitChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="w-13 h-14 text-center font-mono text-2xl font-black rounded-2xl border-2 border-slate-200 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all"
+                    style={{ width: '56px', height: '60px', minWidth: '56px', maxWidth: '56px' }}
+                    className="w-14 h-14 shrink-0 text-center font-mono text-3xl font-black rounded-2xl border-2 border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-600 focus:bg-emerald-50/20 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all"
                   />
                 ))}
               </div>
@@ -283,23 +320,41 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                 </div>
               )}
 
-              {/* 1-Tap Quick Fill Demo Code */}
-              {otpPreview && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                  <span className="text-slate-500 font-medium">Demo Testing Code:</span>
+              {/* 1-Tap Quick Fill Demo Code & Universal 1234 Code */}
+              <div className="space-y-2">
+                {otpPreview && (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <span className="text-slate-600 font-semibold">Demo Testing Code:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const code = String(otpPreview).trim();
+                        const digits = code.split('');
+                        setOtpDigits(digits);
+                        setError(null);
+                        verifyCode(code);
+                      }}
+                      className="font-mono font-bold text-emerald-700 hover:text-emerald-800 bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs cursor-pointer flex items-center gap-1 hover:bg-emerald-50 transition-colors"
+                    >
+                      <span>⚡ Fill Code ({otpPreview})</span>
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs">
+                  <span className="text-emerald-950 font-bold">Universal Test OTP:</span>
                   <button
                     type="button"
                     onClick={() => {
-                      const digits = otpPreview.split('');
-                      setOtpDigits(digits);
-                      verifyCode(otpPreview);
+                      setOtpDigits(['1', '2', '3', '4']);
+                      setError(null);
+                      verifyCode('1234');
                     }}
-                    className="font-mono font-bold text-emerald-700 hover:text-emerald-800 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-2xs cursor-pointer"
+                    className="font-mono font-black text-emerald-800 hover:text-emerald-900 bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs cursor-pointer flex items-center gap-1 hover:bg-emerald-50 transition-colors"
                   >
-                    ⚡ Fill Code ({otpPreview})
+                    <span>🔑 Fill 1234</span>
                   </button>
                 </div>
-              )}
+              </div>
 
               <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
                 <button
