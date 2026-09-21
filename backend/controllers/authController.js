@@ -509,7 +509,17 @@ async function customerSendOtp(req, res) {
       }
     }
 
-    // Prepare WhatsApp verification link
+    // Dispatch real WhatsApp OTP via Meta Cloud API using approved hms_login_otp template
+    let waDelivery = { success: false };
+    try {
+      const { sendWhatsAppOtp } = require('../services/WhatsAppOtpService');
+      const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'hms_login_otp';
+      waDelivery = await sendWhatsAppOtp(cleanPhone, otp, templateName);
+    } catch (waErr) {
+      console.warn('[customerSendOtp] Meta WhatsApp dispatch error:', waErr.message);
+    }
+
+    // Prepare WhatsApp verification link as instant click-to-chat fallback
     const waText = encodeURIComponent(`Hi ${restaurantName}, please verify my login code: ${otp}`);
     const whatsappDeepLink = `https://api.whatsapp.com/send?phone=${restaurantWhatsApp}&text=${waText}`;
 
@@ -519,8 +529,12 @@ async function customerSendOtp(req, res) {
       isNewUser,
       existingName: existingCust?.name || anyUser?.name || null,
       otpPreview: otp, // For seamless 1-tap testing
+      whatsappSent: Boolean(waDelivery.success),
+      whatsappMessageId: waDelivery.messageId || null,
       whatsappDeepLink,
-      message: isNewUser ? 'Welcome! Enter the code sent to your mobile.' : 'Welcome back! Enter the verification code.'
+      message: waDelivery.success
+        ? `WhatsApp verification code sent to +91 ${cleanPhone}!`
+        : (isNewUser ? 'Welcome! Enter the code sent to your mobile.' : 'Welcome back! Enter the verification code.')
     });
   } catch (err) {
     console.error('customerSendOtp error:', err);

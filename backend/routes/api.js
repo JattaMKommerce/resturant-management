@@ -47,6 +47,8 @@ router.post('/auth/login', authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
 router.post('/auth/customer/send-otp', authController.customerSendOtp);
 router.post('/auth/customer/verify-otp', authController.customerVerifyOtp);
+router.post('/auth/send-otp', authController.customerSendOtp);
+router.post('/auth/verify-otp', authController.customerVerifyOtp);
 router.get('/customer/portal/data', authenticateToken, customerController.getCustomerPortalData);
 router.use('/push', pushRoutes);
 
