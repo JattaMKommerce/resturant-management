@@ -584,9 +584,9 @@ async function customerVerifyOtp(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid OTP code. Please check the 4-digit code or enter 1234.' });
     }
 
-    // 1. Look for existing user with role = 'CUSTOMER'
+    // 1. Look for existing user with this phone number (preferring admin/staff accounts if available)
     let [user] = await query(
-      'SELECT id, name, email, phone, role FROM users WHERE (phone = ? OR phone LIKE ?) AND role = "CUSTOMER" LIMIT 1',
+      'SELECT id, name, email, phone, role FROM users WHERE (phone = ? OR phone LIKE ?) ORDER BY (role IN ("SUPER_ADMIN", "ADMIN", "RESTAURANT_ADMIN", "MANAGER")) DESC LIMIT 1',
       [cleanPhone, `%${cleanPhone}%`]
     );
 
@@ -649,8 +649,33 @@ async function customerVerifyOtp(req, res) {
       }
     }
 
+    // Auto-detect if this user is a restaurant owner/admin
+    let effectiveRole = user.role;
+    let assignedRestaurantId = restaurantId || stored?.restaurantId || null;
+    try {
+      const restRows = await query(
+        `SELECT r.id FROM restaurants r
+         LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
+         WHERE ra.user_id = ? OR r.admin_user_id = ?
+         ORDER BY (r.admin_user_id = ?) DESC, ra.is_primary DESC`,
+        [user.id, user.id, user.id]
+      );
+      if (restRows.length > 0) {
+        if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(effectiveRole)) {
+          await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
+          user.role = 'RESTAURANT_ADMIN';
+          effectiveRole = 'RESTAURANT_ADMIN';
+        }
+        if (!assignedRestaurantId) {
+          assignedRestaurantId = restRows[0].id;
+        }
+      }
+    } catch (restErr) {
+      console.warn('[customerVerifyOtp] Restaurant check warning:', restErr.message);
+    }
+
     // Ensure wallet account exists for this customer at this restaurant
-    const tenantId = restaurantId || stored?.restaurantId || 1;
+    const tenantId = assignedRestaurantId || 1;
     try {
       const walletService = require('../services/walletService');
       await walletService.getOrCreateAccount(tenantId, user.id, cleanPhone);
@@ -658,9 +683,16 @@ async function customerVerifyOtp(req, res) {
       console.warn('[Customer OTP] Wallet account ensure warning:', wErr.message);
     }
 
-    // Sign JWT with role CUSTOMER
+    // Sign JWT with effective role and restaurant_id
     const token = jwt.sign(
-      { id: user.id, email: user.email, name: user.name, role: 'CUSTOMER', phone: user.phone },
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: effectiveRole,
+        phone: user.phone,
+        restaurant_id: assignedRestaurantId || 1
+      },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -672,7 +704,8 @@ async function customerVerifyOtp(req, res) {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      role: 'CUSTOMER'
+      role: effectiveRole,
+      restaurant_id: assignedRestaurantId || 1
     };
 
     if (stored) {

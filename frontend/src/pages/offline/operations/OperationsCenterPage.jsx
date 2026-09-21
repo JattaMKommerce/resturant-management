@@ -31,6 +31,7 @@ import {
 
 export default function OperationsCenterPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { socket, connected, joinRoom } = useSocket();
 
   const [data, setData] = useState(null);
@@ -162,6 +163,7 @@ export default function OperationsCenterPage() {
   }
 
   const tables = data?.tables || { counts: {}, items: [] };
+  const tableCounts = tables?.counts || {};
   const orders = data?.orders || {};
   const kitchen = data?.kitchen || {};
   const bottleneck = data?.bottleneck || {};
@@ -243,7 +245,7 @@ export default function OperationsCenterPage() {
                 🟢 AVAILABLE
               </div>
               <div className="text-2xl font-extrabold text-[#1F2937] mt-1">
-                {String(tables.counts.AVAILABLE || 0).padStart(2, '0')}
+                {String(tableCounts.AVAILABLE || 0).padStart(2, '0')}
               </div>
             </div>
 
@@ -256,7 +258,7 @@ export default function OperationsCenterPage() {
                 🟡 OCCUPIED
               </div>
               <div className="text-2xl font-extrabold text-[#1F2937] mt-1">
-                {String(tables.counts.OCCUPIED || 0).padStart(2, '0')}
+                {String(tableCounts.OCCUPIED || 0).padStart(2, '0')}
               </div>
             </div>
 
@@ -269,7 +271,7 @@ export default function OperationsCenterPage() {
                 🔴 ATTENTION
               </div>
               <div className="text-2xl font-extrabold text-[#1F2937] mt-1">
-                {String(tables.counts.ATTENTION || 0).padStart(2, '0')}
+                {String(tableCounts.ATTENTION || 0).padStart(2, '0')}
               </div>
             </div>
 
@@ -282,7 +284,7 @@ export default function OperationsCenterPage() {
                 💰 BILL REQUESTED
               </div>
               <div className="text-2xl font-extrabold text-[#1F2937] mt-1">
-                {String(tables.counts.BILL_REQUESTED || 0).padStart(2, '0')}
+                {String(tableCounts.BILL_REQUESTED || 0).padStart(2, '0')}
               </div>
             </div>
 
@@ -295,7 +297,7 @@ export default function OperationsCenterPage() {
                 🧹 CLEANING
               </div>
               <div className="text-2xl font-extrabold text-[#1F2937] mt-1">
-                {String(tables.counts.CLEANING || 0).padStart(2, '0')}
+                {String(tableCounts.CLEANING || 0).padStart(2, '0')}
               </div>
             </div>
 
@@ -308,7 +310,7 @@ export default function OperationsCenterPage() {
                 🔵 RESERVED
               </div>
               <div className="text-2xl font-extrabold text-[#1F2937] mt-1">
-                {String(tables.counts.RESERVED || 0).padStart(2, '0')}
+                {String(tableCounts.RESERVED || 0).padStart(2, '0')}
               </div>
             </div>
           </div>

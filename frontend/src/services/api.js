@@ -36,7 +36,19 @@ api.interceptors.request.use(
     const token = localStorage.getItem('hotel_token') || localStorage.getItem('hms_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      config.headers['x-authorization'] = `Bearer ${token}`;
+      config.headers['x-access-token'] = token;
     }
+
+    // Attach active restaurant slug if on an admin route
+    if (typeof window !== 'undefined' && window.location) {
+      const match = window.location.pathname.match(/\/admin\/([a-zA-Z0-9_-]+)/);
+      const ignored = ['offline', 'history', 'wallet', 'subscription', 'accommodation', 'unclaimed', 'login'];
+      if (match && match[1] && !ignored.includes(match[1])) {
+        config.headers['x-restaurant-slug'] = match[1];
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -45,12 +57,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('hotel_token');
-      localStorage.removeItem('hms_token');
-      localStorage.removeItem('hotel_user');
-      localStorage.removeItem('hotel_admin_restaurant');
-    }
     const message = error.response?.data?.message || error.message || 'An unexpected network error occurred';
     return Promise.reject(new Error(message));
   }
