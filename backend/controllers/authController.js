@@ -551,11 +551,12 @@ async function customerVerifyOtp(req, res) {
     const { phone, otp, name, restaurantId } = req.body;
     const cleanPhone = String(phone || '').replace(/[^0-9]/g, '').slice(-10);
 
-    if (!cleanPhone || !otp) {
+    const submittedOtp = String(otp || '').trim();
+    const isFirebaseVerified = Boolean(req.body.firebaseVerified);
+
+    if (!cleanPhone || (!submittedOtp && !isFirebaseVerified)) {
       return res.status(400).json({ success: false, message: 'Phone and OTP are required.' });
     }
-
-    const submittedOtp = String(otp).trim();
 
     // 1. Try in-memory store
     let stored = customerOtpStore.get(cleanPhone);
@@ -581,15 +582,15 @@ async function customerVerifyOtp(req, res) {
       }
     }
 
-    console.log(`🔍 [Verify OTP Attempt] Phone: ${cleanPhone} | Submitted: "${submittedOtp}" | Stored: "${stored?.otp}" | Expired: ${stored ? (Date.now() > stored.expiresAt) : 'No store'}`);
+    console.log(`🔍 [Verify OTP Attempt] Phone: ${cleanPhone} | Submitted: "${submittedOtp}" | FirebaseVerified: ${isFirebaseVerified} | Stored: "${stored?.otp}"`);
 
     // Universal master demo OTP '1234' works for all numbers
     const isUniversalMaster = (submittedOtp === '1234');
     const isStoredOtpMatch = Boolean(stored && stored.otp === submittedOtp);
     const isNotExpired = Boolean(stored && Date.now() <= (Number(stored.expiresAt) + 15 * 60 * 1000));
 
-    // Valid if universal code OR matching OTP within expiration window (even if verified previously in this session)
-    const isValid = isUniversalMaster || (isStoredOtpMatch && isNotExpired);
+    // Valid if Firebase verified, universal code, or matching OTP within window
+    const isValid = isFirebaseVerified || isUniversalMaster || (isStoredOtpMatch && isNotExpired);
 
     if (!isValid) {
       if (isStoredOtpMatch && !isNotExpired) {

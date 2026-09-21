@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { auth } from '../../config/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import {
   Phone, User, ArrowRight, ShieldCheck, Sparkles, MessageSquare,
   CheckCircle2, RotateCcw, AlertCircle, Utensils, Star, Lock,
@@ -27,10 +29,12 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
   const [step, setStep] = useState('PHONE'); // 'PHONE' or 'OTP'
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpPreview, setOtpPreview] = useState(null);
   const [whatsappLink, setWhatsappLink] = useState(null);
   const [whatsappSent, setWhatsappSent] = useState(null);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [smsSent, setSmsSent] = useState(false);
 
   const [restaurant, setRestaurant] = useState(null);
   const [loadingRest, setLoadingRest] = useState(true);
@@ -39,7 +43,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  const digitRefs = [useRef(), useRef(), useRef(), useRef()];
+  const digitRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
 
   // Fetch restaurant branding
   useEffect(() => {
@@ -81,6 +85,38 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
 
     setLoading(true);
     setError(null);
+    setSmsSent(false);
+
+    // 1. Trigger Google Firebase Phone SMS Authentication
+    try {
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {},
+          'expired-callback': () => {
+            if (window.recaptchaVerifier) {
+              try { window.recaptchaVerifier.clear(); } catch (e) {}
+              window.recaptchaVerifier = null;
+            }
+          }
+        });
+      }
+      const appVerifier = window.recaptchaVerifier;
+      const formattedPhone = `+91${clean}`;
+      console.log('📲 Dispatching Google Firebase SMS to:', formattedPhone);
+      const confResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      setConfirmationResult(confResult);
+      setSmsSent(true);
+      console.log('✅ Firebase SMS dispatched successfully!');
+    } catch (fbErr) {
+      console.warn('Firebase Phone Auth notice:', fbErr.message);
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch (e) {}
+        window.recaptchaVerifier = null;
+      }
+    }
+
+    // 2. Call backend for session persistence & test code fallback
     try {
       const res = await api.post('/auth/customer/send-otp', {
         phone: clean,
@@ -92,30 +128,31 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
         setOtpPreview(res.data.otpPreview);
         setWhatsappLink(res.data.whatsappDeepLink);
         setWhatsappSent(res.data.whatsappSent !== undefined ? Boolean(res.data.whatsappSent) : null);
-        setStep('OTP');
-        setTimeout(() => {
-          if (digitRefs[0].current) digitRefs[0].current.focus();
-        }, 200);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP code. Please try again.');
+      console.warn('Backend send-otp warning:', err.message);
     } finally {
       setLoading(false);
+      setStep('OTP');
+      setTimeout(() => {
+        if (digitRefs[0].current) digitRefs[0].current.focus();
+      }, 200);
     }
   };
 
   const handleDigitChange = (index, value) => {
     if (value.length > 1) {
-      const pasted = value.replace(/[^0-9]/g, '').slice(0, 4).split('');
+      const pasted = value.replace(/[^0-9]/g, '').slice(0, 6).split('');
       const newDigits = [...otpDigits];
       pasted.forEach((d, idx) => {
-        if (index + idx < 4) newDigits[index + idx] = d;
+        if (index + idx < 6) newDigits[index + idx] = d;
       });
       setOtpDigits(newDigits);
-      const nextIdx = Math.min(index + pasted.length, 3);
+      const nextIdx = Math.min(index + pasted.length, 5);
       if (digitRefs[nextIdx].current) digitRefs[nextIdx].current.focus();
-      if (newDigits.every(d => d !== '')) {
-        verifyCode(newDigits.join(''));
+      const codeStr = newDigits.filter(Boolean).join('');
+      if (codeStr.length === 6 || codeStr.length === 4) {
+        verifyCode(codeStr);
       }
       return;
     }
@@ -125,12 +162,13 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
     newDigits[index] = clean;
     setOtpDigits(newDigits);
 
-    if (clean && index < 3 && digitRefs[index + 1].current) {
+    if (clean && index < 5 && digitRefs[index + 1].current) {
       digitRefs[index + 1].current.focus();
     }
 
-    if (newDigits.every(d => d !== '')) {
-      verifyCode(newDigits.join(''));
+    const filledCount = newDigits.filter(Boolean).length;
+    if (filledCount === 6 || filledCount === 4) {
+      verifyCode(newDigits.filter(Boolean).join(''));
     }
   };
 
@@ -145,15 +183,40 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
   const verifyCode = async (codeToVerify) => {
     if (verifyingRef.current) return;
 
-    const code = codeToVerify || otpDigits.join('');
+    const code = codeToVerify || otpDigits.filter(Boolean).join('');
     if (code.length < 4) {
-      setError('Please enter all 4 digits of the verification code.');
+      setError('Please enter the verification code.');
       return;
     }
 
     verifyingRef.current = true;
     setVerifying(true);
     setError(null);
+
+    let isFirebaseSuccess = false;
+
+    // 1. If Firebase confirmation result is active and user provided 6 digits
+    if (confirmationResult && code.length === 6) {
+      try {
+        const userCredential = await confirmationResult.confirm(code);
+        if (userCredential?.user) {
+          isFirebaseSuccess = true;
+          console.log('✅ Firebase SMS OTP Verified Successfully!');
+        }
+      } catch (fbVerifyErr) {
+        console.warn('Firebase confirm notice:', fbVerifyErr.message);
+        if (code !== '1234' && code !== otpPreview) {
+          setError(
+            fbVerifyErr.message?.includes('invalid-verification-code')
+              ? 'Invalid SMS OTP code. Please check the 6-digit code received on your phone.'
+              : (fbVerifyErr.message || 'SMS verification failed. Enter 1234 to bypass.')
+          );
+          verifyingRef.current = false;
+          setVerifying(false);
+          return;
+        }
+      }
+    }
 
     let res;
     try {
@@ -162,7 +225,8 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
         phone: clean,
         otp: code,
         name: name.trim() || undefined,
-        restaurantId: restaurant?.id || 1
+        restaurantId: restaurant?.id || 1,
+        firebaseVerified: isFirebaseSuccess
       });
     } catch (apiErr) {
       console.error('CustomerAuthPage verify-otp API error:', apiErr);
@@ -416,22 +480,26 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
             /* STEP 2: HIGH-AESTHETIC OTP INPUT */
             <div className="space-y-5">
 
-              {/* WhatsApp Delivery Status Banner */}
-              {whatsappSent === true && (
+              {/* Delivery Status Banner */}
+              {smsSent ? (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+                  <span className="text-lg">💬</span>
+                  <span>Google SMS OTP dispatched to <strong>+91 {phone}</strong>! Enter the 6-digit code received.</span>
+                </div>
+              ) : whatsappSent === true ? (
                 <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
                   <span className="text-lg">📲</span>
                   <span>Code delivered to your WhatsApp from <strong>hms</strong>! Tap <strong>"Copy Code"</strong> in your chat.</span>
                 </div>
-              )}
-              {whatsappSent === false && (
-                <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs leading-relaxed flex items-start gap-2.5">
-                  <span className="text-base shrink-0 mt-0.5">ℹ️</span>
-                  <span>WhatsApp direct message not sent (Note: Meta Cloud API cannot send WhatsApp messages to its own sender number <code>+91 79751 08070</code>). Use the auto-fill code below or test with another mobile number!</span>
+              ) : (
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-slate-300 text-xs flex items-center gap-2">
+                  <span className="text-base">🔑</span>
+                  <span>Enter verification code sent to <strong>+91 {phone}</strong> (or use 1-tap quick code below).</span>
                 </div>
               )}
 
-              {/* 4 Glowing Digit Boxes */}
-              <div className="flex items-center justify-center gap-3.5 py-1 w-full max-w-xs mx-auto">
+              {/* 6 Glowing Digit Boxes */}
+              <div className="flex items-center justify-center gap-2 sm:gap-2.5 py-1 w-full max-w-sm mx-auto">
                 {otpDigits.map((digit, index) => (
                   <input
                     key={index}
@@ -442,8 +510,8 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                     value={digit}
                     onChange={(e) => handleDigitChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    style={{ width: '56px', height: '64px', minWidth: '56px', maxWidth: '56px' }}
-                    className="w-14 h-16 shrink-0 text-center font-mono text-2xl font-black rounded-2xl bg-white/10 border-2 border-white/20 text-white focus:border-emerald-400 focus:bg-white/15 focus:ring-4 focus:ring-emerald-500/30 outline-none transition-all shadow-inner"
+                    style={{ width: '44px', height: '54px' }}
+                    className="w-11 h-14 shrink-0 text-center font-mono text-xl sm:text-2xl font-black rounded-xl sm:rounded-2xl bg-white/10 border-2 border-white/20 text-white focus:border-emerald-400 focus:bg-white/15 focus:ring-4 focus:ring-emerald-500/30 outline-none transition-all shadow-inner"
                   />
                 ))}
               </div>
@@ -475,7 +543,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                       type="button"
                       onClick={() => {
                         const digits = otpPreview.split('');
-                        setOtpDigits(digits);
+                        setOtpDigits([...digits, '', '']);
                         setError(null);
                         verifyCode(otpPreview);
                       }}
@@ -490,7 +558,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                   <button
                     type="button"
                     onClick={() => {
-                      setOtpDigits(['1', '2', '3', '4']);
+                      setOtpDigits(['1', '2', '3', '4', '', '']);
                       setError(null);
                       verifyCode('1234');
                     }}
@@ -505,7 +573,11 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
               <div className="flex items-center justify-between text-xs text-slate-400 px-1">
                 <button
                   type="button"
-                  onClick={() => setStep('PHONE')}
+                  onClick={() => {
+                    setStep('PHONE');
+                    setConfirmationResult(null);
+                    setOtpDigits(['', '', '', '', '', '']);
+                  }}
                   className="font-bold hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -524,7 +596,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
               <button
                 type="button"
                 onClick={() => verifyCode()}
-                disabled={verifying || otpDigits.some(d => d === '')}
+                disabled={verifying || otpDigits.filter(Boolean).length < 4}
                 className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 transition-all transform active:scale-[0.98] cursor-pointer"
               >
                 {verifying ? (
@@ -539,6 +611,9 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
 
             </div>
           )}
+
+          {/* Invisible Google reCAPTCHA Anchor */}
+          <div id="recaptcha-container"></div>
 
           {/* Loyalty Guarantee Banner */}
           <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
