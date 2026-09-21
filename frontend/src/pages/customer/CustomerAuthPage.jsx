@@ -30,6 +30,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
   const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
   const [otpPreview, setOtpPreview] = useState(null);
   const [whatsappLink, setWhatsappLink] = useState(null);
+  const [whatsappSent, setWhatsappSent] = useState(null);
 
   const [restaurant, setRestaurant] = useState(null);
   const [loadingRest, setLoadingRest] = useState(true);
@@ -90,6 +91,7 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
       if (res.data.success) {
         setOtpPreview(res.data.otpPreview);
         setWhatsappLink(res.data.whatsappDeepLink);
+        setWhatsappSent(res.data.whatsappSent !== undefined ? Boolean(res.data.whatsappSent) : null);
         setStep('OTP');
         setTimeout(() => {
           if (digitRefs[0].current) digitRefs[0].current.focus();
@@ -413,7 +415,21 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
           ) : (
             /* STEP 2: HIGH-AESTHETIC OTP INPUT */
             <div className="space-y-5">
-              
+
+              {/* WhatsApp Delivery Status Banner */}
+              {whatsappSent === true && (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+                  <span className="text-lg">📲</span>
+                  <span>Code delivered to your WhatsApp from <strong>hms</strong>! Tap <strong>"Copy Code"</strong> in your chat.</span>
+                </div>
+              )}
+              {whatsappSent === false && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs leading-relaxed flex items-start gap-2.5">
+                  <span className="text-base shrink-0 mt-0.5">ℹ️</span>
+                  <span>WhatsApp direct message not sent (Note: Meta Cloud API cannot send WhatsApp messages to its own sender number <code>+91 79751 08070</code>). Use the auto-fill code below or test with another mobile number!</span>
+                </div>
+              )}
+
               {/* 4 Glowing Digit Boxes */}
               <div className="flex items-center justify-center gap-3.5 py-1 w-full max-w-xs mx-auto">
                 {otpDigits.map((digit, index) => (
