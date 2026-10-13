@@ -1060,12 +1060,9 @@ async function getAdminDrivers(req, res) {
     const params = [];
     const wheres = [];
 
-    if (!req.isSuperAdmin) {
-      wheres.push('(d.restaurant_id = ? OR dra.restaurant_id = ?)');
+    if (targetRestId) {
+      wheres.push('(dra.restaurant_id = ? OR (dra.restaurant_id IS NULL AND d.restaurant_id = ?))');
       params.push(targetRestId, targetRestId);
-    } else if (restaurant_id) {
-      wheres.push('(d.restaurant_id = ? OR dra.restaurant_id = ?)');
-      params.push(restaurant_id, restaurant_id);
     }
 
     if (availability) {
@@ -1085,13 +1082,32 @@ async function getAdminDrivers(req, res) {
     }
 
     if (wheres.length > 0) sql += ' WHERE ' + wheres.join(' AND ');
+    sql += ` ORDER BY d.id DESC`;
+
     let rawDrivers = await query(sql, params);
-    if ((!rawDrivers || rawDrivers.length === 0) && !search && targetRestId) {
-      try {
-        const { ensureFleetAssignedToRestaurant } = require('./driverPayoutController');
-        await ensureFleetAssignedToRestaurant(targetRestId);
-        rawDrivers = await query(sql, params);
-      } catch (e) {}
+
+    // If viewing a non-demo restaurant (targetRestId > 1), prune any demo drivers that were mistakenly auto-linked
+    if (targetRestId > 1 && rawDrivers && rawDrivers.length > 0) {
+      const hasDemoDriver = rawDrivers.some(d => d.email && ['superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com', 'rahul.testrider@gmail.com'].includes(d.email));
+      if (hasDemoDriver) {
+        try {
+          await query(
+            `DELETE dra FROM driver_restaurant_assignments dra
+             JOIN delivery_drivers d ON dra.driver_id = d.id
+             JOIN users u ON d.user_id = u.id
+             WHERE dra.restaurant_id = ? AND u.email IN (
+               'superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com',
+               'rahul.testrider@gmail.com', 'rider_1786684344995@test.com',
+               '9891232099@hotel.com', 'nithinmyfriends007@gmail.com',
+               'rider_1786533289201@test.com', 'raj@gmail.com', 'amit.rider@hotel.com',
+               'suresh.rider@hotel.com', 'arjun.rider@hotel.com', 'ganesh.rider@hotel.com',
+               'manju.rider@hotel.com'
+             )`,
+            [targetRestId]
+          );
+          rawDrivers = await query(sql, params);
+        } catch (e) {}
+      }
     }
     const seenIds = new Set();
     const drivers = [];

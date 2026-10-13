@@ -459,8 +459,8 @@ async function getAdminDriverPayouts(req, res) {
       [targetRestId, targetRestId]
     );
 
-    // If no drivers assigned to this restaurant yet, auto-provision and assign fleet so hotel admin has active drivers!
-    if (!drivers || drivers.length === 0) {
+    // Only auto-assign demo fleet for demo restaurant #1!
+    if ((!drivers || drivers.length === 0) && targetRestId === 1) {
       await ensureFleetAssignedToRestaurant(targetRestId);
       drivers = await query(
         `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
@@ -473,6 +473,40 @@ async function getAdminDriverPayouts(req, res) {
          ORDER BY d.id DESC`,
         [targetRestId, targetRestId]
       );
+    }
+
+    // For non-demo restaurants (targetRestId > 1), prune any demo drivers that were mistakenly auto-linked
+    if (targetRestId > 1 && drivers && drivers.length > 0) {
+      const hasDemoDriver = drivers.some(d => d.email && ['superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com', 'rahul.testrider@gmail.com'].includes(d.email));
+      if (hasDemoDriver) {
+        try {
+          await query(
+            `DELETE dra FROM driver_restaurant_assignments dra
+             JOIN delivery_drivers d ON dra.driver_id = d.id
+             JOIN users u ON d.user_id = u.id
+             WHERE dra.restaurant_id = ? AND u.email IN (
+               'superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com',
+               'rahul.testrider@gmail.com', 'rider_1786684344995@test.com',
+               '9891232099@hotel.com', 'nithinmyfriends007@gmail.com',
+               'rider_1786533289201@test.com', 'raj@gmail.com', 'amit.rider@hotel.com',
+               'suresh.rider@hotel.com', 'arjun.rider@hotel.com', 'ganesh.rider@hotel.com',
+               'manju.rider@hotel.com'
+             )`,
+            [targetRestId]
+          );
+          drivers = await query(
+            `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
+                    d.vehicle_type, d.vehicle_number, d.account_status, d.availability_status,
+                    u.name as user_name, u.phone as user_phone
+             FROM delivery_drivers d
+             LEFT JOIN users u ON d.user_id = u.id
+             LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
+             WHERE (dra.restaurant_id = ? OR (dra.restaurant_id IS NULL AND d.restaurant_id = ?))
+             ORDER BY d.id DESC`,
+            [targetRestId, targetRestId]
+          );
+        } catch (e) {}
+      }
     }
 
     let fleetTotalPending = 0;

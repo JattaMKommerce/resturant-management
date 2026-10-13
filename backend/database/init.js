@@ -1625,14 +1625,11 @@ async function initDatabase(options = {}) {
         console.warn('restaurant_feature_controls init warning:', fErr.message);
       }
 
-      // Ensure Delivery Fleet & Payout Structure for all registered restaurants
+      // Ensure Delivery Fleet & Payout Structure for primary demo restaurant (#1)
       try {
         await ensureEssentialFleetDrivers(conn);
-        const [allRests] = await conn.query('SELECT id FROM restaurants');
-        for (const r of allRests) {
-          await ensureFleetAssignedToRestaurant(conn, r.id);
-        }
-        console.log('✅ Delivery fleet & payout profiles synced across all restaurants.');
+        await ensureFleetAssignedToRestaurant(conn, 1);
+        console.log('✅ Demo delivery fleet & payout profiles synced for primary restaurant #1.');
       } catch (fDrvErr) {
         console.warn('Fleet drivers init warning:', fDrvErr.message);
       }

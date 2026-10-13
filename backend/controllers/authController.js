@@ -144,14 +144,6 @@ async function registerRestaurant(req, res) {
       console.warn('Trial auto-provisioning warning:', trialErr.message);
     }
 
-    // Auto-provision Delivery Fleet and Payout Structure
-    try {
-      const { ensureFleetAssignedToRestaurant } = require('./driverPayoutController');
-      await ensureFleetAssignedToRestaurant(restaurantId);
-    } catch (fleetErr) {
-      console.warn('Fleet auto-provisioning warning:', fleetErr.message);
-    }
-
     // Generate JWT Token
     const token = jwt.sign(
       { id: adminUserId, email: adminEmail, name: adminName, role: 'RESTAURANT_ADMIN' },
