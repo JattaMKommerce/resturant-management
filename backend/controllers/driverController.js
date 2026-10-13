@@ -1022,6 +1022,38 @@ async function getAdminDrivers(req, res) {
       targetRestId = (req.adminRestaurantIds && req.adminRestaurantIds[0]) || (req.user?.restaurant_id) || 1;
     }
 
+    // For any non-demo restaurant (targetRestId > 1), purge any legacy/demo/foreign drivers & assignments
+    if (targetRestId > 1) {
+      try {
+        await query(
+          `DELETE dra FROM driver_restaurant_assignments dra
+           JOIN delivery_drivers d ON dra.driver_id = d.id
+           WHERE dra.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+        await query(
+          `DELETE ps FROM driver_payout_settings ps
+           JOIN delivery_drivers d ON ps.driver_id = d.id
+           WHERE ps.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+        await query(
+          `DELETE tx FROM driver_wallet_transactions tx
+           JOIN delivery_drivers d ON tx.driver_id = d.id
+           WHERE tx.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+        await query(
+          `DELETE s FROM driver_payout_settlements s
+           JOIN delivery_drivers d ON s.driver_id = d.id
+           WHERE s.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+      } catch (cleanErr) {
+        console.warn('Driver restaurant cleanup notice:', cleanErr.message);
+      }
+    }
+
     let sql = `
       SELECT DISTINCT
              d.id,
@@ -1060,9 +1092,12 @@ async function getAdminDrivers(req, res) {
     const params = [];
     const wheres = [];
 
-    if (targetRestId) {
-      wheres.push('(dra.restaurant_id = ? OR (dra.restaurant_id IS NULL AND d.restaurant_id = ?))');
-      params.push(targetRestId, targetRestId);
+    if (targetRestId > 1) {
+      // STRICT restaurant ownership: ONLY drivers created for this hotel
+      wheres.push('d.restaurant_id = ?');
+      params.push(targetRestId);
+    } else if (targetRestId === 1) {
+      wheres.push('(dra.restaurant_id = 1 OR d.restaurant_id = 1)');
     }
 
     if (availability) {
@@ -1086,29 +1121,6 @@ async function getAdminDrivers(req, res) {
 
     let rawDrivers = await query(sql, params);
 
-    // If viewing a non-demo restaurant (targetRestId > 1), prune any demo drivers that were mistakenly auto-linked
-    if (targetRestId > 1 && rawDrivers && rawDrivers.length > 0) {
-      const hasDemoDriver = rawDrivers.some(d => d.email && ['superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com', 'rahul.testrider@gmail.com'].includes(d.email));
-      if (hasDemoDriver) {
-        try {
-          await query(
-            `DELETE dra FROM driver_restaurant_assignments dra
-             JOIN delivery_drivers d ON dra.driver_id = d.id
-             JOIN users u ON d.user_id = u.id
-             WHERE dra.restaurant_id = ? AND u.email IN (
-               'superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com',
-               'rahul.testrider@gmail.com', 'rider_1786684344995@test.com',
-               '9891232099@hotel.com', 'nithinmyfriends007@gmail.com',
-               'rider_1786533289201@test.com', 'raj@gmail.com', 'amit.rider@hotel.com',
-               'suresh.rider@hotel.com', 'arjun.rider@hotel.com', 'ganesh.rider@hotel.com',
-               'manju.rider@hotel.com'
-             )`,
-            [targetRestId]
-          );
-          rawDrivers = await query(sql, params);
-        } catch (e) {}
-      }
-    }
     const seenIds = new Set();
     const drivers = [];
 
@@ -1116,24 +1128,24 @@ async function getAdminDrivers(req, res) {
       if (seenIds.has(drv.id)) continue;
       seenIds.add(drv.id);
 
-      // Compute delivered stats
+      // Compute delivered stats for this restaurant
       const [orderStats] = await query(
         `SELECT 
            COUNT(CASE WHEN order_status = 'DELIVERED' THEN 1 END) as delivered_count,
            COUNT(CASE WHEN order_status = 'DELIVERED' AND DATE(created_at) = CURDATE() THEN 1 END) as today_delivered_count
-         FROM orders WHERE assigned_driver_id = ?`,
-        [drv.id]
+         FROM orders WHERE assigned_driver_id = ? AND (restaurant_id = ? OR ? = 1)`,
+        [drv.id, targetRestId, targetRestId]
       );
       drv.delivered_orders_count = Number(orderStats?.delivered_count || 0);
       drv.today_delivered_count = Number(orderStats?.today_delivered_count || 0);
 
-      // Fetch active delivery (if any)
+      // Fetch active delivery (if any) for this restaurant
       const [activeOrder] = await query(
         `SELECT id, order_number, total_amount, order_status, delivery_address, customer_phone, customer_name, created_at
          FROM orders 
-         WHERE assigned_driver_id = ? AND order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
+         WHERE assigned_driver_id = ? AND (restaurant_id = ? OR ? = 1) AND order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
          ORDER BY id DESC LIMIT 1`,
-        [drv.id]
+        [drv.id, targetRestId, targetRestId]
       );
       drv.active_order = activeOrder || null;
 

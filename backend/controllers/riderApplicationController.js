@@ -382,6 +382,7 @@ async function approveApplication(req, res) {
         driverId = existingDrivers[0].id;
         await conn.query(
           `UPDATE delivery_drivers SET
+            restaurant_id = COALESCE(restaurant_id, ?),
             full_name = ?, mobile = ?, email = ?, date_of_birth = ?,
             home_city = ?, current_city = ?, current_address = ?, emergency_contact = ?,
             vehicle_type = ?, vehicle_number = ?, 
@@ -390,6 +391,7 @@ async function approveApplication(req, res) {
             account_status = 'ACTIVE', approval_status = 'APPROVED'
            WHERE id = ?`,
           [
+            app.restaurant_id,
             app.full_name, app.mobile, app.email, app.date_of_birth,
             app.home_city, app.current_city, app.current_address, app.emergency_contact,
             app.vehicle_type, app.vehicle_number || 'TEMP-000', selfiePath, selfieData,
@@ -399,12 +401,12 @@ async function approveApplication(req, res) {
       } else {
         const [driverRes] = await conn.query(
           `INSERT INTO delivery_drivers (
-            user_id, full_name, mobile, email, date_of_birth,
+            user_id, restaurant_id, full_name, mobile, email, date_of_birth,
             home_city, current_city, current_address, emergency_contact,
             vehicle_type, vehicle_number, selfie_path, selfie_data, account_status, availability_status, approval_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED')`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'OFFLINE', 'APPROVED')`,
           [
-            userId, app.full_name, app.mobile, app.email, app.date_of_birth,
+            userId, app.restaurant_id, app.full_name, app.mobile, app.email, app.date_of_birth,
             app.home_city, app.current_city, app.current_address, app.emergency_contact,
             app.vehicle_type, app.vehicle_number || 'TEMP-000', selfiePath, selfieData
           ]

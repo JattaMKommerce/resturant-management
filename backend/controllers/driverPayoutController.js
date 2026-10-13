@@ -137,7 +137,7 @@ async function ensureEssentialFleetDrivers() {
 
 async function ensureFleetAssignedToRestaurant(restaurantId) {
   try {
-    if (!restaurantId) return;
+    if (!restaurantId || restaurantId !== 1) return;
     await ensureDriverPayoutTables();
     await ensureEssentialFleetDrivers();
 
@@ -446,22 +446,40 @@ async function getAdminDriverPayouts(req, res) {
     await ensureDriverPayoutTables();
     const targetRestId = await getTargetRestaurantId(req);
 
-    // Fetch all drivers assigned to this restaurant
-    let drivers = await query(
-      `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
-              d.vehicle_type, d.vehicle_number, d.account_status, d.availability_status,
-              u.name as user_name, u.phone as user_phone
-       FROM delivery_drivers d
-       LEFT JOIN users u ON d.user_id = u.id
-       LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
-       WHERE (dra.restaurant_id = ? OR (dra.restaurant_id IS NULL AND d.restaurant_id = ?))
-       ORDER BY d.id DESC`,
-      [targetRestId, targetRestId]
-    );
+    // For any non-demo restaurant (targetRestId > 1), purge any legacy/demo/foreign drivers & assignments
+    if (targetRestId > 1) {
+      try {
+        await query(
+          `DELETE dra FROM driver_restaurant_assignments dra
+           JOIN delivery_drivers d ON dra.driver_id = d.id
+           WHERE dra.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+        await query(
+          `DELETE ps FROM driver_payout_settings ps
+           JOIN delivery_drivers d ON ps.driver_id = d.id
+           WHERE ps.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+        await query(
+          `DELETE tx FROM driver_wallet_transactions tx
+           JOIN delivery_drivers d ON tx.driver_id = d.id
+           WHERE tx.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+        await query(
+          `DELETE s FROM driver_payout_settlements s
+           JOIN delivery_drivers d ON s.driver_id = d.id
+           WHERE s.restaurant_id = ? AND (d.restaurant_id != ? OR d.restaurant_id IS NULL)`,
+          [targetRestId, targetRestId]
+        );
+      } catch (cleanErr) {
+        console.warn('Driver payout cleanup notice:', cleanErr.message);
+      }
+    }
 
-    // Only auto-assign demo fleet for demo restaurant #1!
-    if ((!drivers || drivers.length === 0) && targetRestId === 1) {
-      await ensureFleetAssignedToRestaurant(targetRestId);
+    let drivers = [];
+    if (targetRestId === 1) {
       drivers = await query(
         `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
                 d.vehicle_type, d.vehicle_number, d.account_status, d.availability_status,
@@ -469,44 +487,34 @@ async function getAdminDriverPayouts(req, res) {
          FROM delivery_drivers d
          LEFT JOIN users u ON d.user_id = u.id
          LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
-         WHERE (dra.restaurant_id = ? OR (dra.restaurant_id IS NULL AND d.restaurant_id = ?))
-         ORDER BY d.id DESC`,
-        [targetRestId, targetRestId]
+         WHERE (dra.restaurant_id = 1 OR d.restaurant_id = 1)
+         ORDER BY d.id DESC`
       );
-    }
-
-    // For non-demo restaurants (targetRestId > 1), prune any demo drivers that were mistakenly auto-linked
-    if (targetRestId > 1 && drivers && drivers.length > 0) {
-      const hasDemoDriver = drivers.some(d => d.email && ['superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com', 'rahul.testrider@gmail.com'].includes(d.email));
-      if (hasDemoDriver) {
-        try {
-          await query(
-            `DELETE dra FROM driver_restaurant_assignments dra
-             JOIN delivery_drivers d ON dra.driver_id = d.id
-             JOIN users u ON d.user_id = u.id
-             WHERE dra.restaurant_id = ? AND u.email IN (
-               'superadmin@gmail.com', 'testrider@hotel.com', 'driver1@hotel.com',
-               'rahul.testrider@gmail.com', 'rider_1786684344995@test.com',
-               '9891232099@hotel.com', 'nithinmyfriends007@gmail.com',
-               'rider_1786533289201@test.com', 'raj@gmail.com', 'amit.rider@hotel.com',
-               'suresh.rider@hotel.com', 'arjun.rider@hotel.com', 'ganesh.rider@hotel.com',
-               'manju.rider@hotel.com'
-             )`,
-            [targetRestId]
-          );
-          drivers = await query(
-            `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
-                    d.vehicle_type, d.vehicle_number, d.account_status, d.availability_status,
-                    u.name as user_name, u.phone as user_phone
-             FROM delivery_drivers d
-             LEFT JOIN users u ON d.user_id = u.id
-             LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
-             WHERE (dra.restaurant_id = ? OR (dra.restaurant_id IS NULL AND d.restaurant_id = ?))
-             ORDER BY d.id DESC`,
-            [targetRestId, targetRestId]
-          );
-        } catch (e) {}
+      if (!drivers || drivers.length === 0) {
+        await ensureFleetAssignedToRestaurant(1);
+        drivers = await query(
+          `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
+                  d.vehicle_type, d.vehicle_number, d.account_status, d.availability_status,
+                  u.name as user_name, u.phone as user_phone
+           FROM delivery_drivers d
+           LEFT JOIN users u ON d.user_id = u.id
+           LEFT JOIN driver_restaurant_assignments dra ON dra.driver_id = d.id
+           WHERE (dra.restaurant_id = 1 OR d.restaurant_id = 1)
+           ORDER BY d.id DESC`
+        );
       }
+    } else {
+      // Non-demo hotels: STRICT isolation! Only drivers created for this restaurant!
+      drivers = await query(
+        `SELECT DISTINCT d.id, d.user_id, d.restaurant_id, d.full_name, d.mobile, d.email,
+                d.vehicle_type, d.vehicle_number, d.account_status, d.availability_status,
+                u.name as user_name, u.phone as user_phone
+         FROM delivery_drivers d
+         LEFT JOIN users u ON d.user_id = u.id
+         WHERE d.restaurant_id = ?
+         ORDER BY d.id DESC`,
+        [targetRestId]
+      );
     }
 
     let fleetTotalPending = 0;
@@ -534,7 +542,7 @@ async function getAdminDriverPayouts(req, res) {
         await query(
           `INSERT INTO driver_payout_settings 
            (restaurant_id, driver_id, has_salary, salary_amount, salary_frequency, has_commission, commission_percentage, has_incentive, incentive_amount, incentive_type, notes, created_at, updated_at)
-           VALUES (?, ?, 1, 15000.00, 'MONTHLY', 1, 10.00, 1, 25.00, 'PER_ORDER', 'Auto-provisioned dedicated restaurant package', NOW(), NOW())
+           VALUES (?, ?, 0, 0.00, 'MONTHLY', 1, 5.00, 1, 20.00, 'PER_ORDER', 'Auto-provisioned dedicated restaurant package', NOW(), NOW())
            ON DUPLICATE KEY UPDATE updated_at = NOW()`,
           [targetRestId, drv.id]
         );
@@ -544,16 +552,16 @@ async function getAdminDriverPayouts(req, res) {
         );
       }
 
-      if (settings) {
+      if (settings && Boolean(settings.has_salary) && parseFloat(settings.salary_amount || 0) > 0) {
         await syncDriverSalaryForPeriod(targetRestId, drv.id, settings);
       }
 
-      // 2. Delivered Orders Count
+      // 2. Delivered Orders Count for this restaurant
       const [orderStats] = await query(
         `SELECT COUNT(*) as delivered_count 
          FROM orders 
-         WHERE assigned_driver_id = ? AND order_status = 'DELIVERED'`,
-        [drv.id]
+         WHERE assigned_driver_id = ? AND (restaurant_id = ? OR ? = 1) AND order_status = 'DELIVERED'`,
+        [drv.id, targetRestId, targetRestId]
       );
 
       // 3. Compute Pending Balances

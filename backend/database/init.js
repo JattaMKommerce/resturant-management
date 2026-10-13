@@ -123,12 +123,12 @@ async function initDatabase(options = {}) {
         await ensureDriverPayoutTables(connection);
         await ensureEssentialFleetDrivers(connection);
 
-        // Seed / Ensure menu and driver fleet for all restaurants in database
+        // Seed / Ensure menu for all restaurants in database
         const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
         for (const r of allRestaurants) {
           await ensureRestaurantMenu(connection, r.id);
-          await ensureFleetAssignedToRestaurant(connection, r.id);
         }
+        await ensureFleetAssignedToRestaurant(connection, 1);
 
       } catch (err) {
         console.error('❌ Database initialization error:', err);
@@ -810,7 +810,7 @@ async function initDatabase(options = {}) {
 
     async function ensureFleetAssignedToRestaurant(conn, restaurantId) {
       try {
-        if (!restaurantId) return;
+        if (!restaurantId || restaurantId !== 1) return;
         const [drivers] = await conn.query(
           `SELECT id FROM delivery_drivers WHERE account_status = 'ACTIVE' OR account_status IS NULL ORDER BY id ASC LIMIT 14`
         );
