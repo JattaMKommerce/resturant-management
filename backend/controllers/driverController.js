@@ -1403,29 +1403,40 @@ async function getAdminDriverById(req, res) {
     };
 
     // Active order (if currently out on delivery)
-    const [activeOrder] = await query(
-      `SELECT o.*, r.name as restaurant_name, r.address as restaurant_address
-       FROM orders o
-       JOIN restaurants r ON o.restaurant_id = r.id
-       WHERE o.assigned_driver_id = ? AND o.order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
-       ORDER BY o.id DESC LIMIT 1`,
-      [driver.id]
-    );
-    if (activeOrder) {
-      activeOrder.items = await query('SELECT * FROM order_items WHERE order_id = ?', [activeOrder.id]);
+    let activeOrder = null;
+    try {
+      const [ao] = await query(
+        `SELECT o.*, r.name as restaurant_name, r.address as restaurant_address
+         FROM orders o
+         JOIN restaurants r ON o.restaurant_id = r.id
+         WHERE o.assigned_driver_id = ? AND o.order_status IN ('ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
+         ORDER BY o.id DESC LIMIT 1`,
+        [driver.id]
+      );
+      if (ao) {
+        ao.items = await query('SELECT * FROM order_items WHERE order_id = ?', [ao.id]);
+        activeOrder = ao;
+      }
+    } catch (aoErr) {
+      console.warn('Active order fetch warning:', aoErr.message);
     }
 
     // Recent 20 delivered orders
-    const recentDeliveries = await query(
-      `SELECT o.id, o.order_number, o.total_amount, o.order_status, o.delivery_address, 
-              o.customer_name, o.customer_phone, o.payment_method, o.created_at, o.updated_at
-       FROM orders o
-       WHERE o.assigned_driver_id = ? AND o.order_status = 'DELIVERED'
-       ORDER BY o.updated_at DESC LIMIT 20`,
-      [driver.id]
-    );
-    for (let ord of recentDeliveries) {
-      ord.items = await query('SELECT item_name, quantity, price FROM order_items WHERE order_id = ?', [ord.id]);
+    let recentDeliveries = [];
+    try {
+      recentDeliveries = await query(
+        `SELECT o.id, o.order_number, o.total_amount, o.order_status, o.delivery_address, 
+                o.customer_name, o.customer_phone, o.payment_method, o.created_at, o.updated_at
+         FROM orders o
+         WHERE o.assigned_driver_id = ? AND o.order_status = 'DELIVERED'
+         ORDER BY o.updated_at DESC LIMIT 20`,
+        [driver.id]
+      );
+      for (let ord of recentDeliveries) {
+        ord.items = await query('SELECT item_name, quantity, COALESCE(unit_price, 0) as price, COALESCE(unit_price, 0) as unit_price FROM order_items WHERE order_id = ?', [ord.id]);
+      }
+    } catch (rdErr) {
+      console.warn('Recent deliveries fetch warning:', rdErr.message);
     }
 
     // Clean sensitive raw BLOBs
@@ -1434,29 +1445,56 @@ async function getAdminDriverById(req, res) {
     delete driver.aadhaar_data;
 
     // Fetch compensation settings & live wallet summary for dedicated restaurant
-    const targetRestId = driver.restaurant_id || 1;
-    let [settings] = await query(
-      'SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?',
-      [targetRestId, driver.id]
-    );
+    let settings = null;
+    let walletSummary = {
+      total_collectible: 0,
+      pending_salary: 0,
+      pending_commission: 0,
+      pending_incentive: 0,
+      lifetime_settled: 0
+    };
 
-    const [walletBalances] = await query(
-      `SELECT 
-         COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_SALARY' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_salary,
-         COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_COMMISSION' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_commission,
-         COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_INCENTIVE' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_incentive,
-         COALESCE(SUM(CASE WHEN status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as total_collectible
-       FROM driver_wallet_transactions
-       WHERE driver_id = ? AND restaurant_id = ?`,
-      [driver.id, targetRestId]
-    );
+    try {
+      const { ensureDriverPayoutTables } = require('./driverPayoutController');
+      await ensureDriverPayoutTables();
 
-    const [lifetimeSettled] = await query(
-      `SELECT COALESCE(SUM(net_amount), 0) as total_paid
-       FROM driver_payout_settlements
-       WHERE driver_id = ? AND restaurant_id = ?`,
-      [driver.id, targetRestId]
-    );
+      const targetRestId = req.query?.restaurant_id || req.adminRestaurantId || driver.restaurant_id || 1;
+      const [settingsRow] = await query(
+        'SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?',
+        [targetRestId, driver.id]
+      );
+      settings = settingsRow || null;
+
+      const [walletBalances] = await query(
+        `SELECT 
+           COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_SALARY' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_salary,
+           COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_COMMISSION' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_commission,
+           COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_INCENTIVE' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_incentive,
+           COALESCE(SUM(CASE WHEN status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as total_collectible
+         FROM driver_wallet_transactions
+         WHERE driver_id = ? AND restaurant_id = ?`,
+        [driver.id, targetRestId]
+      );
+
+      const [lifetimeSettled] = await query(
+        `SELECT COALESCE(SUM(net_amount), 0) as total_paid
+         FROM driver_payout_settlements
+         WHERE driver_id = ? AND restaurant_id = ?`,
+        [driver.id, targetRestId]
+      );
+
+      if (walletBalances) {
+        walletSummary.total_collectible = parseFloat(walletBalances.total_collectible || 0);
+        walletSummary.pending_salary = parseFloat(walletBalances.pending_salary || 0);
+        walletSummary.pending_commission = parseFloat(walletBalances.pending_commission || 0);
+        walletSummary.pending_incentive = parseFloat(walletBalances.pending_incentive || 0);
+      }
+      if (lifetimeSettled) {
+        walletSummary.lifetime_settled = parseFloat(lifetimeSettled.total_paid || 0);
+      }
+    } catch (wsErr) {
+      console.warn('Driver wallet summary warning:', wsErr.message);
+    }
 
     res.json({
       success: true,
@@ -1464,15 +1502,9 @@ async function getAdminDriverById(req, res) {
         ...driver,
         ...kyc,
         stats,
-        compensation_settings: settings || null,
-        wallet_summary: {
-          total_collectible: parseFloat(walletBalances?.total_collectible || 0),
-          pending_salary: parseFloat(walletBalances?.pending_salary || 0),
-          pending_commission: parseFloat(walletBalances?.pending_commission || 0),
-          pending_incentive: parseFloat(walletBalances?.pending_incentive || 0),
-          lifetime_settled: parseFloat(lifetimeSettled?.total_paid || 0)
-        },
-        active_order: activeOrder || null,
+        compensation_settings: settings,
+        wallet_summary: walletSummary,
+        active_order: activeOrder,
         recent_deliveries: recentDeliveries
       }
     });
