@@ -1085,9 +1085,14 @@ async function getAdminDrivers(req, res) {
     }
 
     if (wheres.length > 0) sql += ' WHERE ' + wheres.join(' AND ');
-    sql += ` ORDER BY d.id DESC`;
-
-    const rawDrivers = await query(sql, params);
+    let rawDrivers = await query(sql, params);
+    if ((!rawDrivers || rawDrivers.length === 0) && !search && targetRestId) {
+      try {
+        const { ensureFleetAssignedToRestaurant } = require('./driverPayoutController');
+        await ensureFleetAssignedToRestaurant(targetRestId);
+        rawDrivers = await query(sql, params);
+      } catch (e) {}
+    }
     const seenIds = new Set();
     const drivers = [];
 

@@ -112,7 +112,7 @@ async function getPublicRoomsBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
     const restRows = await query(
-      `SELECT r.id, r.name, r.custom_subdomain_slug, r.random_slug, r.amenities 
+      `SELECT r.id, r.name, r.custom_subdomain_slug, r.random_slug 
        FROM restaurants r 
        WHERE LOWER(r.random_slug) = ? OR LOWER(r.slug) = ? OR LOWER(r.custom_subdomain_slug) = ?`,
       [slug, slug, slug]

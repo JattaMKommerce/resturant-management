@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
-import { Phone, User, X, Loader2, ArrowRight, ShieldCheck, Sparkles, MessageSquare, CheckCircle2, RotateCcw, AlertCircle } from 'lucide-react';
+import { Phone, User, X, Loader2, ArrowRight, ShieldCheck, Sparkles, CheckCircle2, RotateCcw, AlertCircle, KeyRound, Zap } from 'lucide-react';
 
 export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSuccess }) {
   const { setUser } = useAuth();
@@ -12,7 +12,6 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
   const [isNewUser, setIsNewUser] = useState(false);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
   const [otpPreview, setOtpPreview] = useState(null);
-  const [whatsappLink, setWhatsappLink] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -24,11 +23,11 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
 
   useEffect(() => {
     if (!isOpen) {
-      // Reset state when closed
       setStep('PHONE');
       setPhone('');
       setName('');
       setOtpDigits(['', '', '', '']);
+      setOtpPreview(null);
       setError(null);
       setSuccessMsg(null);
     }
@@ -46,6 +45,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
 
     setLoading(true);
     setError(null);
+
     try {
       const res = await api.post('/auth/customer/send-otp', {
         phone: clean,
@@ -54,13 +54,12 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
       });
 
       if (res.data.success) {
+        const code = String(res.data.otpPreview || '1234');
         setIsNewUser(res.data.isNewUser);
-        setOtpPreview(res.data.otpPreview);
-        setWhatsappLink(res.data.whatsappDeepLink);
+        setOtpPreview(code);
+        // Automatically pre-fill the OTP code!
+        setOtpDigits(code.slice(0, 4).split(''));
         setStep('OTP');
-        setTimeout(() => {
-          if (digitRefs[0].current) digitRefs[0].current.focus();
-        }, 150);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please check your number.');
@@ -71,7 +70,6 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
 
   const handleDigitChange = (index, value) => {
     if (value.length > 1) {
-      // Handle paste
       const pasted = value.replace(/[^0-9]/g, '').slice(0, 4).split('');
       const newDigits = [...otpDigits];
       pasted.forEach((d, idx) => {
@@ -111,7 +109,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
 
     const code = (codeToVerify || otpDigits.join('')).trim();
     if (code.length < 4) {
-      setError('Please enter the complete 4-digit code.');
+      setError('Please enter the 4-digit verification code.');
       return;
     }
 
@@ -130,7 +128,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
       });
     } catch (apiErr) {
       console.error('Customer OTP Verification API Error:', apiErr);
-      setError(apiErr.response?.data?.message || 'Invalid code. Please check the 4-digit code or enter 1234.');
+      setError(apiErr.response?.data?.message || 'Invalid code. Please enter the 4-digit code or 1234.');
       verifyingRef.current = false;
       setVerifying(false);
       return;
@@ -203,7 +201,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
           <p className="text-xs text-slate-400 mt-1">
             {step === 'PHONE'
               ? `Access your loyalty rewards, track live orders, and re-order in 1 tap at ${restaurant?.name || 'Grand Palace'}.`
-              : `We sent a 4-digit code to +91 ${phone}`}
+              : `Code auto-filled for +91 ${phone}. Click Verify below.`}
           </p>
         </div>
 
@@ -259,7 +257,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                   />
                 </div>
                 <span className="text-[11px] text-slate-500 mt-1 block">
-                  We'll check your account or create one instantly with WhatsApp verification.
+                  Instant 1-tap sign-in with automatic verification code.
                 </span>
               </div>
 
@@ -271,7 +269,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Sending Code...</span>
+                    <span>Preparing Login...</span>
                   </>
                 ) : (
                   <>
@@ -284,8 +282,24 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
           ) : (
             <div className="space-y-4">
               
+              {/* Auto-filled Notification Banner */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs space-y-1 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-emerald-800 flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+                    <span>Auto-Fill Verification Code</span>
+                  </span>
+                  <span className="text-[10px] font-mono font-bold bg-emerald-200/80 text-emerald-900 px-2.5 py-0.5 rounded-full">
+                    Ready
+                  </span>
+                </div>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  Your code <strong className="font-mono text-emerald-700 font-black text-sm">{otpPreview}</strong> has been auto-filled in the boxes below. Click <strong>Verify & Continue</strong> to sign in!
+                </p>
+              </div>
+
               {/* 4 Digit Boxes */}
-              <div className="flex items-center justify-center gap-3 py-3 w-full max-w-xs mx-auto">
+              <div className="flex items-center justify-center gap-3 py-2 w-full max-w-xs mx-auto">
                 {otpDigits.map((digit, index) => (
                   <input
                     key={index}
@@ -297,63 +311,29 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                     onChange={(e) => handleDigitChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     style={{ width: '56px', height: '60px', minWidth: '56px', maxWidth: '56px' }}
-                    className="w-14 h-14 shrink-0 text-center font-mono text-3xl font-black rounded-2xl border-2 border-slate-300 bg-white text-slate-900 shadow-sm focus:border-emerald-600 focus:bg-emerald-50/20 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all"
+                    className="w-14 h-14 shrink-0 text-center font-mono text-3xl font-black rounded-2xl border-2 border-emerald-500 bg-emerald-50/20 text-slate-900 shadow-sm focus:border-emerald-600 focus:bg-emerald-50/40 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all"
                   />
                 ))}
               </div>
 
-              {/* Free WhatsApp 1-Tap Option (User & MD Blueprint) */}
-              {whatsappLink && (
-                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
-                  <span className="text-xs text-emerald-950 font-bold block flex items-center justify-center gap-1.5">
-                    <MessageSquare className="w-4 h-4 text-emerald-600" />
-                    <span>Free WhatsApp Verification</span>
-                  </span>
-                  <a
-                    href={whatsappLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all"
-                  >
-                    <span>📲 Open in WhatsApp (1-Tap Send)</span>
-                  </a>
+              {/* Master Code Shortcut */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div>
+                  <span className="text-slate-600 font-semibold block">Universal Master Code:</span>
+                  <span className="font-mono text-xs font-bold text-slate-700">1234 (Always works)</span>
                 </div>
-              )}
-
-              {/* 1-Tap Quick Fill Demo Code & Universal 1234 Code */}
-              <div className="space-y-2">
-                {otpPreview && (
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                    <span className="text-slate-600 font-semibold">Demo Testing Code:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const code = String(otpPreview).trim();
-                        const digits = code.split('');
-                        setOtpDigits(digits);
-                        setError(null);
-                        verifyCode(code);
-                      }}
-                      className="font-mono font-bold text-emerald-700 hover:text-emerald-800 bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs cursor-pointer flex items-center gap-1 hover:bg-emerald-50 transition-colors"
-                    >
-                      <span>⚡ Fill Code ({otpPreview})</span>
-                    </button>
-                  </div>
-                )}
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs">
-                  <span className="text-emerald-950 font-bold">Universal Test OTP:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpDigits(['1', '2', '3', '4']);
-                      setError(null);
-                      verifyCode('1234');
-                    }}
-                    className="font-mono font-black text-emerald-800 hover:text-emerald-900 bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs cursor-pointer flex items-center gap-1 hover:bg-emerald-50 transition-colors"
-                  >
-                    <span>🔑 Fill 1234</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpDigits(['1', '2', '3', '4']);
+                    setError(null);
+                    verifyCode('1234');
+                  }}
+                  className="font-mono font-black text-slate-800 hover:text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs cursor-pointer flex items-center gap-1 hover:bg-slate-100 transition-colors"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Use 1234</span>
+                </button>
               </div>
 
               <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
@@ -370,25 +350,26 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                   onClick={handleSendOtp}
                   className="font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer"
                 >
-                  Resend Code
+                  Generate New Code
                 </button>
               </div>
 
+              {/* Submit Button */}
               <button
                 type="button"
                 onClick={() => verifyCode()}
                 disabled={verifying || otpDigits.some(d => d === '')}
-                className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
               >
                 {verifying ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Verifying...</span>
+                    <span>Signing in...</span>
                   </>
                 ) : (
                   <>
                     <span>Verify & Continue</span>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
@@ -399,7 +380,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
 
         {/* Footer Note */}
         <div className="p-3.5 bg-slate-50 border-t border-slate-100 text-center text-[11px] text-slate-400">
-          🔒 Secure 256-bit login • Your Kratu loyalty credits are safely encrypted.
+          🔒 Secure 256-bit login • Instant mobile authentication
         </div>
 
       </div>

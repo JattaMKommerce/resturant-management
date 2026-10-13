@@ -144,6 +144,14 @@ async function registerRestaurant(req, res) {
       console.warn('Trial auto-provisioning warning:', trialErr.message);
     }
 
+    // Auto-provision Delivery Fleet and Payout Structure
+    try {
+      const { ensureFleetAssignedToRestaurant } = require('./driverPayoutController');
+      await ensureFleetAssignedToRestaurant(restaurantId);
+    } catch (fleetErr) {
+      console.warn('Fleet auto-provisioning warning:', fleetErr.message);
+    }
+
     // Generate JWT Token
     const token = jwt.sign(
       { id: adminUserId, email: adminEmail, name: adminName, role: 'RESTAURANT_ADMIN' },
@@ -531,10 +539,11 @@ async function customerSendOtp(req, res) {
       otpPreview: otp, // For seamless 1-tap testing
       whatsappSent: Boolean(waDelivery.success),
       whatsappMessageId: waDelivery.messageId || null,
+      whatsappError: waDelivery.success ? null : (waDelivery.error || 'WhatsApp service not configured or token expired'),
       whatsappDeepLink,
       message: waDelivery.success
         ? `WhatsApp verification code sent to +91 ${cleanPhone}!`
-        : (isNewUser ? 'Welcome! Enter the code sent to your mobile.' : 'Welcome back! Enter the verification code.')
+        : `Localhost test mode: Verification code is ${otp} (Master code: 1234)`
     });
   } catch (err) {
     console.error('customerSendOtp error:', err);

@@ -113,6 +113,8 @@ export default function AdminDriverPayoutsPage() {
         incentive_amount: hasIncentive ? parseFloat(incentiveAmt || 0) : 0,
         incentive_type: 'PER_ORDER',
         notes: configNotes
+      }, {
+        params: { slug }
       });
 
       if (res.data.success) {
@@ -151,6 +153,8 @@ export default function AdminDriverPayoutsPage() {
       const res = await api.post(`/admin/driver-payouts/${settlingDriver.id}/settle`, {
         payment_method: paymentMethod,
         reference_note: settleReference
+      }, {
+        params: { slug }
       });
 
       if (res.data.success) {
@@ -181,7 +185,7 @@ export default function AdminDriverPayoutsPage() {
   const fetchHistoryData = async (driverId, start, end) => {
     setLoadingHistory(true);
     try {
-      const params = {};
+      const params = { slug };
       if (start) params.startDate = start;
       if (end) params.endDate = end;
 

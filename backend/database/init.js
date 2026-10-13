@@ -103,10 +103,15 @@ async function initDatabase(options = {}) {
           await seedKOTData(connection);
         }
 
-        // Seed / Ensure menu for all restaurants in database
+        // Ensure driver payout tables & fleet exist
+        await ensureDriverPayoutTables(connection);
+        await ensureEssentialFleetDrivers(connection);
+
+        // Seed / Ensure menu and driver fleet for all restaurants in database
         const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
         for (const r of allRestaurants) {
           await ensureRestaurantMenu(connection, r.id);
+          await ensureFleetAssignedToRestaurant(connection, r.id);
         }
 
       } catch (err) {
@@ -498,6 +503,9 @@ async function initDatabase(options = {}) {
 
       // Kratu Rewards & Double-Entry Wallet Schema Migration
       await ensureWalletTables(conn);
+
+      // Driver Payouts & Fleet Compensation Ledger Schema Migration
+      await ensureDriverPayoutTables(conn);
     }
 
     async function ensureWalletTables(conn) {
@@ -648,6 +656,210 @@ async function initDatabase(options = {}) {
         console.log('✅ Kratu Rewards & Wallet tables verified.');
       } catch (err) {
         console.warn('ensureWalletTables warning:', err.message);
+      }
+    }
+
+    async function ensureDriverPayoutTables(conn) {
+      try {
+        console.log('🔄 Verifying Driver Payout & Wallet schema...');
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS driver_payout_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id INT NOT NULL,
+            driver_id INT NOT NULL,
+            has_salary TINYINT(1) DEFAULT 0,
+            salary_amount DECIMAL(10, 2) DEFAULT 0.00,
+            salary_frequency ENUM('MONTHLY', 'WEEKLY', 'DAILY') DEFAULT 'MONTHLY',
+            salary_effective_date DATE NULL,
+            has_commission TINYINT(1) DEFAULT 0,
+            commission_percentage DECIMAL(5, 2) DEFAULT 0.00,
+            has_incentive TINYINT(1) DEFAULT 0,
+            incentive_amount DECIMAL(10, 2) DEFAULT 0.00,
+            incentive_type VARCHAR(32) DEFAULT 'PER_ORDER',
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_rest_driver (restaurant_id, driver_id),
+            INDEX idx_driver (driver_id),
+            INDEX idx_restaurant (restaurant_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS driver_wallet_transactions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            restaurant_id INT NOT NULL,
+            driver_id INT NOT NULL,
+            order_id INT NULL,
+            entry_type ENUM('CREDIT_SALARY', 'CREDIT_COMMISSION', 'CREDIT_INCENTIVE', 'SETTLEMENT_PAYOUT') NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            description VARCHAR(255) NOT NULL,
+            status ENUM('PENDING_PAYOUT', 'PAID', 'CANCELLED') DEFAULT 'PENDING_PAYOUT',
+            settlement_id VARCHAR(64) NULL,
+            settled_at DATETIME NULL,
+            settled_by_user_id INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_driver_status (driver_id, restaurant_id, status),
+            INDEX idx_order (order_id),
+            INDEX idx_created_at (created_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS driver_payout_settlements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            settlement_number VARCHAR(64) NOT NULL UNIQUE,
+            restaurant_id INT NOT NULL,
+            driver_id INT NOT NULL,
+            total_salary DECIMAL(10, 2) DEFAULT 0.00,
+            total_commission DECIMAL(10, 2) DEFAULT 0.00,
+            total_incentive DECIMAL(10, 2) DEFAULT 0.00,
+            net_amount DECIMAL(10, 2) NOT NULL,
+            payment_method ENUM('CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE') DEFAULT 'CASH',
+            reference_note TEXT NULL,
+            settled_by INT NOT NULL,
+            settled_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_settlement_driver (driver_id, restaurant_id),
+            INDEX idx_settled_at (settled_at)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+        console.log('✅ Driver Payout & Wallet tables verified.');
+      } catch (err) {
+        console.warn('ensureDriverPayoutTables warning:', err.message);
+      }
+    }
+
+    const ESSENTIAL_FLEET_DRIVERS = [
+      { name: 'Master Super Admin', email: 'superadmin@gmail.com', phone: '+91 9999999999', vehicle: 'Bike', plate: 'KA-25-TEMP', status: 'AVAILABLE' },
+      { name: 'Test Rider', email: 'testrider@hotel.com', phone: '9999999999', vehicle: 'Bike', plate: 'ka-01-3546', status: 'OFFLINE' },
+      { name: 'Vikram Singh (Rider)', email: 'driver1@hotel.com', phone: '+91 9988776655', vehicle: 'Bike', plate: 'KA-01-EQ-4589', status: 'AVAILABLE' },
+      { name: 'Rahul Kumar (Test Rider)', email: 'rahul.testrider@gmail.com', phone: '+91 9900112233', vehicle: 'Bike', plate: 'KA-04-AB-1234', status: 'AVAILABLE' },
+      { name: 'Kiran Kumar (Express Rider)', email: 'rider_1786684344995@test.com', phone: '+91 9812597719', vehicle: 'Scooter', plate: 'KA-02-XY-9955', status: 'AVAILABLE' },
+      { name: 'Raju InHouse Rider', email: '9891232099@hotel.com', phone: '9891232099', vehicle: 'Bike', plate: 'KA-05-MH-8821', status: 'AVAILABLE' },
+      { name: 'Nithin Delivery Partner', email: 'nithinmyfriends007@gmail.com', phone: '+918317372983', vehicle: 'Bike', plate: 'KA-25-EM-7700', status: 'AVAILABLE' },
+      { name: 'Speedy Express Rider', email: 'rider_1786533289201@test.com', phone: '+919833289201', vehicle: 'EV', plate: 'KA-01-EV-3344', status: 'AVAILABLE' },
+      { name: 'Raj Delivery Partner', email: 'raj@gmail.com', phone: '+91 9876540011', vehicle: 'Bike', plate: 'KA-22-LK-9021', status: 'AVAILABLE' },
+      { name: 'Amit Verma (Fleet Partner)', email: 'amit.rider@hotel.com', phone: '+91 9822334455', vehicle: 'Bike', plate: 'KA-03-QR-6512', status: 'AVAILABLE' },
+      { name: 'Suresh Patil (Senior Delivery)', email: 'suresh.rider@hotel.com', phone: '+91 9844556677', vehicle: 'Scooter', plate: 'KA-25-AB-4321', status: 'OFFLINE' },
+      { name: 'Arjun Gowda (Fleet Lead)', email: 'arjun.rider@hotel.com', phone: '+91 9866778899', vehicle: 'Bike', plate: 'KA-01-ZG-1122', status: 'AVAILABLE' },
+      { name: 'Ganesh Rao (Rider)', email: 'ganesh.rider@hotel.com', phone: '+91 9877889900', vehicle: 'Bike', plate: 'KA-25-RT-8844', status: 'AVAILABLE' },
+      { name: 'Manjunath K (Delivery)', email: 'manju.rider@hotel.com', phone: '+91 9899001122', vehicle: 'Bike', plate: 'KA-04-JK-5599', status: 'OFFLINE' }
+    ];
+
+    async function ensureEssentialFleetDrivers(conn) {
+      try {
+        const driverHash = await bcrypt.hash('123456789', 10);
+        for (const drv of ESSENTIAL_FLEET_DRIVERS) {
+          const [uRows] = await conn.query('SELECT id, role FROM users WHERE email = ?', [drv.email]);
+          let userId;
+          if (uRows.length === 0) {
+            const [uRes] = await conn.query(
+              `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
+               VALUES (?, ?, ?, '123456789', ?, 'DRIVER', 'ACTIVE')`,
+              [drv.name, drv.email, driverHash, drv.phone]
+            );
+            userId = uRes.insertId;
+          } else {
+            userId = uRows[0].id;
+            if (uRows[0].role !== 'SUPER_ADMIN') {
+              await conn.query("UPDATE users SET role = 'DRIVER', status = 'ACTIVE' WHERE id = ?", [userId]);
+            }
+          }
+
+          const [dRows] = await conn.query('SELECT id FROM delivery_drivers WHERE user_id = ?', [userId]);
+          if (dRows.length === 0) {
+            await conn.query(
+              `INSERT INTO delivery_drivers
+               (user_id, restaurant_id, full_name, mobile, email, vehicle_type, vehicle_number, account_status, availability_status, approval_status, is_active)
+               VALUES (?, 1, ?, ?, ?, ?, ?, 'ACTIVE', ?, 'APPROVED', 1)`,
+              [userId, drv.name, drv.phone, drv.email, drv.vehicle, drv.plate, drv.status || 'AVAILABLE']
+            );
+          } else {
+            await conn.query(
+              `UPDATE delivery_drivers SET
+                 full_name = COALESCE(NULLIF(full_name, ''), ?),
+                 mobile = COALESCE(NULLIF(mobile, ''), ?),
+                 vehicle_number = COALESCE(NULLIF(vehicle_number, ''), ?),
+                 account_status = 'ACTIVE', approval_status = 'APPROVED', is_active = 1
+               WHERE id = ?`,
+              [drv.name, drv.phone, drv.plate, dRows[0].id]
+            );
+          }
+        }
+        console.log('✅ Essential delivery fleet drivers verified.');
+      } catch (err) {
+        console.warn('ensureEssentialFleetDrivers warning:', err.message);
+      }
+    }
+
+    async function ensureFleetAssignedToRestaurant(conn, restaurantId) {
+      try {
+        if (!restaurantId) return;
+        const [drivers] = await conn.query(
+          `SELECT id FROM delivery_drivers WHERE account_status = 'ACTIVE' OR account_status IS NULL ORDER BY id ASC LIMIT 14`
+        );
+        if (drivers.length === 0) return;
+
+        for (const drv of drivers) {
+          await conn.query(
+            `INSERT IGNORE INTO driver_restaurant_assignments (driver_id, restaurant_id, status, approved_at)
+             VALUES (?, ?, 'ACTIVE', NOW())`,
+            [drv.id, restaurantId]
+          );
+
+          await conn.query(
+            `INSERT INTO driver_payout_settings 
+             (restaurant_id, driver_id, has_salary, salary_amount, salary_frequency, has_commission, commission_percentage, has_incentive, incentive_amount, incentive_type, notes, created_at, updated_at)
+             VALUES (?, ?, 1, 15000.00, 'MONTHLY', 1, 10.00, 1, 25.00, 'PER_ORDER', 'Auto-provisioned dedicated restaurant package', NOW(), NOW())
+             ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+            [restaurantId, drv.id]
+          );
+        }
+
+        // Check transactions for this restaurant
+        const [txRows] = await conn.query(
+          'SELECT COUNT(*) as count FROM driver_wallet_transactions WHERE restaurant_id = ?',
+          [restaurantId]
+        );
+
+        if (txRows[0].count === 0) {
+          const now = new Date();
+          const currentMonthYear = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+          const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const prevMonthYear = prevMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+          for (const drv of drivers) {
+            await conn.query(
+              `INSERT INTO driver_wallet_transactions 
+               (restaurant_id, driver_id, entry_type, amount, description, status, created_at)
+               VALUES 
+               (?, ?, 'CREDIT_SALARY', 15000.00, ?, 'PENDING_PAYOUT', NOW() - INTERVAL 35 DAY),
+               (?, ?, 'CREDIT_SALARY', 15000.00, ?, 'PENDING_PAYOUT', NOW() - INTERVAL 5 DAY)`,
+              [restaurantId, drv.id, `Fixed Salary for ${prevMonthYear}`, restaurantId, drv.id, `Fixed Salary for ${currentMonthYear}`]
+            );
+          }
+
+          // Settle first 4 drivers
+          const settledDrivers = drivers.slice(0, 4);
+          for (const sDrv of settledDrivers) {
+            const sNumber = `PAYOUT-${Date.now().toString().slice(-6)}-${sDrv.id}`;
+            await conn.query(
+              `INSERT INTO driver_payout_settlements 
+               (settlement_number, restaurant_id, driver_id, total_salary, total_commission, total_incentive, net_amount, payment_method, settled_by, settled_at)
+               VALUES (?, ?, ?, 30000.00, 0.00, 0.00, 30000.00, 'CASH', 1, NOW() - INTERVAL 1 DAY)`,
+              [sNumber, restaurantId, sDrv.id]
+            );
+
+            await conn.query(
+              `UPDATE driver_wallet_transactions 
+               SET status = 'PAID', settlement_id = ?, settled_at = NOW() - INTERVAL 1 DAY 
+               WHERE restaurant_id = ? AND driver_id = ?`,
+              [sNumber, restaurantId, sDrv.id]
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('ensureFleetAssignedToRestaurant warning:', err.message);
       }
     }
 
@@ -1395,6 +1607,18 @@ async function initDatabase(options = {}) {
         }
       } catch (fErr) {
         console.warn('restaurant_feature_controls init warning:', fErr.message);
+      }
+
+      // Ensure Delivery Fleet & Payout Structure for all registered restaurants
+      try {
+        await ensureEssentialFleetDrivers(conn);
+        const [allRests] = await conn.query('SELECT id FROM restaurants');
+        for (const r of allRests) {
+          await ensureFleetAssignedToRestaurant(conn, r.id);
+        }
+        console.log('✅ Delivery fleet & payout profiles synced across all restaurants.');
+      } catch (fDrvErr) {
+        console.warn('Fleet drivers init warning:', fDrvErr.message);
       }
     }
 

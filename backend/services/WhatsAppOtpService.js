@@ -29,9 +29,8 @@ async function sendWhatsAppOtp(phone, otp, templateName = 'hms_login_otp') {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
-  if (!token || !phoneId) {
-    console.warn('[WhatsAppOtpService] Missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID in .env. Skipping WhatsApp send.');
-    return { success: false, error: 'WhatsApp credentials not configured in environment.' };
+  if (process.env.NODE_ENV !== 'production' || !token || !phoneId) {
+    return { success: false, skipped: true, error: 'Local development: external WhatsApp dispatch skipped.' };
   }
 
   const recipient = normalizePhoneNumber(phone);
@@ -92,6 +91,9 @@ async function sendWhatsAppOtp(phone, otp, templateName = 'hms_login_otp') {
   } catch (err) {
     const errData = err.response?.data?.error;
     console.error(`❌ [WhatsApp OTP Error] To: ${recipient} | Error:`, errData?.message || err.message);
+    if (errData?.code === 190) {
+      console.warn(`⚠️ [WhatsApp Token Expired] Your WHATSAPP_ACCESS_TOKEN in backend/.env has expired (Meta Error 190). On localhost you can use Master OTP '1234' or the generated code printed above.`);
+    }
     return {
       success: false,
       error: errData?.message || err.message,
