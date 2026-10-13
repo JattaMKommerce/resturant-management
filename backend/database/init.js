@@ -43,24 +43,40 @@ async function initDatabase(options = {}) {
           connection = await mysql.createConnection(connConfig);
           console.log('✅ Connected to Cloud MySQL server via DATABASE_URL');
         } else {
-          connection = await mysql.createConnection({
-            host: dbHost,
-            port: dbPort,
-            user: dbUser,
-            password: dbPassword,
-            multipleStatements: true,
-            ssl: (process.env.DB_SSL === 'true' && !dbHost.includes('localhost') && !dbHost.includes('127.0.0.1')) ? { rejectUnauthorized: false } : undefined
-          });
-          console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
+          try {
+            connection = await mysql.createConnection({
+              host: dbHost,
+              port: dbPort,
+              user: dbUser,
+              password: dbPassword,
+              database: dbName,
+              multipleStatements: true,
+              ssl: (process.env.DB_SSL === 'true' && !dbHost.includes('localhost') && !dbHost.includes('127.0.0.1')) ? { rejectUnauthorized: false } : undefined
+            });
+            console.log(`✅ Connected directly to MySQL database \`${dbName}\` at ${dbHost}:${dbPort}`);
+          } catch (directErr) {
+            // Fallback for local environments where database doesn't exist yet and needs to be created
+            connection = await mysql.createConnection({
+              host: dbHost,
+              port: dbPort,
+              user: dbUser,
+              password: dbPassword,
+              multipleStatements: true,
+              ssl: (process.env.DB_SSL === 'true' && !dbHost.includes('localhost') && !dbHost.includes('127.0.0.1')) ? { rejectUnauthorized: false } : undefined
+            });
+            console.log(`✅ Connected to MySQL server at ${dbHost}:${dbPort}`);
 
-          if (forceReset) {
-            console.log('⚠️  Force reset requested (Development only). Dropping and recreating database...');
-            await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
+            if (forceReset) {
+              console.log('⚠️  Force reset requested (Development only). Dropping and recreating database...');
+              await connection.query(`DROP DATABASE IF EXISTS \`${dbName}\`;`);
+            }
+
+            try {
+              await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
+              console.log(`✅ Database \`${dbName}\` created or confirmed.`);
+            } catch (createErr) {}
+            await connection.changeUser({ database: dbName });
           }
-
-          await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\`;`);
-          console.log(`✅ Database \`${dbName}\` created or confirmed.`);
-          await connection.changeUser({ database: dbName });
         }
 
         // Read and execute schema
