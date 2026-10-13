@@ -42,12 +42,15 @@ function saveBase64File(base64Str, prefix, driverId) {
 function toDataUrl(data, defaultMime = 'image/jpeg') {
   if (!data) return null;
   if (typeof data === 'string') {
-    if (data.startsWith('http') || data.startsWith('data:') || data.startsWith('/')) return data;
-    return `data:${defaultMime};base64,${data}`;
+    const s = data.trim();
+    if (s === '' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return null;
+    if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:') || s.startsWith('/')) return s;
+    return `data:${defaultMime};base64,${s}`;
   }
   if (Buffer.isBuffer(data)) {
+    if (data.length === 0) return null;
     const str = data.toString('utf8');
-    if (str.startsWith('data:') || str.startsWith('http') || str.startsWith('/')) {
+    if (str.startsWith('data:') || str.startsWith('http://') || str.startsWith('https://') || str.startsWith('/')) {
       return str;
     }
     let mime = defaultMime;
@@ -65,6 +68,23 @@ function toDataUrl(data, defaultMime = 'image/jpeg') {
   return null;
 }
 
+function isValidDocument(path, data) {
+  if (data) {
+    if (Buffer.isBuffer(data) && data.length > 50) return true;
+    if (typeof data === 'string' && data.length > 50 && data.startsWith('data:')) return true;
+  }
+  if (path && typeof path === 'string') {
+    const p = path.trim().toLowerCase();
+    if (p === '' || p === 'null' || p === 'undefined' || p === 'false' || p === '0' || p === 'none' || p === 'default') {
+      return false;
+    }
+    if (p.startsWith('/uploads/') || p.startsWith('uploads/') || p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:image/') || p.startsWith('data:application/pdf')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function computeKycDetails(drv) {
   if (!drv) {
     return {
@@ -79,9 +99,11 @@ function computeKycDetails(drv) {
     };
   }
 
-  const hasSelfie = !!(drv.selfie_path || (drv.selfie_data && drv.selfie_data.length > 0));
-  const hasLicense = !!(drv.license_path || (drv.license_data && drv.license_data.length > 0) || (drv.license_number && drv.license_number.trim().length > 3));
-  const hasAadhaar = !!(drv.aadhaar_path || (drv.aadhaar_data && drv.aadhaar_data.length > 0));
+  // Strictly check for actual physical uploaded documents!
+  // A text license_number or vehicle plate DOES NOT count as an uploaded document.
+  const hasSelfie = isValidDocument(drv.selfie_path, drv.selfie_data);
+  const hasLicense = isValidDocument(drv.license_path, drv.license_data);
+  const hasAadhaar = isValidDocument(drv.aadhaar_path, drv.aadhaar_data);
 
   const missing = [];
   if (!hasSelfie) missing.push('Profile Photo');
@@ -101,9 +123,9 @@ function computeKycDetails(drv) {
     has_selfie: hasSelfie,
     has_license: hasLicense,
     has_aadhaar: hasAadhaar,
-    selfie_url: drv.selfie_path || toDataUrl(drv.selfie_data),
-    license_url: drv.license_path || toDataUrl(drv.license_data),
-    aadhaar_url: drv.aadhaar_path || toDataUrl(drv.aadhaar_data)
+    selfie_url: hasSelfie ? (drv.selfie_path || toDataUrl(drv.selfie_data)) : null,
+    license_url: hasLicense ? (drv.license_path || toDataUrl(drv.license_data)) : null,
+    aadhaar_url: hasAadhaar ? (drv.aadhaar_path || toDataUrl(drv.aadhaar_data)) : null
   };
 }
 
@@ -1393,11 +1415,6 @@ async function getAdminDriverById(req, res) {
         );
         if (matchingAssignments && matchingAssignments.length > 0) {
           hasAccess = true;
-          const matchedRestId = matchingAssignments[0].restaurant_id;
-          try {
-            await query('UPDATE delivery_drivers SET restaurant_id = ? WHERE id = ?', [matchedRestId, driver.id]);
-            driver.restaurant_id = matchedRestId;
-          } catch (e) {}
         }
       }
 

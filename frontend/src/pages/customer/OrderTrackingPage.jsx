@@ -298,11 +298,13 @@ export default function OrderTrackingPage({ overrideSlug }) {
                 <Bike className="w-9 h-9" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    Verified Delivery Partner ✓
-                  </span>
-                </div>
+                {order.driver_kyc_status === 'VERIFIED' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                      Verified Delivery Partner ✓
+                    </span>
+                  </div>
+                )}
                 <h4 className="font-black text-slate-900 text-base mt-1 truncate">
                   {order.driver_name}
                 </h4>

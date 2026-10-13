@@ -41,7 +41,7 @@ async function getOrderById(req, res) {
               r.address as restaurant_address,
               r.latitude as restaurant_latitude, r.longitude as restaurant_longitude,
               r.logo_url as restaurant_logo,
-              d.vehicle_type, d.vehicle_number, u_d.name as driver_name, u_d.phone as driver_phone,
+              d.vehicle_type, d.vehicle_number, d.kyc_status as driver_kyc_status, u_d.name as driver_name, u_d.phone as driver_phone,
               d.current_latitude as driver_latitude, d.current_longitude as driver_longitude
        FROM orders o
        JOIN restaurants r ON o.restaurant_id = r.id

@@ -368,9 +368,11 @@ export default function CustomerOrderTrackingPage() {
                 <h4 className="font-extrabold text-sm text-[#1F2937] truncate">
                   {order.assigned_driver_name || order.driver_name || 'Delivery Partner'}
                 </h4>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  Verified Rider ✓
-                </span>
+                {order.driver_kyc_status === 'VERIFIED' && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    Verified Rider ✓
+                  </span>
+                )}
               </div>
               {order.driver_phone && (
                 <p className="text-xs font-bold text-slate-600 mt-0.5 flex items-center gap-1">
