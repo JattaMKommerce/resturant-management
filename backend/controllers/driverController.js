@@ -1186,6 +1186,35 @@ async function getAdminDrivers(req, res) {
       delete drv.license_data;
       delete drv.aadhaar_data;
 
+      // Fetch compensation settings & live wallet summary for dedicated restaurant
+      try {
+        const [settingsRow] = await query(
+          'SELECT * FROM driver_payout_settings WHERE restaurant_id = ? AND driver_id = ?',
+          [targetRestId, drv.id]
+        );
+        drv.compensation_settings = settingsRow || null;
+
+        const [walletBalances] = await query(
+          `SELECT 
+             COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_SALARY' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_salary,
+             COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_COMMISSION' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_commission,
+             COALESCE(SUM(CASE WHEN entry_type = 'CREDIT_INCENTIVE' AND status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as pending_incentive,
+             COALESCE(SUM(CASE WHEN status = 'PENDING_PAYOUT' THEN amount ELSE 0 END), 0) as total_collectible
+           FROM driver_wallet_transactions
+           WHERE driver_id = ? AND restaurant_id = ?`,
+          [drv.id, targetRestId]
+        );
+        drv.wallet_summary = {
+          total_collectible: parseFloat(walletBalances?.total_collectible || 0),
+          pending_salary: parseFloat(walletBalances?.pending_salary || 0),
+          pending_commission: parseFloat(walletBalances?.pending_commission || 0),
+          pending_incentive: parseFloat(walletBalances?.pending_incentive || 0)
+        };
+      } catch (cpErr) {
+        drv.compensation_settings = null;
+        drv.wallet_summary = { total_collectible: 0, pending_salary: 0, pending_commission: 0, pending_incentive: 0 };
+      }
+
       drivers.push(drv);
     }
 
@@ -1201,7 +1230,13 @@ async function getAdminDrivers(req, res) {
  */
 async function createAdminDriver(req, res) {
   try {
-    const { name, email, password, phone, vehicle_type, vehicle_number, license_number, restaurant_id, slug } = req.body;
+    const {
+      name, email, password, phone, vehicle_type, vehicle_number, license_number,
+      restaurant_id, slug,
+      has_salary, salary_amount, salary_frequency, salary_effective_date,
+      has_commission, commission_percentage,
+      has_incentive, incentive_amount, incentive_type
+    } = req.body;
 
     if (!name || !phone || !vehicle_number) {
       return res.status(400).json({
@@ -1216,7 +1251,7 @@ async function createAdminDriver(req, res) {
       : `${cleanPhone.replace(/\D/g, '')}@hotel.com`;
 
     let targetRestId = restaurant_id || req.adminRestaurantId;
-    const requestedSlug = slug || req.body?.slug || req.headers['x-restaurant-slug'] || req.query?.slug;
+    const requestedSlug = slug || req.body?.slug || req.headers?.['x-restaurant-slug'] || req.query?.slug;
     if (requestedSlug) {
       const rest = await query('SELECT id FROM restaurants WHERE slug = ?', [requestedSlug]);
       if (rest.length > 0) {
@@ -1328,19 +1363,126 @@ async function createAdminDriver(req, res) {
       [driverId, targetRestId]
     );
 
-    // Auto-provision initial Driver Payout Settings (Salary, Commission %, Incentive)
+    // Setup Driver Payout Settings (Salary, Commission %, Incentive, and Salary Effective Date)
+    const enableSalary = has_salary === true || has_salary === 'true' || has_salary === 1 || has_salary === '1';
+    const parsedSalaryAmount = enableSalary ? Math.max(0, parseFloat(salary_amount || 0)) : 0.00;
+    const parsedSalaryFreq = salary_frequency || 'MONTHLY';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const parsedSalaryEffectiveDate = (enableSalary && salary_effective_date)
+      ? String(salary_effective_date).slice(0, 10)
+      : (enableSalary ? todayStr : null);
+
+    const enableCommission = has_commission !== undefined
+      ? (has_commission === true || has_commission === 'true' || has_commission === 1 || has_commission === '1')
+      : true;
+    const parsedCommPct = enableCommission ? Math.max(0, parseFloat(commission_percentage !== undefined ? commission_percentage : 5.00)) : 0.00;
+
+    const enableIncentive = has_incentive !== undefined
+      ? (has_incentive === true || has_incentive === 'true' || has_incentive === 1 || has_incentive === '1')
+      : true;
+    const parsedIncentiveAmt = enableIncentive ? Math.max(0, parseFloat(incentive_amount !== undefined ? incentive_amount : 20.00)) : 0.00;
+    const parsedIncentiveType = incentive_type || 'PER_ORDER';
+
+    let compensationSettings = null;
+
     try {
+      const { ensureDriverPayoutTables } = require('./driverPayoutController');
+      await ensureDriverPayoutTables();
+
       await query(
         `INSERT INTO driver_payout_settings (
-           restaurant_id, driver_id, has_salary, salary_amount,
+           restaurant_id, driver_id,
+           has_salary, salary_amount, salary_frequency, salary_effective_date,
            has_commission, commission_percentage,
-           has_incentive, incentive_amount
-         ) VALUES (?, ?, 0, 0.00, 1, 5.00, 1, 20.00)
-         ON DUPLICATE KEY UPDATE updated_at = NOW()`,
-        [targetRestId, driverId]
+           has_incentive, incentive_amount, incentive_type,
+           notes, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Initial onboarding compensation', NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+           has_salary = VALUES(has_salary),
+           salary_amount = VALUES(salary_amount),
+           salary_frequency = VALUES(salary_frequency),
+           salary_effective_date = VALUES(salary_effective_date),
+           has_commission = VALUES(has_commission),
+           commission_percentage = VALUES(commission_percentage),
+           has_incentive = VALUES(has_incentive),
+           incentive_amount = VALUES(incentive_amount),
+           incentive_type = VALUES(incentive_type),
+           updated_at = NOW()`,
+        [
+          targetRestId, driverId,
+          enableSalary ? 1 : 0, parsedSalaryAmount, parsedSalaryFreq, parsedSalaryEffectiveDate,
+          enableCommission ? 1 : 0, parsedCommPct,
+          enableIncentive ? 1 : 0, parsedIncentiveAmt, parsedIncentiveType
+        ]
       );
+
+      compensationSettings = {
+        has_salary: enableSalary ? 1 : 0,
+        salary_amount: parsedSalaryAmount,
+        salary_frequency: parsedSalaryFreq,
+        salary_effective_date: parsedSalaryEffectiveDate,
+        has_commission: enableCommission ? 1 : 0,
+        commission_percentage: parsedCommPct,
+        has_incentive: enableIncentive ? 1 : 0,
+        incentive_amount: parsedIncentiveAmt,
+        incentive_type: parsedIncentiveType
+      };
+
+      // If Admin configured a salary, credit that salary to the driver's wallet immediately with the effective date
+      if (enableSalary && parsedSalaryAmount > 0) {
+        const effDateObj = new Date(parsedSalaryEffectiveDate || todayStr);
+        const monthYear = isNaN(effDateObj.getTime())
+          ? new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })
+          : effDateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        
+        const salaryDesc = `Fixed Base Salary (${monthYear}) - Effective: ${parsedSalaryEffectiveDate || todayStr}`;
+
+        // Check idempotency
+        const [existingTx] = await query(
+          `SELECT id FROM driver_wallet_transactions
+           WHERE restaurant_id = ? AND driver_id = ? AND entry_type = 'CREDIT_SALARY' AND description = ?`,
+          [targetRestId, driverId, salaryDesc]
+        );
+
+        if (!existingTx) {
+          const createdAtTimestamp = `${parsedSalaryEffectiveDate || todayStr} 09:00:00`;
+          await query(
+            `INSERT INTO driver_wallet_transactions (
+               restaurant_id, driver_id, entry_type, amount, description, status, created_at
+             ) VALUES (?, ?, 'CREDIT_SALARY', ?, ?, 'PENDING_PAYOUT', ?)`,
+            [
+              targetRestId,
+              driverId,
+              parsedSalaryAmount,
+              salaryDesc,
+              createdAtTimestamp
+            ]
+          );
+
+          try {
+            const { getSocketIO, sendNotification } = require('../services/NotificationService');
+            const io = getSocketIO();
+            if (io) {
+              io.emit('driver_wallet_updated', {
+                driverId,
+                restaurantId: targetRestId,
+                salaryAmount: parsedSalaryAmount,
+                effectiveDate: parsedSalaryEffectiveDate
+              });
+            }
+            if (userId) {
+              await sendNotification({
+                userId,
+                restaurantId: targetRestId,
+                title: '💼 Fixed Salary Assigned',
+                message: `Your base salary of ₹${parsedSalaryAmount.toLocaleString('en-IN')} has been credited effective from ${parsedSalaryEffectiveDate}.`
+              });
+            }
+          } catch (notifErr) {}
+        }
+      }
     } catch (e) {
-      console.warn('Driver payout auto-provision notice:', e.message);
+      console.warn('Driver payout setup notice:', e.message);
     }
 
     const [targetRest] = await query('SELECT id, name, slug FROM restaurants WHERE id = ?', [targetRestId]);
@@ -1365,7 +1507,14 @@ async function createAdminDriver(req, res) {
         kyc_status: 'PENDING',
         missing_documents: ['Profile Photo', 'Driving License', 'Aadhaar Card'],
         delivered_orders_count: 0,
-        today_delivered_count: 0
+        today_delivered_count: 0,
+        compensation_settings: compensationSettings,
+        wallet_summary: {
+          total_collectible: enableSalary ? parsedSalaryAmount : 0,
+          pending_salary: enableSalary ? parsedSalaryAmount : 0,
+          pending_commission: 0,
+          pending_incentive: 0
+        }
       }
     });
   } catch (err) {

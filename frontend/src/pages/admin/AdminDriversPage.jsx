@@ -4,7 +4,7 @@ import {
   Plus, Bike, Edit2, Phone, Mail, ShieldCheck, X, AlertTriangle,
   CheckCircle2, Clock, Package, Eye, ChevronRight, RefreshCw,
   Search, ShieldAlert, Award, Calendar, DollarSign, IndianRupee,
-  ArrowRight, MapPin, User, FileText, ExternalLink, Store
+  ArrowRight, MapPin, User, FileText, ExternalLink, Store, Banknote
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -29,6 +29,18 @@ export default function AdminDriversPage() {
   const [licenseNumber, setLicenseNumber] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Compensation & Salary Modal States
+  const [hasSalary, setHasSalary] = useState(false);
+  const [salaryAmount, setSalaryAmount] = useState('15000');
+  const [salaryFrequency, setSalaryFrequency] = useState('MONTHLY');
+  const [salaryEffectiveDate, setSalaryEffectiveDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const [hasCommission, setHasCommission] = useState(true);
+  const [commissionPct, setCommissionPct] = useState('5');
+
+  const [hasIncentive, setHasIncentive] = useState(true);
+  const [incentiveAmount, setIncentiveAmount] = useState('20');
 
   // Selected Driver for Drawer / Inspection
   const [selectedDriverId, setSelectedDriverId] = useState(null);
@@ -125,7 +137,17 @@ export default function AdminDriversPage() {
         vehicle_number: vehicleNumber,
         license_number: licenseNumber,
         slug: slug || restaurant?.slug,
-        restaurant_id: restaurant?.id
+        restaurant_id: restaurant?.id,
+        // Compensation, Commission, Incentive & Salary Date
+        has_salary: hasSalary,
+        salary_amount: hasSalary ? parseFloat(salaryAmount || 0) : 0,
+        salary_frequency: salaryFrequency,
+        salary_effective_date: hasSalary ? salaryEffectiveDate : null,
+        has_commission: hasCommission,
+        commission_percentage: hasCommission ? parseFloat(commissionPct || 0) : 0,
+        has_incentive: hasIncentive,
+        incentive_amount: hasIncentive ? parseFloat(incentiveAmount || 0) : 0,
+        incentive_type: 'PER_ORDER'
       });
 
       if (res.data.success) {
@@ -135,6 +157,14 @@ export default function AdminDriversPage() {
         setPhone('');
         setVehicleNumber('');
         setLicenseNumber('');
+        setHasSalary(false);
+        setSalaryAmount('15000');
+        setSalaryFrequency('MONTHLY');
+        setSalaryEffectiveDate(new Date().toISOString().slice(0, 10));
+        setHasCommission(true);
+        setCommissionPct('5');
+        setHasIncentive(true);
+        setIncentiveAmount('20');
         await fetchDrivers();
       }
     } catch (err) {
@@ -513,6 +543,37 @@ export default function AdminDriversPage() {
                         <span className="font-black text-teal-900">{drv.delivered_orders_count || 0}</span>
                       </div>
                     </div>
+                    {/* Driver Compensation & Settlement Due Strip */}
+                    {drv.compensation_settings && (
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl font-medium">
+                        {Boolean(drv.compensation_settings.has_salary) && (
+                          <span className="inline-flex items-center gap-1 font-extrabold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-lg border border-emerald-200">
+                            <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                            Salary: ₹{parseFloat(drv.compensation_settings.salary_amount || 0).toLocaleString('en-IN')}/{drv.compensation_settings.salary_frequency?.toLowerCase() || 'mo'}
+                            {drv.compensation_settings.salary_effective_date && (
+                              <span className="font-semibold text-emerald-700 text-[10px] ml-0.5">
+                                (From {new Date(drv.compensation_settings.salary_effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })})
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        {Boolean(drv.compensation_settings.has_commission) && (
+                          <span className="inline-flex items-center gap-1 font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">
+                            Comm: {drv.compensation_settings.commission_percentage}%
+                          </span>
+                        )}
+                        {Boolean(drv.compensation_settings.has_incentive) && (
+                          <span className="inline-flex items-center gap-1 font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200">
+                            Inc: ₹{drv.compensation_settings.incentive_amount}
+                          </span>
+                        )}
+                        {drv.wallet_summary && drv.wallet_summary.total_collectible > 0 && (
+                          <span className="inline-flex items-center gap-1 font-black text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-lg border border-amber-300 ml-auto">
+                            Due: ₹{drv.wallet_summary.total_collectible.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -520,10 +581,10 @@ export default function AdminDriversPage() {
           </div>
         )}
 
-        {/* Create Driver Modal */}
+        {/* Create Driver Modal with Comprehensive Compensation Settings */}
         {showModal && (
-          <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 border border-slate-200 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
@@ -531,7 +592,7 @@ export default function AdminDriversPage() {
                   </div>
                   <div>
                     <h3 className="font-black text-base text-slate-900">Add New Delivery Boy</h3>
-                    <p className="text-[11px] text-slate-400 font-medium">Create login credentials for in-house driver</p>
+                    <p className="text-[11px] text-slate-400 font-medium">Create credentials & configure salary & commission package</p>
                   </div>
                 </div>
                 <button
@@ -572,81 +633,257 @@ export default function AdminDriversPage() {
                 </span>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Rider Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ramesh Kumar"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+                {/* Rider Basic Info */}
+                <div className="space-y-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Mobile Number *</label>
+                    <label className="block font-bold text-slate-700 mb-1">Rider Full Name *</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. 9876543210"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. Ramesh Kumar"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Mobile Number *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 9876543210"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Login Password *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. driver123"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Vehicle Type *</label>
+                      <select
+                        value={vehicleType}
+                        onChange={(e) => setVehicleType(e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
+                      >
+                        <option value="Bike">Motorbike</option>
+                        <option value="Scooter">Scooter</option>
+                        <option value="EV">EV Bike</option>
+                        <option value="Cycle">Bicycle</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Plate / Registration # *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. GA-01-AB-1234"
+                        value={vehicleNumber}
+                        onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Login Password *</label>
+                    <label className="block font-bold text-slate-700 mb-1">Driving License Number (Optional)</label>
                     <input
                       type="text"
-                      required
-                      placeholder="e.g. driver123"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="e.g. DL-0420110012345"
+                      value={licenseNumber}
+                      onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Vehicle Type *</label>
-                    <select
-                      value={vehicleType}
-                      onChange={(e) => setVehicleType(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
-                    >
-                      <option value="Bike">Motorbike</option>
-                      <option value="Scooter">Scooter</option>
-                      <option value="EV">EV Bike</option>
-                      <option value="Cycle">Bicycle</option>
-                      <option value="Other">Other</option>
-                    </select>
+                {/* Driver Compensation & Earnings Scheme */}
+                <div className="pt-3 border-t border-slate-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-black text-slate-900 text-xs flex items-center gap-1.5">
+                        <IndianRupee className="w-3.5 h-3.5 text-[#3A7D7C]" />
+                        Compensation & Payable Settings
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-medium">
+                        Configure commission, incentives, and salary with joining date.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Plate / Registration # *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. GA-01-AB-1234"
-                      value={vehicleNumber}
-                      onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
-                    />
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Driving License Number (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. DL-0420110012345"
-                    value={licenseNumber}
-                    onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:border-[#3A7D7C]"
-                  />
+                  {/* 1. Commission & Incentive Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Commission */}
+                    <div className={`p-3 rounded-2xl border transition-all ${hasCommission ? 'bg-blue-50/70 border-blue-300' : 'bg-slate-50 border-slate-200'}`}>
+                      <label className="flex items-center justify-between cursor-pointer mb-2">
+                        <span className="font-extrabold text-[11px] text-slate-800 flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={hasCommission}
+                            onChange={(e) => setHasCommission(e.target.checked)}
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                          />
+                          Commission (%)
+                        </span>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${hasCommission ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500'}`}>
+                          {hasCommission ? 'ON' : 'OFF'}
+                        </span>
+                      </label>
+                      {hasCommission && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Commission % per Order</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              value={commissionPct}
+                              onChange={(e) => setCommissionPct(e.target.value)}
+                              placeholder="e.g. 5"
+                              className="w-full pl-3 pr-7 py-1.5 bg-white border border-blue-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">%</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Delivery Incentive */}
+                    <div className={`p-3 rounded-2xl border transition-all ${hasIncentive ? 'bg-purple-50/70 border-purple-300' : 'bg-slate-50 border-slate-200'}`}>
+                      <label className="flex items-center justify-between cursor-pointer mb-2">
+                        <span className="font-extrabold text-[11px] text-slate-800 flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={hasIncentive}
+                            onChange={(e) => setHasIncentive(e.target.checked)}
+                            className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                          />
+                          Trip Incentive (₹)
+                        </span>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${hasIncentive ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-500'}`}>
+                          {hasIncentive ? 'ON' : 'OFF'}
+                        </span>
+                      </label>
+                      {hasIncentive && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-600 mb-1">Bonus per Delivered Trip</label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={incentiveAmount}
+                              onChange={(e) => setIncentiveAmount(e.target.value)}
+                              placeholder="e.g. 20"
+                              className="w-full pl-6 pr-3 py-1.5 bg-white border border-purple-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Fixed Base Salary Card with Effective Date */}
+                  <div className={`p-3.5 rounded-2xl border-2 transition-all space-y-2.5 ${hasSalary ? 'bg-emerald-50/80 border-emerald-400 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={hasSalary}
+                          onChange={(e) => setHasSalary(e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="font-black text-xs text-slate-900 flex items-center gap-1.5">
+                          <Banknote className="w-4 h-4 text-emerald-600" />
+                          Enable Driver Base Salary
+                        </span>
+                      </div>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${hasSalary ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-600'}`}>
+                        {hasSalary ? 'SALARY ENABLED' : 'NO SALARY'}
+                      </span>
+                    </label>
+
+                    {hasSalary && (
+                      <div className="pt-2 border-t border-emerald-200 space-y-2.5 animate-in fade-in duration-150">
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                              Salary Amount (₹) *
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                              <input
+                                type="number"
+                                required={hasSalary}
+                                min="0"
+                                step="100"
+                                value={salaryAmount}
+                                onChange={(e) => setSalaryAmount(e.target.value)}
+                                placeholder="e.g. 15000"
+                                className="w-full pl-6 pr-3 py-1.5 bg-white border border-emerald-300 rounded-xl font-black text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                              Frequency
+                            </label>
+                            <select
+                              value={salaryFrequency}
+                              onChange={(e) => setSalaryFrequency(e.target.value)}
+                              className="w-full p-1.5 bg-white border border-emerald-300 rounded-xl font-bold text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                              <option value="MONTHLY">Monthly</option>
+                              <option value="WEEKLY">Weekly</option>
+                              <option value="DAILY">Daily</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* SALARY EFFECTIVE / JOINING DATE */}
+                        <div>
+                          <label className="block text-[10px] font-extrabold text-emerald-950 uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                              Salary Effective / Joining Date *
+                            </span>
+                            <span className="text-[10px] text-emerald-700 font-bold lowercase">
+                              (saved in system)
+                            </span>
+                          </label>
+                          <input
+                            type="date"
+                            required={hasSalary}
+                            value={salaryEffectiveDate}
+                            onChange={(e) => setSalaryEffectiveDate(e.target.value)}
+                            className="w-full p-2 bg-white border-2 border-emerald-400 rounded-xl font-black text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                          />
+                          <p className="text-[10px] text-emerald-800 font-semibold mt-1 leading-tight">
+                            ✓ This date is saved in the driver's payout records. The driver receives this salary in their wallet immediately with this effective date.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 font-medium leading-relaxed">
@@ -666,7 +903,7 @@ export default function AdminDriversPage() {
                     disabled={formLoading}
                     className="px-5 py-2 bg-[#3A7D7C] hover:bg-[#2C6261] text-white font-black rounded-xl shadow-md shadow-[#3A7D7C]/20 transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {formLoading ? 'Creating...' : 'Create Driver'}
+                    {formLoading ? 'Creating Rider...' : 'Create Driver & Save Package'}
                   </button>
                 </div>
               </form>
@@ -854,8 +1091,18 @@ export default function AdminDriversPage() {
                       </div>
 
                       {driverDetail.compensation_settings && (
-                        <div className="flex flex-wrap items-center justify-between text-[11px] text-emerald-900 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-100 font-medium gap-1">
-                          <span>Salary: <strong>{driverDetail.compensation_settings.has_salary ? `₹${parseFloat(driverDetail.compensation_settings.salary_amount || 0).toLocaleString('en-IN')}/mo` : 'None'}</strong></span>
+                        <div className="flex flex-wrap items-center justify-between text-[11px] text-emerald-900 bg-white/80 px-3 py-2 rounded-xl border border-emerald-100 font-medium gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>
+                              Salary: <strong>{driverDetail.compensation_settings.has_salary ? `₹${parseFloat(driverDetail.compensation_settings.salary_amount || 0).toLocaleString('en-IN')}/${driverDetail.compensation_settings.salary_frequency?.toLowerCase() || 'mo'}` : 'None'}</strong>
+                            </span>
+                            {Boolean(driverDetail.compensation_settings.has_salary) && driverDetail.compensation_settings.salary_effective_date && (
+                              <span className="text-[10px] text-emerald-800 font-extrabold bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 ml-1">
+                                Effective: {new Date(driverDetail.compensation_settings.salary_effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
                           <span>•</span>
                           <span>Commission: <strong>{driverDetail.compensation_settings.has_commission ? `${driverDetail.compensation_settings.commission_percentage}%` : 'None'}</strong></span>
                           <span>•</span>

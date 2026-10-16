@@ -413,23 +413,43 @@ async function syncDriverSalaryForPeriod(restaurantId, driverId, settings) {
       return;
     }
 
-    const now = new Date();
-    const currentMonthYear = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    const salaryDesc = `Fixed Salary for ${currentMonthYear}`;
+    const effDateStr = settings.salary_effective_date 
+      ? (typeof settings.salary_effective_date === 'string' 
+          ? settings.salary_effective_date.slice(0, 10) 
+          : `${new Date(settings.salary_effective_date).getFullYear()}-${String(new Date(settings.salary_effective_date).getMonth() + 1).padStart(2, '0')}-${String(new Date(settings.salary_effective_date).getDate()).padStart(2, '0')}`)
+      : null;
 
-    // Check if salary for current month has already been created (either pending or paid)
+    const now = new Date();
+    // If effective date is in a future month/year, do not auto-accrue yet
+    if (effDateStr) {
+      const effDate = new Date(effDateStr);
+      const currentYearMonth = now.getFullYear() * 12 + now.getMonth();
+      const effYearMonth = effDate.getFullYear() * 12 + effDate.getMonth();
+      if (effYearMonth > currentYearMonth) {
+        return;
+      }
+    }
+
+    const currentMonthYear = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const salaryDesc = effDateStr 
+      ? `Fixed Salary for ${currentMonthYear} (Effective: ${effDateStr})`
+      : `Fixed Salary for ${currentMonthYear}`;
+
+    // Check if salary for current month/billing cycle has already been created (either pending or paid)
     const [existingSalary] = await query(
       `SELECT id FROM driver_wallet_transactions 
-       WHERE restaurant_id = ? AND driver_id = ? AND entry_type = 'CREDIT_SALARY' AND description = ?`,
-      [restaurantId, driverId, salaryDesc]
+       WHERE restaurant_id = ? AND driver_id = ? AND entry_type = 'CREDIT_SALARY' 
+       AND (description LIKE ? OR (MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())))`,
+      [restaurantId, driverId, `%Fixed Salary%${currentMonthYear}%`]
     );
 
     if (!existingSalary) {
+      const createdAtTimestamp = effDateStr ? `${effDateStr} 09:00:00` : new Date();
       await query(
         `INSERT INTO driver_wallet_transactions 
-         (restaurant_id, driver_id, entry_type, amount, description, status)
-         VALUES (?, ?, 'CREDIT_SALARY', ?, ?, 'PENDING_PAYOUT')`,
-        [restaurantId, driverId, parseFloat(settings.salary_amount), salaryDesc]
+         (restaurant_id, driver_id, entry_type, amount, description, status, created_at)
+         VALUES (?, ?, 'CREDIT_SALARY', ?, ?, 'PENDING_PAYOUT', ?)`,
+        [restaurantId, driverId, parseFloat(settings.salary_amount), salaryDesc, createdAtTimestamp]
       );
     }
   } catch (err) {
@@ -769,6 +789,7 @@ async function updateDriverPayoutSettings(req, res) {
       has_salary,
       salary_amount,
       salary_frequency,
+      salary_effective_date,
       has_commission,
       commission_percentage,
       has_incentive,
@@ -777,22 +798,33 @@ async function updateDriverPayoutSettings(req, res) {
       notes
     } = req.body;
 
-    const salaryAmount = parseFloat(salary_amount || 0);
-    const commissionPct = parseFloat(commission_percentage || 0);
-    const incentiveAmt = parseFloat(incentive_amount || 0);
+    const enableSalary = has_salary === true || has_salary === 'true' || has_salary === 1 || has_salary === '1';
+    const salaryAmount = enableSalary ? Math.max(0, parseFloat(salary_amount || 0)) : 0;
+    const salaryFreq = salary_frequency || 'MONTHLY';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const salaryEffectiveDate = (enableSalary && salary_effective_date)
+      ? String(salary_effective_date).slice(0, 10)
+      : (enableSalary ? todayStr : null);
+
+    const enableCommission = has_commission === true || has_commission === 'true' || has_commission === 1 || has_commission === '1';
+    const commissionPct = enableCommission ? Math.max(0, parseFloat(commission_percentage || 0)) : 0;
+
+    const enableIncentive = has_incentive === true || has_incentive === 'true' || has_incentive === 1 || has_incentive === '1';
+    const incentiveAmt = enableIncentive ? Math.max(0, parseFloat(incentive_amount || 0)) : 0;
 
     await query(
       `INSERT INTO driver_payout_settings (
          restaurant_id, driver_id,
-         has_salary, salary_amount, salary_frequency,
+         has_salary, salary_amount, salary_frequency, salary_effective_date,
          has_commission, commission_percentage,
          has_incentive, incentive_amount, incentive_type,
          notes, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE
          has_salary = VALUES(has_salary),
          salary_amount = VALUES(salary_amount),
          salary_frequency = VALUES(salary_frequency),
+         salary_effective_date = VALUES(salary_effective_date),
          has_commission = VALUES(has_commission),
          commission_percentage = VALUES(commission_percentage),
          has_incentive = VALUES(has_incentive),
@@ -803,12 +835,13 @@ async function updateDriverPayoutSettings(req, res) {
       [
         targetRestId,
         driverId,
-        has_salary ? 1 : 0,
+        enableSalary ? 1 : 0,
         salaryAmount,
-        salary_frequency || 'MONTHLY',
-        has_commission ? 1 : 0,
+        salaryFreq,
+        salaryEffectiveDate,
+        enableCommission ? 1 : 0,
         commissionPct,
-        has_incentive ? 1 : 0,
+        enableIncentive ? 1 : 0,
         incentiveAmt,
         incentive_type || 'PER_ORDER',
         notes || null
@@ -816,11 +849,12 @@ async function updateDriverPayoutSettings(req, res) {
     );
 
     // Sync salary immediately if enabled
-    if (has_salary && salaryAmount > 0) {
+    if (enableSalary && salaryAmount > 0) {
       await syncDriverSalaryForPeriod(targetRestId, driverId, {
         has_salary: 1,
         salary_amount: salaryAmount,
-        salary_frequency: salary_frequency || 'MONTHLY'
+        salary_frequency: salaryFreq,
+        salary_effective_date: salaryEffectiveDate
       });
     }
 

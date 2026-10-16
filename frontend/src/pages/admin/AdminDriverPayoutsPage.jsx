@@ -26,6 +26,7 @@ export default function AdminDriverPayoutsPage() {
   const [hasSalary, setHasSalary] = useState(false);
   const [salaryAmount, setSalaryAmount] = useState('');
   const [salaryFrequency, setSalaryFrequency] = useState('MONTHLY');
+  const [salaryEffectiveDate, setSalaryEffectiveDate] = useState('');
   const [hasCommission, setHasCommission] = useState(false);
   const [commissionPct, setCommissionPct] = useState('');
   const [hasIncentive, setHasIncentive] = useState(false);
@@ -82,6 +83,11 @@ export default function AdminDriverPayoutsPage() {
     setHasSalary(targetOption === 'SALARY' ? true : (driver.settings?.has_salary || false));
     setSalaryAmount(driver.settings?.salary_amount || '');
     setSalaryFrequency(driver.settings?.salary_frequency || 'MONTHLY');
+    setSalaryEffectiveDate(
+      driver.settings?.salary_effective_date
+        ? String(driver.settings.salary_effective_date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10)
+    );
     setHasCommission(targetOption === 'COMMISSION' ? true : (driver.settings?.has_commission || false));
     setCommissionPct(driver.settings?.commission_percentage || '');
     setHasIncentive(targetOption === 'INCENTIVE' ? true : (driver.settings?.has_incentive || false));
@@ -107,6 +113,7 @@ export default function AdminDriverPayoutsPage() {
         has_salary: hasSalary,
         salary_amount: hasSalary ? parseFloat(salaryAmount || 0) : 0,
         salary_frequency: salaryFrequency,
+        salary_effective_date: hasSalary ? salaryEffectiveDate : null,
         has_commission: hasCommission,
         commission_percentage: hasCommission ? parseFloat(commissionPct || 0) : 0,
         has_incentive: hasIncentive,
@@ -640,9 +647,18 @@ export default function AdminDriverPayoutsPage() {
                         title="Click to configure or adjust Fixed Salary"
                       >
                         <Banknote className={`w-3.5 h-3.5 ${driver.settings?.has_salary ? 'text-emerald-600' : 'text-slate-400'}`} />
-                        {driver.settings?.has_salary
-                          ? `Salary: ₹${driver.settings.salary_amount?.toLocaleString('en-IN')}/${driver.settings.salary_frequency?.toLowerCase()}`
-                          : '+ Set Salary'}
+                        <div>
+                          <span>
+                            {driver.settings?.has_salary
+                              ? `Salary: ₹${driver.settings.salary_amount?.toLocaleString('en-IN')}/${driver.settings.salary_frequency?.toLowerCase()}`
+                              : '+ Set Salary'}
+                          </span>
+                          {Boolean(driver.settings?.has_salary) && driver.settings?.salary_effective_date && (
+                            <span className="text-[9px] text-emerald-700 font-bold block text-left">
+                              From: {new Date(driver.settings.salary_effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
                       </button>
 
                       <button
@@ -809,6 +825,27 @@ export default function AdminDriverPayoutsPage() {
                           <option value="MONTHLY">Monthly</option>
                           <option value="WEEKLY">Weekly</option>
                         </select>
+                      </div>
+
+                      <div className="col-span-full">
+                        <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Salary Effective / Joining Date *
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-semibold lowercase">
+                            (recorded in ledger)
+                          </span>
+                        </label>
+                        <input
+                          type="date"
+                          required={hasSalary}
+                          value={salaryEffectiveDate}
+                          onChange={(e) => setSalaryEffectiveDate(e.target.value)}
+                          className="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs font-black text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                        <p className="text-[10px] text-emerald-800 font-medium mt-1">
+                          ✓ Starting date for base salary. The driver receives salary in their wallet according to this date.
+                        </p>
                       </div>
                     </div>
                   )}
