@@ -45,7 +45,9 @@ mysql_data/
 *.sqlite3
 
 # Worktrees / Sub-folders
-accommodation/
+/accommodation/
+!frontend/src/pages/offline/accommodation/
+!frontend/src/components/accommodation/
 
 
 
