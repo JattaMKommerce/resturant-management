@@ -8,8 +8,6 @@ const NotificationService = require('../services/NotificationService');
 
 async function getSuperAdminKPIs(req, res) {
   try {
-    const todayStr = new Date().toISOString().slice(0, 10);
-
     const [totalRestaurants] = await query("SELECT COUNT(*) as count FROM restaurants");
     const [activeRestaurants] = await query("SELECT COUNT(*) as count FROM restaurants WHERE status = 'ACTIVE'");
     const [pendingRestaurants] = await query("SELECT COUNT(*) as count FROM restaurants WHERE status = 'PENDING'");
@@ -17,11 +15,69 @@ async function getSuperAdminKPIs(req, res) {
     const [publishedWebsites] = await query("SELECT COUNT(*) as count FROM restaurants WHERE website_status = 'PUBLISHED'");
     const [orderingEnabled] = await query("SELECT COUNT(*) as count FROM restaurants WHERE is_online_ordering_enabled = 1");
     const [totalAdmins] = await query("SELECT COUNT(*) as count FROM users WHERE role IN ('ADMIN', 'RESTAURANT_ADMIN')");
-    const [todayOrders] = await query(
-      "SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue FROM orders WHERE DATE(created_at) = ?",
-      [todayStr]
-    );
-    const [totalOrders] = await query("SELECT COUNT(*) as count FROM orders");
+
+    // Online Channel KPIs (orders table)
+    const [onlineKpi] = await query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as today_revenue,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as today_orders,
+        COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as weekly_revenue,
+        COUNT(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as weekly_orders,
+        COALESCE(SUM(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as monthly_revenue,
+        COUNT(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as monthly_orders,
+        COALESCE(SUM(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as total_revenue,
+        COUNT(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as total_orders
+      FROM orders
+    `);
+
+    // Offline Channel KPIs (restaurant_orders table)
+    const [offlineKpi] = await query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as today_revenue,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as today_orders,
+        COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as weekly_revenue,
+        COUNT(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as weekly_orders,
+        COALESCE(SUM(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as monthly_revenue,
+        COUNT(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as monthly_orders,
+        COALESCE(SUM(CASE WHEN order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as total_revenue,
+        COUNT(CASE WHEN order_status != 'CANCELLED' THEN 1 ELSE NULL END) as total_orders
+      FROM restaurant_orders
+    `);
+
+    const onl = onlineKpi || {};
+    const off = offlineKpi || {};
+
+    const todayOnlineRev = parseFloat(onl.today_revenue) || 0;
+    const todayOfflineRev = parseFloat(off.today_revenue) || 0;
+    const todayTotalRev = todayOnlineRev + todayOfflineRev;
+
+    const todayOnlineOrd = parseInt(onl.today_orders) || 0;
+    const todayOfflineOrd = parseInt(off.today_orders) || 0;
+    const todayTotalOrd = todayOnlineOrd + todayOfflineOrd;
+
+    const weeklyOnlineRev = parseFloat(onl.weekly_revenue) || 0;
+    const weeklyOfflineRev = parseFloat(off.weekly_revenue) || 0;
+    const weeklyTotalRev = weeklyOnlineRev + weeklyOfflineRev;
+
+    const weeklyOnlineOrd = parseInt(onl.weekly_orders) || 0;
+    const weeklyOfflineOrd = parseInt(off.weekly_orders) || 0;
+    const weeklyTotalOrd = weeklyOnlineOrd + weeklyOfflineOrd;
+
+    const monthlyOnlineRev = parseFloat(onl.monthly_revenue) || 0;
+    const monthlyOfflineRev = parseFloat(off.monthly_revenue) || 0;
+    const monthlyTotalRev = monthlyOnlineRev + monthlyOfflineRev;
+
+    const monthlyOnlineOrd = parseInt(onl.monthly_orders) || 0;
+    const monthlyOfflineOrd = parseInt(off.monthly_orders) || 0;
+    const monthlyTotalOrd = monthlyOnlineOrd + monthlyOfflineOrd;
+
+    const totalOnlineRev = parseFloat(onl.total_revenue) || 0;
+    const totalOfflineRev = parseFloat(off.total_revenue) || 0;
+    const totalCombinedRev = totalOnlineRev + totalOfflineRev;
+
+    const totalOnlineOrd = parseInt(onl.total_orders) || 0;
+    const totalOfflineOrd = parseInt(off.total_orders) || 0;
+    const totalCombinedOrd = totalOnlineOrd + totalOfflineOrd;
 
     res.json({
       success: true,
@@ -33,9 +89,50 @@ async function getSuperAdminKPIs(req, res) {
         publishedWebsites: publishedWebsites.count,
         orderingEnabled: orderingEnabled.count,
         totalAdmins: totalAdmins.count,
-        todayOrders: todayOrders.count,
-        todayRevenue: parseFloat(todayOrders.revenue),
-        totalOrders: totalOrders.count
+        // Combined Totals
+        todayOrders: todayTotalOrd,
+        todayRevenue: todayTotalRev,
+        weeklyOrders: weeklyTotalOrd,
+        weeklyRevenue: weeklyTotalRev,
+        monthlyOrders: monthlyTotalOrd,
+        monthlyRevenue: monthlyTotalRev,
+        totalOrders: totalCombinedOrd,
+        totalRevenue: totalCombinedRev,
+        // Granular Breakdown
+        breakdown: {
+          today: {
+            online_revenue: todayOnlineRev,
+            offline_revenue: todayOfflineRev,
+            combined_revenue: todayTotalRev,
+            online_orders: todayOnlineOrd,
+            offline_orders: todayOfflineOrd,
+            total_orders: todayTotalOrd
+          },
+          weekly: {
+            online_revenue: weeklyOnlineRev,
+            offline_revenue: weeklyOfflineRev,
+            combined_revenue: weeklyTotalRev,
+            online_orders: weeklyOnlineOrd,
+            offline_orders: weeklyOfflineOrd,
+            total_orders: weeklyTotalOrd
+          },
+          monthly: {
+            online_revenue: monthlyOnlineRev,
+            offline_revenue: monthlyOfflineRev,
+            combined_revenue: monthlyTotalRev,
+            online_orders: monthlyOnlineOrd,
+            offline_orders: monthlyOfflineOrd,
+            total_orders: monthlyTotalOrd
+          },
+          all_time: {
+            online_revenue: totalOnlineRev,
+            offline_revenue: totalOfflineRev,
+            combined_revenue: totalCombinedRev,
+            online_orders: totalOnlineOrd,
+            offline_orders: totalOfflineOrd,
+            total_orders: totalCombinedOrd
+          }
+        }
       }
     });
   } catch (err) {
@@ -45,24 +142,18 @@ async function getSuperAdminKPIs(req, res) {
 }
 
 // ═══════════════════════════════════════════════
-// RESTAURANT MANAGEMENT
+// RESTAURANT MANAGEMENT & REVENUE REPORTING
 // ═══════════════════════════════════════════════
 
 async function getAllRestaurants(req, res) {
   try {
     const { status, search } = req.query;
+
     let sql = `
       SELECT r.*,
-        (SELECT COUNT(*) FROM orders WHERE restaurant_id = r.id) as total_orders,
-        (SELECT COUNT(*) FROM orders WHERE restaurant_id = r.id AND DATE(created_at) = CURDATE()) as today_orders,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE restaurant_id = r.id AND DATE(created_at) = CURDATE()) as today_revenue,
         (SELECT COUNT(*) FROM menu_items WHERE restaurant_id = r.id) as menu_items_count,
-        (SELECT COUNT(*) FROM categories WHERE restaurant_id = r.id) as categories_count,
-        GROUP_CONCAT(DISTINCT u.name ORDER BY ra.is_primary DESC SEPARATOR ', ') as admin_names,
-        GROUP_CONCAT(DISTINCT u.email ORDER BY ra.is_primary DESC SEPARATOR ', ') as admin_emails
+        (SELECT COUNT(*) FROM categories WHERE restaurant_id = r.id) as categories_count
       FROM restaurants r
-      LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
-      LEFT JOIN users u ON u.id = ra.user_id
     `;
     const params = [];
     const wheres = [];
@@ -79,10 +170,203 @@ async function getAllRestaurants(req, res) {
     if (wheres.length > 0) {
       sql += ' WHERE ' + wheres.join(' AND ');
     }
-    sql += ' GROUP BY r.id ORDER BY r.created_at DESC';
+    sql += ' ORDER BY r.created_at DESC';
 
+    // 1. Fetch filtered restaurants
     const restaurants = await query(sql, params);
-    res.json({ success: true, count: restaurants.length, restaurants });
+
+    // 2. Fetch all admins mapped to restaurants
+    const adminRows = await query(`
+      SELECT ra.restaurant_id, ra.is_primary, ra.assigned_at, u.id as user_id, u.name, u.email, u.phone, u.role, u.status
+      FROM restaurant_admins ra
+      JOIN users u ON u.id = ra.user_id
+      ORDER BY ra.is_primary DESC, (CASE WHEN u.role IN ('RESTAURANT_ADMIN', 'ADMIN') THEN 0 ELSE 1 END), u.id ASC
+    `);
+
+    const adminsByRest = {};
+    for (const a of adminRows) {
+      if (!adminsByRest[a.restaurant_id]) adminsByRest[a.restaurant_id] = [];
+      adminsByRest[a.restaurant_id].push(a);
+    }
+
+    // 3. Online orders aggregation (orders table)
+    const onlineAgg = await query(`
+      SELECT 
+        restaurant_id,
+        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as today_online_revenue,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as today_online_orders,
+        COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as weekly_online_revenue,
+        COUNT(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as weekly_online_orders,
+        COALESCE(SUM(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as monthly_online_revenue,
+        COUNT(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as monthly_online_orders,
+        COALESCE(SUM(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as total_online_revenue,
+        COUNT(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as total_online_orders
+      FROM orders
+      GROUP BY restaurant_id
+    `);
+    const onlineMap = {};
+    for (const row of onlineAgg) {
+      onlineMap[row.restaurant_id] = row;
+    }
+
+    // 4. Offline orders aggregation (restaurant_orders table)
+    const offlineAgg = await query(`
+      SELECT 
+        restaurant_id,
+        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as today_offline_revenue,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as today_offline_orders,
+        COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as weekly_offline_revenue,
+        COUNT(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as weekly_offline_orders,
+        COALESCE(SUM(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as monthly_offline_revenue,
+        COUNT(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as monthly_offline_orders,
+        COALESCE(SUM(CASE WHEN order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as total_offline_revenue,
+        COUNT(CASE WHEN order_status != 'CANCELLED' THEN 1 ELSE NULL END) as total_offline_orders
+      FROM restaurant_orders
+      GROUP BY restaurant_id
+    `);
+    const offlineMap = {};
+    for (const row of offlineAgg) {
+      offlineMap[row.restaurant_id] = row;
+    }
+
+    // 5. Merge and enrich each restaurant with multi-channel and multi-period financials
+    const enrichedRestaurants = restaurants.map(r => {
+      const restAdmins = adminsByRest[r.id] || [];
+      // Pick primary admin (is_primary = 1 or first RESTAURANT_ADMIN)
+      const primaryAdmin = restAdmins.find(a => a.is_primary === 1) || restAdmins[0] || null;
+
+      const onl = onlineMap[r.id] || {
+        today_online_revenue: 0, today_online_orders: 0,
+        weekly_online_revenue: 0, weekly_online_orders: 0,
+        monthly_online_revenue: 0, monthly_online_orders: 0,
+        total_online_revenue: 0, total_online_orders: 0
+      };
+      const off = offlineMap[r.id] || {
+        today_offline_revenue: 0, today_offline_orders: 0,
+        weekly_offline_revenue: 0, weekly_offline_orders: 0,
+        monthly_offline_revenue: 0, monthly_offline_orders: 0,
+        total_offline_revenue: 0, total_offline_orders: 0
+      };
+
+      const todayOnlineRev = parseFloat(onl.today_online_revenue) || 0;
+      const todayOfflineRev = parseFloat(off.today_offline_revenue) || 0;
+      const todayCombinedRev = todayOnlineRev + todayOfflineRev;
+
+      const todayOnlineOrd = parseInt(onl.today_online_orders) || 0;
+      const todayOfflineOrd = parseInt(off.today_offline_orders) || 0;
+      const todayTotalOrd = todayOnlineOrd + todayOfflineOrd;
+
+      const weeklyOnlineRev = parseFloat(onl.weekly_online_revenue) || 0;
+      const weeklyOfflineRev = parseFloat(off.weekly_offline_revenue) || 0;
+      const weeklyCombinedRev = weeklyOnlineRev + weeklyOfflineRev;
+
+      const weeklyOnlineOrd = parseInt(onl.weekly_online_orders) || 0;
+      const weeklyOfflineOrd = parseInt(off.weekly_offline_orders) || 0;
+      const weeklyTotalOrd = weeklyOnlineOrd + weeklyOfflineOrd;
+
+      const monthlyOnlineRev = parseFloat(onl.monthly_online_revenue) || 0;
+      const monthlyOfflineRev = parseFloat(off.monthly_offline_revenue) || 0;
+      const monthlyCombinedRev = monthlyOnlineRev + monthlyOfflineRev;
+
+      const monthlyOnlineOrd = parseInt(onl.monthly_online_orders) || 0;
+      const monthlyOfflineOrd = parseInt(off.monthly_offline_orders) || 0;
+      const monthlyTotalOrd = monthlyOnlineOrd + monthlyOfflineOrd;
+
+      const totalOnlineRev = parseFloat(onl.total_online_revenue) || 0;
+      const totalOfflineRev = parseFloat(off.total_offline_revenue) || 0;
+      const totalCombinedRev = totalOnlineRev + totalOfflineRev;
+
+      const totalOnlineOrd = parseInt(onl.total_online_orders) || 0;
+      const totalOfflineOrd = parseInt(off.total_offline_orders) || 0;
+      const totalCombinedOrd = totalOnlineOrd + totalOfflineOrd;
+
+      const uniqueAdminNames = [...new Set(restAdmins.map(a => a.name).filter(Boolean))];
+      const uniqueAdminEmails = [...new Set(restAdmins.map(a => a.email).filter(Boolean))];
+      const uniqueAdminPhones = [...new Set(restAdmins.map(a => a.phone).filter(Boolean))];
+
+      return {
+        ...r,
+        // Admin Profile
+        primary_admin: primaryAdmin ? {
+          id: primaryAdmin.user_id,
+          name: primaryAdmin.name,
+          email: primaryAdmin.email,
+          phone: primaryAdmin.phone,
+          role: primaryAdmin.role
+        } : null,
+        admin_names: uniqueAdminNames.join(', ') || 'No Admin Assigned',
+        admin_emails: uniqueAdminEmails.join(', ') || '-',
+        admin_phones: uniqueAdminPhones.join(', ') || '-',
+        admins_list: restAdmins,
+
+        // High-level Flat Revenue Fields
+        today_revenue: todayCombinedRev,
+        today_orders: todayTotalOrd,
+        today_online_revenue: todayOnlineRev,
+        today_offline_revenue: todayOfflineRev,
+        today_online_orders: todayOnlineOrd,
+        today_offline_orders: todayOfflineOrd,
+
+        weekly_revenue: weeklyCombinedRev,
+        weekly_orders: weeklyTotalOrd,
+        weekly_online_revenue: weeklyOnlineRev,
+        weekly_offline_revenue: weeklyOfflineRev,
+        weekly_online_orders: weeklyOnlineOrd,
+        weekly_offline_orders: weeklyOfflineOrd,
+
+        monthly_revenue: monthlyCombinedRev,
+        monthly_orders: monthlyTotalOrd,
+        monthly_online_revenue: monthlyOnlineRev,
+        monthly_offline_revenue: monthlyOfflineRev,
+        monthly_online_orders: monthlyOnlineOrd,
+        monthly_offline_orders: monthlyOfflineOrd,
+
+        total_revenue: totalCombinedRev,
+        total_orders: totalCombinedOrd,
+        total_online_revenue: totalOnlineRev,
+        total_offline_revenue: totalOfflineRev,
+        total_online_orders: totalOnlineOrd,
+        total_offline_orders: totalOfflineOrd,
+
+        // Structured Nested Revenue Matrix
+        revenue: {
+          today: {
+            online: todayOnlineRev,
+            offline: todayOfflineRev,
+            combined: todayCombinedRev,
+            online_orders: todayOnlineOrd,
+            offline_orders: todayOfflineOrd,
+            total_orders: todayTotalOrd
+          },
+          weekly: {
+            online: weeklyOnlineRev,
+            offline: weeklyOfflineRev,
+            combined: weeklyCombinedRev,
+            online_orders: weeklyOnlineOrd,
+            offline_orders: weeklyOfflineOrd,
+            total_orders: weeklyTotalOrd
+          },
+          monthly: {
+            online: monthlyOnlineRev,
+            offline: monthlyOfflineRev,
+            combined: monthlyCombinedRev,
+            online_orders: monthlyOnlineOrd,
+            offline_orders: monthlyOfflineOrd,
+            total_orders: monthlyTotalOrd
+          },
+          all_time: {
+            online: totalOnlineRev,
+            offline: totalOfflineRev,
+            combined: totalCombinedRev,
+            online_orders: totalOnlineOrd,
+            offline_orders: totalOfflineOrd,
+            total_orders: totalCombinedOrd
+          }
+        }
+      };
+    });
+
+    res.json({ success: true, count: enrichedRestaurants.length, restaurants: enrichedRestaurants });
   } catch (err) {
     console.error('getAllRestaurants Error:', err);
     res.status(500).json({ success: false, message: 'Server error retrieving restaurants.' });
@@ -101,29 +385,90 @@ async function getRestaurantById(req, res) {
 
     // Fetch admins
     const admins = await query(
-      `SELECT u.id, u.name, u.email, u.phone, u.status, ra.is_primary, ra.assigned_at
+      `SELECT u.id, u.name, u.email, u.phone, u.status, u.role, ra.is_primary, ra.assigned_at
        FROM restaurant_admins ra
        JOIN users u ON u.id = ra.user_id
-       WHERE ra.restaurant_id = ?`,
+       WHERE ra.restaurant_id = ?
+       ORDER BY ra.is_primary DESC, u.id ASC`,
       [id]
     );
 
-    // Order summary
-    const [orderSummary] = await query(
-      `SELECT COUNT(*) as total_orders,
-              COALESCE(SUM(total_amount), 0) as total_revenue,
-              SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as today_orders,
-              COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END), 0) as today_revenue
+    // Online Order Summary
+    const [onlineSummary] = await query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as today_revenue,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as today_orders,
+        COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as weekly_revenue,
+        COUNT(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as weekly_orders,
+        COALESCE(SUM(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as monthly_revenue,
+        COUNT(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as monthly_orders,
+        COALESCE(SUM(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as total_revenue,
+        COUNT(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN 1 ELSE NULL END) as total_orders
        FROM orders WHERE restaurant_id = ?`,
       [id]
     );
+
+    // Offline Order Summary
+    const [offlineSummary] = await query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as today_revenue,
+        COUNT(CASE WHEN DATE(created_at) = CURDATE() AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as today_orders,
+        COALESCE(SUM(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as weekly_revenue,
+        COUNT(CASE WHEN created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as weekly_orders,
+        COALESCE(SUM(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as monthly_revenue,
+        COUNT(CASE WHEN (created_at >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) OR (YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE()))) AND order_status != 'CANCELLED' THEN 1 ELSE NULL END) as monthly_orders,
+        COALESCE(SUM(CASE WHEN order_status != 'CANCELLED' THEN total_amount ELSE 0 END), 0) as total_revenue,
+        COUNT(CASE WHEN order_status != 'CANCELLED' THEN 1 ELSE NULL END) as total_orders
+       FROM restaurant_orders WHERE restaurant_id = ?`,
+      [id]
+    );
+
+    const onl = onlineSummary || {};
+    const off = offlineSummary || {};
+
+    const todayOnlineRev = parseFloat(onl.today_revenue) || 0;
+    const todayOfflineRev = parseFloat(off.today_revenue) || 0;
+    const todayCombinedRev = todayOnlineRev + todayOfflineRev;
+
+    const weeklyOnlineRev = parseFloat(onl.weekly_revenue) || 0;
+    const weeklyOfflineRev = parseFloat(off.weekly_revenue) || 0;
+    const weeklyCombinedRev = weeklyOnlineRev + weeklyOfflineRev;
+
+    const monthlyOnlineRev = parseFloat(onl.monthly_revenue) || 0;
+    const monthlyOfflineRev = parseFloat(off.monthly_revenue) || 0;
+    const monthlyCombinedRev = monthlyOnlineRev + monthlyOfflineRev;
+
+    const totalOnlineRev = parseFloat(onl.total_revenue) || 0;
+    const totalOfflineRev = parseFloat(off.total_revenue) || 0;
+    const totalCombinedRev = totalOnlineRev + totalOfflineRev;
+
+    const todayTotalOrd = (parseInt(onl.today_orders) || 0) + (parseInt(off.today_orders) || 0);
+    const weeklyTotalOrd = (parseInt(onl.weekly_orders) || 0) + (parseInt(off.weekly_orders) || 0);
+    const monthlyTotalOrd = (parseInt(onl.monthly_orders) || 0) + (parseInt(off.monthly_orders) || 0);
+    const totalCombinedOrd = (parseInt(onl.total_orders) || 0) + (parseInt(off.total_orders) || 0);
+
+    const primaryAdmin = admins.find(a => a.is_primary === 1) || admins[0] || null;
 
     res.json({
       success: true,
       restaurant: {
         ...restaurant,
+        primary_admin: primaryAdmin,
         admins,
-        orderSummary
+        revenue: {
+          today: { online: todayOnlineRev, offline: todayOfflineRev, combined: todayCombinedRev, online_orders: parseInt(onl.today_orders) || 0, offline_orders: parseInt(off.today_orders) || 0, total_orders: todayTotalOrd },
+          weekly: { online: weeklyOnlineRev, offline: weeklyOfflineRev, combined: weeklyCombinedRev, online_orders: parseInt(onl.weekly_orders) || 0, offline_orders: parseInt(off.weekly_orders) || 0, total_orders: weeklyTotalOrd },
+          monthly: { online: monthlyOnlineRev, offline: monthlyOfflineRev, combined: monthlyCombinedRev, online_orders: parseInt(onl.monthly_orders) || 0, offline_orders: parseInt(off.monthly_orders) || 0, total_orders: monthlyTotalOrd },
+          all_time: { online: totalOnlineRev, offline: totalOfflineRev, combined: totalCombinedRev, online_orders: parseInt(onl.total_orders) || 0, offline_orders: parseInt(off.total_orders) || 0, total_orders: totalCombinedOrd }
+        },
+        orderSummary: {
+          total_orders: totalCombinedOrd,
+          total_revenue: totalCombinedRev,
+          today_orders: todayTotalOrd,
+          today_revenue: todayCombinedRev,
+          online: onl,
+          offline: off
+        }
       }
     });
   } catch (err) {

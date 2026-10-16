@@ -5,7 +5,8 @@ import {
   CheckCircle, XCircle, Eye, EyeOff, LogOut, RefreshCw, Search, ExternalLink,
   AlertTriangle, Plus, Store, Check, Layers, ChevronRight, Sparkles, Clock, Calendar,
   CreditCard, ShieldCheck, Tag, CheckCircle2, UserCheck, AlertCircle, FileText,
-  Sliders, Utensils, ChefHat, Grid2X2, Boxes, BarChart3, BedDouble, Gift, Globe, Receipt
+  Sliders, Utensils, ChefHat, Grid2X2, Boxes, BarChart3, BedDouble, Gift, Globe, Receipt,
+  Phone, Mail, TrendingUp, ArrowUpRight, PieChart, Filter, ArrowUpDown, Info, X, ChevronDown
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +31,17 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [visiblePasswords, setVisiblePasswords] = useState({});
+
+  // Multi-Channel Revenue & Financial Breakdown State
+  const [selectedRestRevenue, setSelectedRestRevenue] = useState(null);
+  const [revenueChannelFilter, setRevenueChannelFilter] = useState('all'); // 'all', 'online', 'offline'
+  const [revenueSortBy, setRevenueSortBy] = useState('highest_total'); // 'highest_total', 'highest_today', 'highest_weekly', 'highest_monthly', 'most_orders', 'name'
+  const [selectedAdminDetail, setSelectedAdminDetail] = useState(null);
+
+  const formatInr = (val) => {
+    const num = parseFloat(val) || 0;
+    return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   // Feature Controls & Provisioning State
   const [restaurantsWithFeatures, setRestaurantsWithFeatures] = useState([]);
@@ -622,31 +634,39 @@ export default function SuperAdminPage() {
       <div className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
 
         {/* Master KPIs Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className={`p-4 rounded-2xl border shadow-xs transition-all ${pendingApprovals.length > 0 ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400/20' : 'bg-white border-[#D7E5E8]'
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className={`p-3.5 rounded-2xl border shadow-xs transition-all ${pendingApprovals.length > 0 ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400/20' : 'bg-white border-[#D7E5E8]'
             }`}>
             <span className="text-[10px] font-bold uppercase text-amber-800 block">Pending Approvals</span>
-            <span className="text-2xl font-bold text-amber-900 mt-1 block">{pendingApprovals.length}</span>
+            <span className="text-xl font-black text-amber-900 mt-1 block">{pendingApprovals.length}</span>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs">
+          <div className="bg-white p-3.5 rounded-2xl border border-[#D7E5E8] shadow-xs">
             <span className="text-[10px] font-bold uppercase text-[#64748B] block">Total Hotels</span>
-            <span className="text-2xl font-bold text-[#1F2937] mt-1 block">{restaurants.length}</span>
+            <span className="text-xl font-black text-[#1F2937] mt-1 block">{restaurants.length}</span>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs">
-            <span className="text-[10px] font-bold uppercase text-[#64748B] block">Active Subscriptions</span>
-            <span className="text-2xl font-bold text-emerald-700 mt-1 block">{activeSubsCount}</span>
+          <div className="bg-white p-3.5 rounded-2xl border border-[#D7E5E8] shadow-xs">
+            <span className="text-[10px] font-bold uppercase text-[#64748B] block">Active Subs</span>
+            <span className="text-xl font-black text-emerald-700 mt-1 block">{activeSubsCount}</span>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs">
-            <span className="text-[10px] font-bold uppercase text-[#64748B] block">Expired Subscriptions</span>
-            <span className="text-2xl font-bold text-rose-700 mt-1 block">{expiredSubsCount}</span>
+          <div className="bg-white p-3.5 rounded-2xl border border-[#D7E5E8] shadow-xs">
+            <span className="text-[10px] font-bold uppercase text-[#64748B] block">Expired Subs</span>
+            <span className="text-xl font-black text-rose-700 mt-1 block">{expiredSubsCount}</span>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs">
-            <span className="text-[10px] font-bold uppercase text-[#64748B] block">SaaS Plans</span>
-            <span className="text-2xl font-bold text-[#3A7D7C] mt-1 block">{subscriptionPlans.length}</span>
+          <div className="bg-gradient-to-br from-white to-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200 shadow-xs">
+            <span className="text-[10px] font-black uppercase text-emerald-800 block">Today's Money</span>
+            <span className="text-sm font-black text-emerald-900 mt-1 block truncate" title={formatInr(kpis?.todayRevenue)}>{formatInr(kpis?.todayRevenue)}</span>
           </div>
-          <div className="bg-white p-4 rounded-2xl border border-[#D7E5E8] shadow-xs">
-            <span className="text-[10px] font-bold uppercase text-[#64748B] block">Platform Orders</span>
-            <span className="text-2xl font-bold text-[#3A7D7C] mt-1 block">{orders.length}</span>
+          <div className="bg-gradient-to-br from-white to-purple-50/60 p-3.5 rounded-2xl border border-purple-200 shadow-xs">
+            <span className="text-[10px] font-black uppercase text-purple-800 block">Monthly (30d)</span>
+            <span className="text-sm font-black text-purple-900 mt-1 block truncate" title={formatInr(kpis?.monthlyRevenue)}>{formatInr(kpis?.monthlyRevenue)}</span>
+          </div>
+          <div className="bg-gradient-to-br from-white to-amber-50/60 p-3.5 rounded-2xl border border-amber-200 shadow-xs">
+            <span className="text-[10px] font-black uppercase text-amber-800 block">Lifetime Rev</span>
+            <span className="text-sm font-black text-amber-900 mt-1 block truncate" title={formatInr(kpis?.totalRevenue)}>{formatInr(kpis?.totalRevenue)}</span>
+          </div>
+          <div className="bg-white p-3.5 rounded-2xl border border-[#D7E5E8] shadow-xs">
+            <span className="text-[10px] font-bold uppercase text-[#64748B] block">Total Orders</span>
+            <span className="text-xl font-black text-[#3A7D7C] mt-1 block">{kpis?.totalOrders || orders.length}</span>
           </div>
         </div>
 
@@ -1129,100 +1149,568 @@ export default function SuperAdminPage() {
           </div>
         )}
 
-        {/* 5. RESTAURANTS TAB */}
-        {activeTab === 'restaurants' && (
-          <div className="bg-white rounded-3xl border border-[#D7E5E8] shadow-xs overflow-hidden">
-            <div className="p-6 border-b border-[#D7E5E8] flex justify-between items-center">
-              <div>
-                <h2 className="text-base font-bold text-[#1F2937]">Registered Restaurants & Hotels</h2>
-                <p className="text-xs text-[#64748B]">Platform multi-tenancy records</p>
+        {/* 5. RESTAURANTS TAB WITH LIVE MULTI-CHANNEL REVENUE TRACKING */}
+        {activeTab === 'restaurants' && (() => {
+          // Calculate Platform Totals across all restaurants
+          const totals = restaurants.reduce((acc, r) => {
+            const rev = r.revenue || {};
+            const t = rev.today || {};
+            const w = rev.weekly || {};
+            const m = rev.monthly || {};
+            const tot = rev.all_time || rev.total || {};
+
+            acc.today_online += (t.online || 0);
+            acc.today_offline += (t.offline || 0);
+            acc.today_combined += (t.combined || 0);
+            acc.today_orders += (t.total_orders || 0);
+
+            acc.weekly_online += (w.online || 0);
+            acc.weekly_offline += (w.offline || 0);
+            acc.weekly_combined += (w.combined || 0);
+            acc.weekly_orders += (w.total_orders || 0);
+
+            acc.monthly_online += (m.online || 0);
+            acc.monthly_offline += (m.offline || 0);
+            acc.monthly_combined += (m.combined || 0);
+            acc.monthly_orders += (m.total_orders || 0);
+
+            acc.total_online += (tot.online || 0);
+            acc.total_offline += (tot.offline || 0);
+            acc.total_combined += (tot.combined || 0);
+            acc.total_orders += (tot.total_orders || 0);
+
+            return acc;
+          }, {
+            today_online: 0, today_offline: 0, today_combined: 0, today_orders: 0,
+            weekly_online: 0, weekly_offline: 0, weekly_combined: 0, weekly_orders: 0,
+            monthly_online: 0, monthly_offline: 0, monthly_combined: 0, monthly_orders: 0,
+            total_online: 0, total_offline: 0, total_combined: 0, total_orders: 0
+          });
+
+          // Filter & Sort
+          const filteredList = restaurants
+            .filter(r => {
+              if (!search) return true;
+              const s = search.toLowerCase();
+              return (
+                (r.name && r.name.toLowerCase().includes(s)) ||
+                (r.slug && r.slug.toLowerCase().includes(s)) ||
+                (r.city && r.city.toLowerCase().includes(s)) ||
+                (r.admin_names && r.admin_names.toLowerCase().includes(s)) ||
+                (r.admin_emails && r.admin_emails.toLowerCase().includes(s)) ||
+                (r.admin_phones && r.admin_phones.toLowerCase().includes(s)) ||
+                (r.primary_admin?.name && r.primary_admin.name.toLowerCase().includes(s)) ||
+                (r.primary_admin?.email && r.primary_admin.email.toLowerCase().includes(s)) ||
+                (r.primary_admin?.phone && r.primary_admin.phone.toLowerCase().includes(s))
+              );
+            })
+            .sort((a, b) => {
+              const aRev = a.revenue || {};
+              const bRev = b.revenue || {};
+              if (revenueSortBy === 'highest_today') {
+                const aVal = revenueChannelFilter === 'online' ? (aRev.today?.online || 0) : revenueChannelFilter === 'offline' ? (aRev.today?.offline || 0) : (aRev.today?.combined || 0);
+                const bVal = revenueChannelFilter === 'online' ? (bRev.today?.online || 0) : revenueChannelFilter === 'offline' ? (bRev.today?.offline || 0) : (bRev.today?.combined || 0);
+                return bVal - aVal;
+              }
+              if (revenueSortBy === 'highest_weekly') {
+                const aVal = revenueChannelFilter === 'online' ? (aRev.weekly?.online || 0) : revenueChannelFilter === 'offline' ? (aRev.weekly?.offline || 0) : (aRev.weekly?.combined || 0);
+                const bVal = revenueChannelFilter === 'online' ? (bRev.weekly?.online || 0) : revenueChannelFilter === 'offline' ? (bRev.weekly?.offline || 0) : (bRev.weekly?.combined || 0);
+                return bVal - aVal;
+              }
+              if (revenueSortBy === 'highest_monthly') {
+                const aVal = revenueChannelFilter === 'online' ? (aRev.monthly?.online || 0) : revenueChannelFilter === 'offline' ? (aRev.monthly?.offline || 0) : (aRev.monthly?.combined || 0);
+                const bVal = revenueChannelFilter === 'online' ? (bRev.monthly?.online || 0) : revenueChannelFilter === 'offline' ? (bRev.monthly?.offline || 0) : (bRev.monthly?.combined || 0);
+                return bVal - aVal;
+              }
+              if (revenueSortBy === 'most_orders') {
+                const aOrders = (aRev.all_time?.total_orders || a.total_orders || 0);
+                const bOrders = (bRev.all_time?.total_orders || b.total_orders || 0);
+                return bOrders - aOrders;
+              }
+              if (revenueSortBy === 'name') {
+                return (a.name || '').localeCompare(b.name || '');
+              }
+              // Default: highest_total
+              const aVal = revenueChannelFilter === 'online' ? (aRev.all_time?.online || 0) : revenueChannelFilter === 'offline' ? (aRev.all_time?.offline || 0) : (aRev.all_time?.combined || 0);
+              const bVal = revenueChannelFilter === 'online' ? (bRev.all_time?.online || 0) : revenueChannelFilter === 'offline' ? (bRev.all_time?.offline || 0) : (bRev.all_time?.combined || 0);
+              return bVal - aVal;
+            });
+
+          return (
+            <div className="space-y-6">
+              {/* 1. LIVE MULTI-CHANNEL PLATFORM REVENUE SUMMARY BANNER */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* TODAY */}
+                <div className="bg-gradient-to-br from-white to-[#F0FDF4] p-5 rounded-3xl border border-emerald-200 shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-emerald-600" /> Today's Earnings
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {totals.today_orders} orders
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-900 tracking-tight">
+                    {formatInr(totals.today_combined)}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-emerald-100 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                      <span>Online:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.today_online)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                      <span>Offline:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.today_offline)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* WEEKLY */}
+                <div className="bg-gradient-to-br from-white to-[#F0F9FF] p-5 rounded-3xl border border-sky-200 shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-sky-600" /> Weekly (7 Days)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 text-sky-800 border border-sky-300">
+                      {totals.weekly_orders} orders
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-900 tracking-tight">
+                    {formatInr(totals.weekly_combined)}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-sky-100 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                      <span>Online:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.weekly_online)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                      <span>Offline:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.weekly_offline)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* MONTHLY */}
+                <div className="bg-gradient-to-br from-white to-[#F5F3FF] p-5 rounded-3xl border border-purple-200 shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-purple-800 flex items-center gap-1.5">
+                      <BarChart3 className="w-3.5 h-3.5 text-purple-600" /> Monthly (30 Days)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300">
+                      {totals.monthly_orders} orders
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-900 tracking-tight">
+                    {formatInr(totals.monthly_combined)}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-purple-100 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                      <span>Online:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.monthly_online)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                      <span>Offline:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.monthly_offline)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ALL TIME LIFETIME */}
+                <div className="bg-gradient-to-br from-white to-[#FFFBEB] p-5 rounded-3xl border border-amber-200 shadow-xs relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
+                      <Receipt className="w-3.5 h-3.5 text-amber-600" /> Lifetime Platform Revenue
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                      {totals.total_orders} orders
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-900 tracking-tight">
+                    {formatInr(totals.total_combined)}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-amber-100 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block"></span>
+                      <span>Online:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.total_online)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-slate-600 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                      <span>Offline:</span>
+                      <span className="font-bold text-slate-900">{formatInr(totals.total_offline)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. RESTAURANTS DATA TABLE & CONTROLS */}
+              <div className="bg-white rounded-3xl border border-[#D7E5E8] shadow-xs overflow-hidden">
+                <div className="p-6 border-b border-[#D7E5E8] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/40">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-extrabold text-[#1F2937]">Registered Restaurants & Money Making Metrics</h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EAF4F7] text-[#3A7D7C] border border-[#D7E5E8]">
+                        {filteredList.length} of {restaurants.length}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#64748B] mt-0.5">
+                      Live financial performance breakdown per restaurant: Today, Weekly, Monthly across Online (Delivery/Web) & Offline (POS/Dine-In/KOT).
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Channel Selector */}
+                    <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-[#D7E5E8]">
+                      <button
+                        type="button"
+                        onClick={() => setRevenueChannelFilter('all')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          revenueChannelFilter === 'all'
+                            ? 'bg-[#3A7D7C] text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Combined
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRevenueChannelFilter('online')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          revenueChannelFilter === 'online'
+                            ? 'bg-cyan-700 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🌐 Online Only
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRevenueChannelFilter('offline')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          revenueChannelFilter === 'offline'
+                            ? 'bg-emerald-700 text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🍽️ Offline Only
+                      </button>
+                    </div>
+
+                    {/* Sort Selector */}
+                    <div className="relative">
+                      <select
+                        value={revenueSortBy}
+                        onChange={(e) => setRevenueSortBy(e.target.value)}
+                        className="pl-3 pr-8 py-1.5 bg-white border border-[#D7E5E8] rounded-xl text-xs font-bold text-slate-700 outline-none cursor-pointer shadow-2xs"
+                      >
+                        <option value="highest_total">Sort: Highest Lifetime</option>
+                        <option value="highest_today">Sort: Highest Today</option>
+                        <option value="highest_weekly">Sort: Highest Weekly</option>
+                        <option value="highest_monthly">Sort: Highest Monthly</option>
+                        <option value="most_orders">Sort: Most Orders</option>
+                        <option value="name">Sort: Name (A-Z)</option>
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={() => setShowNewRestModal(true)}
+                      className="px-3.5 py-1.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Restaurant
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[#1F2937]">
+                    <thead className="bg-[#EAF4F7] text-[#1F2937] uppercase text-[10px] tracking-wider border-b border-[#D7E5E8]">
+                      <tr>
+                        <th className="p-4">Restaurant & Location</th>
+                        <th className="p-4">Admin Owner</th>
+                        <th className="p-4">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-emerald-600" />
+                            <span>Today Money</span>
+                          </div>
+                        </th>
+                        <th className="p-4">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-sky-600" />
+                            <span>Weekly (7d)</span>
+                          </div>
+                        </th>
+                        <th className="p-4">
+                          <div className="flex items-center gap-1">
+                            <BarChart3 className="w-3 h-3 text-purple-600" />
+                            <span>Monthly (30d)</span>
+                          </div>
+                        </th>
+                        <th className="p-4">
+                          <div className="flex items-center gap-1">
+                            <Receipt className="w-3 h-3 text-amber-600" />
+                            <span>Combined Lifetime</span>
+                          </div>
+                        </th>
+                        <th className="p-4">Plan & Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#D7E5E8]">
+                      {filteredList.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="p-12 text-center text-xs text-[#64748B]">
+                            <Store className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                            <span className="font-bold text-sm text-[#1F2937] block">No Restaurants Found</span>
+                            <span>Try adjusting your search criteria or filter.</span>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredList.map(r => {
+                          const matchedSub = hotelSubscriptions.find(s => s.restaurant_id === r.id);
+                          const planName = matchedSub?.plan_name || (r.suite_mode === 'RESTAURANT_ONLY' ? 'Restaurant Only (Online + POS)' : 'Full Suite (Restaurant + Accommodation)');
+                          
+                          const rev = r.revenue || {};
+                          const t = rev.today || {};
+                          const w = rev.weekly || {};
+                          const m = rev.monthly || {};
+                          const tot = rev.all_time || rev.total || {};
+
+                          const primaryAdmin = r.primary_admin || (r.admins_list && r.admins_list[0]) || null;
+                          const otherAdminsCount = (r.admins_list ? r.admins_list.length : 0) - (primaryAdmin ? 1 : 0);
+
+                          // Online vs Offline % for split bar
+                          const totCombined = tot.combined || 0;
+                          const onlinePct = totCombined > 0 ? Math.round(((tot.online || 0) / totCombined) * 100) : 50;
+                          const offlinePct = 100 - onlinePct;
+
+                          return (
+                            <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                              {/* 1. RESTAURANT & CITY */}
+                              <td className="p-4 font-bold text-[#1F2937]">
+                                <div className="text-sm font-extrabold flex items-center gap-1.5">
+                                  <span>{r.name}</span>
+                                  {r.status === 'ACTIVE' && (
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Active"></span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-[#64748B] font-normal flex items-center gap-2 mt-0.5">
+                                  <span>{r.city || 'India'}</span>
+                                  <span>•</span>
+                                  <span className="font-mono text-[10px] text-slate-400">ID #{r.id}</span>
+                                  <span>•</span>
+                                  <span className="font-mono text-[10px] text-[#3A7D7C]">{r.slug}</span>
+                                </div>
+                              </td>
+
+                              {/* 2. ADMIN OWNER */}
+                              <td className="p-4">
+                                <div className="font-bold text-sm text-[#1F2937] flex items-center gap-1.5">
+                                  <span>{primaryAdmin ? primaryAdmin.name : (r.admin_names || 'No Admin Assigned')}</span>
+                                  {primaryAdmin && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                      Owner
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1 space-y-0.5">
+                                  {(primaryAdmin?.phone || r.admin_phones) && (primaryAdmin?.phone || r.admin_phones) !== '-' && (
+                                    <a
+                                      href={`tel:${primaryAdmin?.phone || r.admin_phones}`}
+                                      className="text-[11px] font-medium text-[#3A7D7C] hover:underline flex items-center gap-1 block"
+                                    >
+                                      <Phone className="w-3 h-3 text-[#3A7D7C]" />
+                                      <span>{primaryAdmin?.phone || r.admin_phones}</span>
+                                    </a>
+                                  )}
+                                  {(primaryAdmin?.email || r.admin_emails) && (
+                                    <a
+                                      href={`mailto:${primaryAdmin?.email || r.admin_emails}`}
+                                      className="text-[11px] text-[#64748B] hover:text-[#1F2937] hover:underline flex items-center gap-1 block truncate max-w-[180px]"
+                                      title={primaryAdmin?.email || r.admin_emails}
+                                    >
+                                      <Mail className="w-3 h-3 text-[#94A3B8]" />
+                                      <span>{primaryAdmin?.email || r.admin_emails}</span>
+                                    </a>
+                                  )}
+                                  {otherAdminsCount > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedAdminDetail(r)}
+                                      className="text-[10px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200 mt-1 cursor-pointer flex items-center gap-1"
+                                    >
+                                      <Users className="w-2.5 h-2.5" /> +{otherAdminsCount} more staff/admins
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* 3. TODAY'S MONEY */}
+                              <td className="p-4">
+                                <div className="text-sm font-black text-slate-900">
+                                  {revenueChannelFilter === 'online'
+                                    ? formatInr(t.online)
+                                    : revenueChannelFilter === 'offline'
+                                    ? formatInr(t.offline)
+                                    : formatInr(t.combined)}
+                                </div>
+                                <div className="mt-1 flex flex-col gap-0.5 text-[10px]">
+                                  <span className="font-medium text-cyan-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                                    Online: <b className="font-bold">{formatInr(t.online)}</b> ({t.online_orders || 0})
+                                  </span>
+                                  <span className="font-medium text-emerald-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Offline: <b className="font-bold">{formatInr(t.offline)}</b> ({t.offline_orders || 0})
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* 4. WEEKLY (7d) */}
+                              <td className="p-4">
+                                <div className="text-sm font-black text-slate-900">
+                                  {revenueChannelFilter === 'online'
+                                    ? formatInr(w.online)
+                                    : revenueChannelFilter === 'offline'
+                                    ? formatInr(w.offline)
+                                    : formatInr(w.combined)}
+                                </div>
+                                <div className="mt-1 flex flex-col gap-0.5 text-[10px]">
+                                  <span className="font-medium text-cyan-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                                    Online: <b className="font-bold">{formatInr(w.online)}</b> ({w.online_orders || 0})
+                                  </span>
+                                  <span className="font-medium text-emerald-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Offline: <b className="font-bold">{formatInr(w.offline)}</b> ({w.offline_orders || 0})
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* 5. MONTHLY (30d) */}
+                              <td className="p-4">
+                                <div className="text-sm font-black text-slate-900">
+                                  {revenueChannelFilter === 'online'
+                                    ? formatInr(m.online)
+                                    : revenueChannelFilter === 'offline'
+                                    ? formatInr(m.offline)
+                                    : formatInr(m.combined)}
+                                </div>
+                                <div className="mt-1 flex flex-col gap-0.5 text-[10px]">
+                                  <span className="font-medium text-cyan-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                                    Online: <b className="font-bold">{formatInr(m.online)}</b> ({m.online_orders || 0})
+                                  </span>
+                                  <span className="font-medium text-emerald-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                    Offline: <b className="font-bold">{formatInr(m.offline)}</b> ({m.offline_orders || 0})
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* 6. COMBINED LIFETIME */}
+                              <td className="p-4">
+                                <div className="text-sm font-black text-slate-900">
+                                  {formatInr(tot.combined)}
+                                </div>
+                                <div className="text-[10px] text-[#64748B] mt-0.5 font-medium">
+                                  {tot.total_orders || 0} total orders
+                                </div>
+                                {/* Micro split bar */}
+                                {totCombined > 0 && (
+                                  <div className="w-28 mt-1.5">
+                                    <div className="h-1.5 rounded-full bg-slate-100 flex overflow-hidden border border-slate-200" title={`Online: ${onlinePct}% | Offline: ${offlinePct}%`}>
+                                      <div style={{ width: `${onlinePct}%` }} className="bg-cyan-500 h-full"></div>
+                                      <div style={{ width: `${offlinePct}%` }} className="bg-emerald-500 h-full"></div>
+                                    </div>
+                                    <div className="flex justify-between text-[8px] text-[#94A3B8] font-mono mt-0.5">
+                                      <span>Onl {onlinePct}%</span>
+                                      <span>Off {offlinePct}%</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* 7. PLAN & STATUS */}
+                              <td className="p-4 space-y-1">
+                                <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] border flex items-center gap-1 w-fit ${
+                                  r.suite_mode === 'RESTAURANT_ONLY' || planName.includes('Restaurant Only')
+                                    ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                    : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                }`}>
+                                  {r.suite_mode === 'RESTAURANT_ONLY' || planName.includes('Restaurant Only')
+                                    ? '🍽️ Restaurant Only'
+                                    : '🍽️🏨 Full Suite'}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] border ${
+                                    r.status === 'ACTIVE'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                      : 'bg-rose-50 text-rose-800 border-rose-200'
+                                  }`}>
+                                    {r.status}
+                                  </span>
+                                  <button
+                                    onClick={() => handleToggleCustomSubdomain(r.id, r.custom_subdomain_enabled, r.custom_subdomain_slug || r.slug)}
+                                    title={r.custom_subdomain_enabled ? 'Custom subdomain enabled' : 'Click to enable custom subdomain'}
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold border cursor-pointer ${
+                                      r.custom_subdomain_enabled
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                                    }`}
+                                  >
+                                    {r.custom_subdomain_enabled ? '⭐ Custom' : '🔒 Auto'}
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* 8. ACTIONS */}
+                              <td className="p-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedRestRevenue(r)}
+                                    className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-[#3A7D7C] hover:bg-[#2F6665] text-white shadow-2xs flex items-center gap-1 cursor-pointer transition-all"
+                                    title="View Detailed Revenue & Channel Analytics"
+                                  >
+                                    <BarChart3 className="w-3.5 h-3.5" />
+                                    <span>Breakdown</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={statusUpdatingId === r.id}
+                                    onClick={() => toggleRestaurantStatus(r.id, r.status)}
+                                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-xs ${
+                                      r.status === 'ACTIVE'
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+                                    } ${statusUpdatingId === r.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  >
+                                    {statusUpdatingId === r.id
+                                      ? '...'
+                                      : r.status === 'ACTIVE'
+                                      ? 'Suspend'
+                                      : 'Activate'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-[#1F2937]">
-                <thead className="bg-[#EAF4F7] text-[#1F2937] uppercase text-[10px] tracking-wider border-b border-[#D7E5E8]">
-                  <tr>
-                    <th className="p-4">Restaurant / Hotel</th>
-                    <th className="p-4">Admin Owner</th>
-                    <th className="p-4">Purchased Plan Tier</th>
-                    <th className="p-4">Default / Custom URL</th>
-                    <th className="p-4">Subdomain Add-On (₹99/mo)</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#D7E5E8]">
-                  {restaurants.map(r => {
-                    const matchedSub = hotelSubscriptions.find(s => s.restaurant_id === r.id);
-                    const planName = matchedSub?.plan_name || (r.suite_mode === 'RESTAURANT_ONLY' ? 'Restaurant Only (Online + POS)' : 'Full Suite (Restaurant + Accommodation)');
-                    return (
-                      <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-4 font-bold text-[#1F2937]">
-                          <div className="text-sm">{r.name}</div>
-                          <div className="text-[10px] text-[#64748B] font-normal">{r.city || 'India'} • ID: #{r.id}</div>
-                        </td>
-                        <td className="p-4">
-                          <div className="font-bold text-[#1F2937]">{r.admin_names || 'Admin Owner'}</div>
-                          <div className="text-[11px] text-[#64748B]">{r.admin_emails || r.email || r.phone || '-'}</div>
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 w-fit ${
-                            r.suite_mode === 'RESTAURANT_ONLY' || planName.includes('Restaurant Only')
-                              ? 'bg-amber-50 text-amber-900 border-amber-300'
-                              : 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                          }`}>
-                            {r.suite_mode === 'RESTAURANT_ONLY' || planName.includes('Restaurant Only')
-                              ? '🍽️ Restaurant Only (₹999/mo)'
-                              : '🍽️🏨 Full Suite (₹3,999/mo)'}
-                          </span>
-                        </td>
-                        <td className="p-4 font-mono text-[#64748B]">
-                          <div className="font-bold text-[#3A7D7C]">{r.custom_subdomain_enabled ? (r.custom_subdomain_slug || r.slug) : (r.random_slug || r.slug)}</div>
-                          <div className="text-[10px] text-[#94A3B8]">Slug: {r.slug}</div>
-                        </td>
-                        <td className="p-4">
-                          <button
-                            onClick={() => handleToggleCustomSubdomain(r.id, r.custom_subdomain_enabled, r.custom_subdomain_slug || r.slug)}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${r.custom_subdomain_enabled
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-600 border-[#D7E5E8] hover:bg-slate-200'
-                              }`}
-                          >
-                            {r.custom_subdomain_enabled ? '⭐ Active (Click to Lock)' : '🔒 Off (Click to Unlock ₹99/mo)'}
-                          </button>
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] border ${r.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
-                            }`}>
-                            {r.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button
-                            type="button"
-                            disabled={statusUpdatingId === r.id}
-                            onClick={() => toggleRestaurantStatus(r.id, r.status)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer shadow-xs ${
-                              r.status === 'ACTIVE'
-                                ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
-                            } ${statusUpdatingId === r.id ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            {statusUpdatingId === r.id
-                              ? 'Updating...'
-                              : r.status === 'ACTIVE'
-                              ? 'Suspend'
-                              : 'Activate'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 6. ADMINS TAB */}
         {activeTab === 'admins' && (
@@ -1995,6 +2483,432 @@ export default function SuperAdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: RESTAURANT REVENUE & MULTI-CHANNEL FINANCIAL BREAKDOWN */}
+      {selectedRestRevenue && (() => {
+        const rev = selectedRestRevenue.revenue || {};
+        const t = rev.today || {};
+        const w = rev.weekly || {};
+        const m = rev.monthly || {};
+        const tot = rev.all_time || rev.total || {};
+
+        const totCombined = tot.combined || 0;
+        const onlineTot = tot.online || 0;
+        const offlineTot = tot.offline || 0;
+        const onlineOrdersTot = tot.online_orders || 0;
+        const offlineOrdersTot = tot.offline_orders || 0;
+
+        const onlinePct = totCombined > 0 ? Math.round((onlineTot / totCombined) * 100) : 50;
+        const offlinePct = 100 - onlinePct;
+
+        const onlineAov = onlineOrdersTot > 0 ? (onlineTot / onlineOrdersTot) : 0;
+        const offlineAov = offlineOrdersTot > 0 ? (offlineTot / offlineOrdersTot) : 0;
+
+        const primaryAdmin = selectedRestRevenue.primary_admin || (selectedRestRevenue.admins_list && selectedRestRevenue.admins_list[0]) || null;
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-3xl max-w-4xl w-full border border-[#D7E5E8] shadow-2xl overflow-hidden my-8 max-h-[90vh] flex flex-col">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-[#D7E5E8] flex items-center justify-between bg-slate-50/50">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-[#1F2937]">{selectedRestRevenue.name}</h2>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                      selectedRestRevenue.status === 'ACTIVE'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-rose-50 text-rose-800 border-rose-200'
+                    }`}>
+                      {selectedRestRevenue.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#64748B] mt-1 font-medium">
+                    <span>{selectedRestRevenue.city || 'India'}</span>
+                    <span>•</span>
+                    <span className="font-mono text-slate-500">ID #{selectedRestRevenue.id}</span>
+                    <span>•</span>
+                    <span className="font-mono text-[#3A7D7C]">{selectedRestRevenue.slug}</span>
+                    {selectedRestRevenue.address && (
+                      <>
+                        <span>•</span>
+                        <span className="truncate max-w-xs">{selectedRestRevenue.address}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRestRevenue(null)}
+                  className="p-2 rounded-xl hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* 1. Admin Profile Card */}
+                <div className="bg-gradient-to-r from-teal-50/80 via-emerald-50/50 to-white p-5 rounded-2xl border border-teal-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-black text-lg shadow-sm">
+                      {primaryAdmin ? primaryAdmin.name.charAt(0).toUpperCase() : 'A'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-extrabold text-[#1F2937]">
+                          {primaryAdmin ? primaryAdmin.name : (selectedRestRevenue.admin_names || 'No Admin Assigned')}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                          {primaryAdmin?.role || 'Restaurant Admin Owner'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-[#64748B] mt-1">
+                        {(primaryAdmin?.phone || selectedRestRevenue.admin_phones) && (primaryAdmin?.phone || selectedRestRevenue.admin_phones) !== '-' && (
+                          <a
+                            href={`tel:${primaryAdmin?.phone || selectedRestRevenue.admin_phones}`}
+                            className="font-bold text-[#3A7D7C] hover:underline flex items-center gap-1"
+                          >
+                            <Phone className="w-3.5 h-3.5" /> {primaryAdmin?.phone || selectedRestRevenue.admin_phones}
+                          </a>
+                        )}
+                        {(primaryAdmin?.email || selectedRestRevenue.admin_emails) && (
+                          <a
+                            href={`mailto:${primaryAdmin?.email || selectedRestRevenue.admin_emails}`}
+                            className="text-[#64748B] hover:text-[#1F2937] hover:underline flex items-center gap-1"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-slate-400" /> {primaryAdmin?.email || selectedRestRevenue.admin_emails}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedRestRevenue.admins_list && selectedRestRevenue.admins_list.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAdminDetail(selectedRestRevenue)}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-teal-200 text-[#3A7D7C] font-bold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>View All {selectedRestRevenue.admins_list.length} Admins & Staff</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. 4 Performance Timeframes Matrix */}
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#64748B] mb-3 flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-[#3A7D7C]" />
+                    <span>Multi-Period Revenue & Money Made</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Today */}
+                    <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-800 uppercase mb-1">
+                        <span>Today</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-[10px]">
+                          {t.total_orders || 0} orders
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-slate-900">
+                        {formatInr(t.combined)}
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Online:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(t.online)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Offline:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(t.offline)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Weekly */}
+                    <div className="bg-white p-4 rounded-2xl border border-sky-200 shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-sky-800 uppercase mb-1">
+                        <span>Weekly (7d)</span>
+                        <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-900 text-[10px]">
+                          {w.total_orders || 0} orders
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-slate-900">
+                        {formatInr(w.combined)}
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Online:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(w.online)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Offline:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(w.offline)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Monthly */}
+                    <div className="bg-white p-4 rounded-2xl border border-purple-200 shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-purple-800 uppercase mb-1">
+                        <span>Monthly (30d)</span>
+                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 text-[10px]">
+                          {m.total_orders || 0} orders
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-slate-900">
+                        {formatInr(m.combined)}
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Online:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(m.online)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Offline:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(m.offline)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lifetime */}
+                    <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-amber-800 uppercase mb-1">
+                        <span>Lifetime Total</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px]">
+                          {tot.total_orders || 0} orders
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-slate-900">
+                        {formatInr(tot.combined)}
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Online:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(tot.online)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Offline:
+                          </span>
+                          <span className="font-bold text-slate-900">{formatInr(tot.offline)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Deep-Dive Channel Comparison Cards */}
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#64748B] mb-3 flex items-center gap-1.5">
+                    <PieChart className="w-4 h-4 text-[#3A7D7C]" />
+                    <span>Channel Comparison & Split</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Online Channel */}
+                    <div className="bg-cyan-50/40 p-5 rounded-2xl border border-cyan-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-cyan-600 text-white flex items-center justify-center font-bold text-xs">
+                            🌐
+                          </div>
+                          <div>
+                            <div className="font-extrabold text-sm text-[#1F2937]">Online Channel</div>
+                            <div className="text-[10px] text-[#64748B]">Customer Website Ordering & Delivery</div>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-black bg-cyan-100 text-cyan-900 border border-cyan-300">
+                          {onlinePct}% Share
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="bg-white p-3 rounded-xl border border-cyan-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Total Online Revenue</span>
+                          <span className="text-base font-black text-cyan-900 mt-0.5 block">{formatInr(onlineTot)}</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-cyan-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Online Orders Count</span>
+                          <span className="text-base font-black text-slate-900 mt-0.5 block">{onlineOrdersTot} orders</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-cyan-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Avg Order Value (AOV)</span>
+                          <span className="text-base font-black text-slate-900 mt-0.5 block">{formatInr(onlineAov)}</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-cyan-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Today's Online Sales</span>
+                          <span className="text-base font-black text-emerald-700 mt-0.5 block">{formatInr(t.online)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Offline Channel */}
+                    <div className="bg-emerald-50/40 p-5 rounded-2xl border border-emerald-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+                            🍽️
+                          </div>
+                          <div>
+                            <div className="font-extrabold text-sm text-[#1F2937]">Offline Channel</div>
+                            <div className="text-[10px] text-[#64748B]">POS / Dine-In / Table QR / Room Service</div>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          {offlinePct}% Share
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Total Offline Revenue</span>
+                          <span className="text-base font-black text-emerald-900 mt-0.5 block">{formatInr(offlineTot)}</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Offline Orders Count</span>
+                          <span className="text-base font-black text-slate-900 mt-0.5 block">{offlineOrdersTot} orders</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Avg Order Value (AOV)</span>
+                          <span className="text-base font-black text-slate-900 mt-0.5 block">{formatInr(offlineAov)}</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs">
+                          <span className="text-[10px] font-bold text-[#64748B] block">Today's Offline Sales</span>
+                          <span className="text-base font-black text-emerald-700 mt-0.5 block">{formatInr(t.offline)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Revenue Split Ratio Bar */}
+                  {totCombined > 0 && (
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-4 space-y-2">
+                      <div className="flex justify-between text-xs font-extrabold">
+                        <span className="text-cyan-800">Online Sales: {onlinePct}% ({formatInr(onlineTot)})</span>
+                        <span className="text-emerald-800">Offline Sales: {offlinePct}% ({formatInr(offlineTot)})</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-slate-200 flex overflow-hidden border border-slate-300">
+                        <div style={{ width: `${onlinePct}%` }} className="bg-cyan-500 h-full transition-all"></div>
+                        <div style={{ width: `${offlinePct}%` }} className="bg-emerald-600 h-full transition-all"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-[#D7E5E8] bg-slate-50/50 flex flex-wrap items-center justify-between gap-3">
+                <a
+                  href={`/r/${selectedRestRevenue.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-white hover:bg-slate-100 border border-[#D7E5E8] text-[#1F2937] font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-[#3A7D7C]" />
+                  <span>Visit Customer Storefront</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRestRevenue(null)}
+                  className="px-5 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs rounded-xl shadow-2xs cursor-pointer transition-colors"
+                >
+                  Close Breakdown
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* MODAL: RESTAURANT ADMINS & STAFF DETAIL */}
+      {selectedAdminDetail && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-[#D7E5E8] shadow-2xl overflow-hidden my-8">
+            <div className="p-6 border-b border-[#D7E5E8] flex items-center justify-between bg-purple-50/50">
+              <div>
+                <h3 className="text-base font-extrabold text-[#1F2937]">Associated Admins & Staff</h3>
+                <p className="text-xs text-[#64748B]">{selectedAdminDetail.name} • ID #{selectedAdminDetail.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAdminDetail(null)}
+                className="p-1.5 rounded-xl hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+              {(!selectedAdminDetail.admins_list || selectedAdminDetail.admins_list.length === 0) ? (
+                <div className="text-center py-6 text-xs text-[#64748B]">
+                  No admins or staff assigned to this restaurant yet.
+                </div>
+              ) : (
+                selectedAdminDetail.admins_list.map((adm, idx) => (
+                  <div key={adm.id || idx} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-sm text-[#1F2937]">{adm.name}</span>
+                        {adm.is_primary === 1 && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            Primary Owner
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-200 text-slate-700">
+                          {adm.role || 'Staff'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#64748B] mt-1 space-y-0.5">
+                        {adm.phone && (
+                          <a href={`tel:${adm.phone}`} className="text-[#3A7D7C] hover:underline flex items-center gap-1 font-bold">
+                            <Phone className="w-3 h-3" /> {adm.phone}
+                          </a>
+                        )}
+                        {adm.email && (
+                          <a href={`mailto:${adm.email}`} className="text-[#64748B] hover:underline flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-slate-400" /> {adm.email}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {adm.status && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        adm.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {adm.status}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 border-t border-[#D7E5E8] bg-slate-50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedAdminDetail(null)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
