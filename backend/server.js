@@ -26,7 +26,7 @@ const {
 const errorHandler = require('./middleware/errorHandler');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
 
 const app = express();
@@ -441,6 +441,17 @@ async function startServer() {
       console.log(`📡 Socket.IO server bound to 0.0.0.0:${PORT}`);
       console.log(`🛡️  Security headers and rate limiting active`);
       console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
+
+      // Safe dual-listener on port 5000 if primary port is 3000
+      if (Number(PORT) !== 5000) {
+        try {
+          const secondary = http.createServer(app);
+          secondary.on('error', () => {});
+          secondary.listen(5000, '0.0.0.0', () => {
+            console.log(`📡 Secondary listener active on 0.0.0.0:5000`);
+          });
+        } catch (e) { }
+      }
     });
   }
 }
