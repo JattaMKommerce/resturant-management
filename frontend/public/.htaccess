@@ -11,9 +11,9 @@
   # Explicitly allow Let's Encrypt ACME SSL validation
   RewriteRule ^\.well-known/ - [L]
 
-  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
+  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend Web App
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
-  RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
+  RewriteRule ^(.*)$ https://springgreen-gorilla-821094.hostingersite.com/$1 [P,L]
 
   # 2. Serve static files directly if found
   RewriteRule ^index\.html$ - [L]
