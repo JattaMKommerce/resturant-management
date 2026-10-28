@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const dbHost = process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST || process.env.MYSQL_PRIVATE_HOST || process.env.MYSQL_PUBLIC_HOST || 'localhost';
+const rawDbHost = process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST || process.env.MYSQL_PRIVATE_HOST || process.env.MYSQL_PUBLIC_HOST || '127.0.0.1';
+const dbHost = rawDbHost === 'localhost' ? '127.0.0.1' : rawDbHost;
 const dbPort = parseInt(process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || process.env.MYSQL_PUBLIC_PORT || '3306', 10);
 const dbName = process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || process.env.MYSQLDB || 'hotel_db';
 const dbUser = process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER || (dbName !== 'hotel_db' ? dbName : 'root');

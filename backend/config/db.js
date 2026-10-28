@@ -42,12 +42,13 @@ function getDbConnectionConfig(overrideDbName = null) {
     return config;
   }
 
-  const host = process.env.DB_HOST || 
-               process.env.MYSQLHOST || 
-               process.env.MYSQL_HOST || 
-               process.env.MYSQL_PRIVATE_HOST || 
-               process.env.MYSQL_PUBLIC_HOST || 
-               'localhost';
+  let host = process.env.DB_HOST || 
+             process.env.MYSQLHOST || 
+             process.env.MYSQL_HOST || 
+             process.env.MYSQL_PRIVATE_HOST || 
+             process.env.MYSQL_PUBLIC_HOST || 
+             '127.0.0.1';
+  if (host === 'localhost') host = '127.0.0.1';
 
   const port = parseInt(
     process.env.DB_PORT || 
