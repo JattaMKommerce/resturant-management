@@ -1,4 +1,5 @@
 // Root entry file for Hostinger Node.js Web App deployment
+console.log('🚀 [Hostinger Web App] Initializing Hotel Restaurant Backend...');
 const path = require('path');
 const fs = require('fs');
 

@@ -422,13 +422,9 @@ app.use(errorHandler);
 // 8. SERVER STARTUP & GRACEFUL SHUTDOWN
 // ──────────────────────────────────────────────────────────
 async function startServer() {
-  try {
-    await initDatabase();
-    console.log(`✅ System database initialized and ready for production requests.`);
-  } catch (err) {
-    console.error('Database initialization warning/error:', err.message);
-  }
+  console.log(`🚀 Starting Hotel & Restaurant Backend on port ${PORT}...`);
 
+  // 1. BIND TO PORT IMMEDIATELY so Hostinger reverse proxy and socket.io get 200 OK without delay
   if (typeof(PhusionPassenger) !== 'undefined') {
     server.listen('passenger', () => {
       console.log(`🚀 Hotel Restaurant Backend Server running under Phusion Passenger`);
@@ -454,6 +450,15 @@ async function startServer() {
       }
     });
   }
+
+  // 2. Initialize database asynchronously in the background so it never blocks HTTP/WebSocket readiness
+  initDatabase()
+    .then(() => {
+      console.log(`✅ System database initialized and ready for production requests.`);
+    })
+    .catch((err) => {
+      console.error('Database initialization warning/error:', err.message);
+    });
 }
 
 let isShuttingDown = false;
