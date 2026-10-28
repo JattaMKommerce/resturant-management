@@ -61,7 +61,7 @@ function getDbConnectionConfig(overrideDbName = null) {
   const user = process.env.DB_USER || 
                process.env.MYSQLUSER || 
                process.env.MYSQL_USER || 
-               'root';
+               (database !== 'hotel_db' ? database : 'root');
 
   const password = process.env.DB_PASSWORD !== undefined 
     ? process.env.DB_PASSWORD 
