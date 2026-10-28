@@ -2,10 +2,11 @@
   "name": "hotel-and-restaurant-platform",
   "version": "2.0.0",
   "private": true,
+  "main": "server.js",
   "scripts": {
     "postinstall": "npm --prefix frontend install && npm --prefix backend install",
     "build": "npm --prefix frontend run build && node -e \"const fs=require('fs');if(!fs.existsSync('dist'))fs.mkdirSync('dist',{recursive:true});fs.cpSync('frontend/dist','dist',{recursive:true});if(!fs.existsSync('backend/public'))fs.mkdirSync('backend/public',{recursive:true});fs.cpSync('frontend/dist','backend/public',{recursive:true});\"",
-    "start": "cd backend && node server.js",
+    "start": "node server.js",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "start:backend": "cd backend && npm start",
