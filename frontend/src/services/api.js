@@ -18,9 +18,9 @@ function resolveKotBaseUrl() {
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:5000/api';
     }
-    return 'https://jattamkommerce.com/api';
+    return `${window.location.origin}/api`;
   }
-  return 'https://jattamkommerce.com/api';
+  return 'https://hotel.jattamkommerce.com/api';
 }
 
 const api = axios.create({

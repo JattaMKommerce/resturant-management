@@ -13,30 +13,31 @@ PassengerStartupFile server.js
   RewriteEngine On
   RewriteBase /
 
-  # Pass Authorization header to Node.js / Passenger backend
+  # Pass Authorization header to Node.js backend
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
   <IfModule mod_setenvif.c>
     SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
   </IfModule>
 
-  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
+  # 1. Seamless redirect for legacy /resturant, /restaurant, or /hotel paths to official subdomain
+  RewriteCond %{REQUEST_URI} ^/(resturant|restaurant|hotel)(/.*)?$ [NC]
+  RewriteRule ^ https://hotel.jattamkommerce.com/ [R=301,L]
+
+  # 2. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
   RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
 
-  # 2. Serve static assets directly from hotel subfolder
-  RewriteCond %{DOCUMENT_ROOT}/hotel/$1 -f
-  RewriteRule ^(.*)$ hotel/$1 [L]
+  # 3. Serve static assets if present
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
 
-  # 3. Clean Professional SPA Routes: /restaurant/*, /admin/*, /order/*, /waiter/*, /kitchen/*, /driver/*
-  # Internally serve the React app while keeping the short, professional URL in the browser!
-  RewriteCond %{REQUEST_URI} ^/(restaurant|admin|order|waiter|kitchen|driver|rider) [NC]
+  # 4. Fallback for hotel subfolder if mapped
   RewriteCond %{DOCUMENT_ROOT}/hotel/index.html -f
   RewriteRule ^.*$ /hotel/index.html [L]
 
-  # 4. Fallback for /hotel/* subpath
-  RewriteCond %{REQUEST_URI} ^/hotel/ [NC]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{DOCUMENT_ROOT}/hotel/index.html -f
-  RewriteRule ^hotel/.*$ /hotel/index.html [L]
+  # 5. Fallback for root index.html
+  RewriteCond %{DOCUMENT_ROOT}/index.html -f
+  RewriteRule ^.*$ /index.html [L]
 </IfModule>
+

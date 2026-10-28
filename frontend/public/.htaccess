@@ -1,8 +1,25 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /hotel/
+  RewriteBase /
+
+  # Pass Authorization header to Node.js backend
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  <IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+  </IfModule>
+
+  # Explicitly allow Let's Encrypt ACME SSL validation
+  RewriteRule ^\.well-known/ - [L]
+
+  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
+  RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
+  RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
+
+  # 2. Serve static files directly if found
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /hotel/index.html [L]
+
+  # 3. Clean SPA Fallback: Route all client page requests to index.html
+  RewriteRule . /index.html [L]
 </IfModule>

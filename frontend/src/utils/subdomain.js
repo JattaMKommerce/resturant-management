@@ -5,7 +5,8 @@
 
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'app', 'admin', 'api', 'localhost', 'mail', 'cpanel', 'webmail',
-  'staging', 'dev', 'test', 'demo', 'shop', 'store'
+  'staging', 'dev', 'test', 'demo', 'shop', 'store',
+  'hotel', 'restaurant', 'hotels', 'restaurants'
 ]);
 
 /**
@@ -22,7 +23,10 @@ export function generateRandomSlug(length = 7) {
 
 /**
  * Extract active subdomain slug from browser hostname
- * Works for both localhost (e.g. aK8xP2qZ.localhost:5173) and production (aK8xP2qZ.jattamkommerce.com)
+ * Works for both localhost (e.g. aK8xP2qZ.localhost:5173),
+ * nested subdomains (e.g. palace.hotel.jattamkommerce.com),
+ * and standard domains (e.g. palace.jattamkommerce.com).
+ * Returns null for hotel.jattamkommerce.com so that the main application shell is loaded.
  */
 export function getSubdomainSlug(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) {
   if (!hostname) return null;
@@ -36,7 +40,14 @@ export function getSubdomainSlug(hostname = (typeof window !== 'undefined' ? win
     return null;
   }
 
-  // Handle standard domain (e.g. grandpalace.jattamkommerce.com -> parts = ['grandpalace', 'jattamkommerce', 'com'])
+  // Handle nested subdomain like palace.hotel.jattamkommerce.com -> parts = ['palace', 'hotel', 'jattamkommerce', 'com']
+  if (parts.length >= 4) {
+    const sub = parts[0];
+    if (!RESERVED_SUBDOMAINS.has(sub)) return sub;
+    return null;
+  }
+
+  // Handle standard domain (e.g. hotel.jattamkommerce.com -> parts = ['hotel', 'jattamkommerce', 'com'])
   if (parts.length >= 3) {
     const sub = parts[0];
     if (!RESERVED_SUBDOMAINS.has(sub)) return sub;
@@ -54,10 +65,10 @@ export function getRestaurantPublicUrl(restaurant, path = '') {
   const activeSlug = restaurant.slug || restaurant.custom_subdomain_slug || restaurant.random_slug || 'restaurant';
 
   if (typeof window === 'undefined') {
-    return `https://jattamkommerce.com/restaurant/${activeSlug}${path}`;
+    return `https://hotel.jattamkommerce.com/restaurant/${activeSlug}${path}`;
   }
 
-  const host = window.location.host; // e.g. jattamkommerce.com or localhost:5173
+  const host = window.location.host; // e.g. hotel.jattamkommerce.com or localhost:5173
   const protocol = window.location.protocol; // e.g. https:
 
   // Standard fallback path URL

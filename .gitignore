@@ -49,5 +49,8 @@ mysql_data/
 !frontend/src/pages/offline/accommodation/
 !frontend/src/components/accommodation/
 
+*.zip
+backend_staging/
+
 
 

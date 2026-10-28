@@ -11,7 +11,7 @@ function resolveApiBaseUrl() {
     }
     return `${window.location.origin}/api/v1`;
   }
-  return 'https://jattamkommerce.com/api/v1';
+  return 'https://hotel.jattamkommerce.com/api/v1';
 }
 
 const API_BASE_URL = resolveApiBaseUrl();
