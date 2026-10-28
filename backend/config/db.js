@@ -58,6 +58,13 @@ function getDbConnectionConfig(overrideDbName = null) {
     10
   );
 
+  const database = overrideDbName || 
+                   process.env.DB_NAME || 
+                   process.env.MYSQLDATABASE || 
+                   process.env.MYSQL_DATABASE || 
+                   process.env.MYSQLDB || 
+                   'hotel_db';
+
   const user = process.env.DB_USER || 
                process.env.MYSQLUSER || 
                process.env.MYSQL_USER || 
@@ -70,13 +77,6 @@ function getDbConnectionConfig(overrideDbName = null) {
         : (process.env.MYSQL_PASSWORD !== undefined 
             ? process.env.MYSQL_PASSWORD 
             : ''));
-
-  const database = overrideDbName || 
-                   process.env.DB_NAME || 
-                   process.env.MYSQLDATABASE || 
-                   process.env.MYSQL_DATABASE || 
-                   process.env.MYSQLDB || 
-                   'hotel_db';
 
   const isLocalhost = host === 'localhost' || host === '127.0.0.1';
   const isRailwayInternal = host.includes('railway.internal');
