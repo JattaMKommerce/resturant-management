@@ -307,13 +307,16 @@ const kotAccommodationRoutes = require('./routes/kot/accommodationRoutes');
 const kotHotelRoutes = require('./routes/kot/hotelRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
-// Apply stricter rate limiting to auth routes
-app.use('/api/auth', authRateLimiter, kotAuthRoutes);
-app.use('/api/restaurant/auth', authRateLimiter, kotAuthRoutes);
+// Apply stricter rate limiting to auth routes (both /api/auth and /api/v1/auth)
+app.use(['/api/auth', '/api/v1/auth'], authRateLimiter, kotAuthRoutes);
+app.use(['/api/restaurant/auth', '/api/v1/restaurant/auth'], authRateLimiter, kotAuthRoutes);
 
 // Mount SaaS Subscription & Platform Governance Routes (Unblocked for expired renewals)
-app.use('/api', subscriptionRoutes);
-app.use('/api/v1', subscriptionRoutes);
+app.use(['/api', '/api/v1'], subscriptionRoutes);
+
+// Direct guest initialization endpoint for customer storefront
+const { resolveGuestIdentity, initGuestIdentity } = require('./middleware/guestIdentity');
+app.post(['/api/guest/init', '/api/v1/guest/init'], resolveGuestIdentity, initGuestIdentity);
 
 const kotRouteMap = [
   ['/api/tables', kotTableRoutes],
@@ -345,23 +348,22 @@ const kotRouteMap = [
 const { enforceSubscriptionAccess } = require('./middleware/subscriptionAuth');
 
 for (const [routePath, routerHandler] of kotRouteMap) {
+  const v1Path = routePath.replace('/api/', '/api/v1/');
   // Public customer menu and guest tracking are strictly unblocked
   if (routePath.includes('/public')) {
-    app.use(routePath, routerHandler);
+    app.use([routePath, v1Path], routerHandler);
   } else {
-    app.use(routePath, enforceSubscriptionAccess, routerHandler);
+    app.use([routePath, v1Path], enforceSubscriptionAccess, routerHandler);
   }
 }
 
 // Mount Online Store & Platform API Routes
-app.use('/api', apiRoutes);
-app.use('/api/v1', apiRoutes);
+app.use(['/api', '/api/v1'], apiRoutes);
 
 // Kratu Rewards & Double-Entry Wallet Management Routes (16-Slide Blueprint)
 const walletRoutes = require('./routes/walletRoutes');
 const walletService = require('./services/walletService');
-app.use('/api/wallet', walletRoutes);
-app.use('/api/v1/wallet', walletRoutes);
+app.use(['/api/wallet', '/api/v1/wallet'], walletRoutes);
 
 // Periodic Expiry & Invariant Runner (Every hour)
 setInterval(async () => {

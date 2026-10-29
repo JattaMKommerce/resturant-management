@@ -59,17 +59,32 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
-    if (res.data.success) {
-      localStorage.setItem('hotel_token', res.data.token);
-      localStorage.setItem('hotel_user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-      if (res.data.restaurant) {
-        setRestaurant(res.data.restaurant);
-        localStorage.setItem('hotel_admin_restaurant', JSON.stringify(res.data.restaurant));
+    if (res.data && res.data.success) {
+      const data = res.data.data || res.data;
+      const token = res.data.token || data.token;
+      const user = res.data.user || data.user;
+      const restaurant = res.data.restaurant || data.restaurant;
+      const restaurants = res.data.restaurants || data.restaurants;
+
+      if (token) localStorage.setItem('hotel_token', token);
+      if (user) {
+        localStorage.setItem('hotel_user', JSON.stringify(user));
+        setUser(user);
       }
-      if (res.data.restaurants) {
-        setRestaurants(res.data.restaurants);
+      if (restaurant) {
+        setRestaurant(restaurant);
+        localStorage.setItem('hotel_admin_restaurant', JSON.stringify(restaurant));
       }
+      if (restaurants) {
+        setRestaurants(restaurants);
+      }
+      return {
+        ...res.data,
+        token,
+        user,
+        restaurant,
+        restaurants
+      };
     }
     return res.data;
   };

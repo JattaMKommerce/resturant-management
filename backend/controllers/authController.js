@@ -169,7 +169,7 @@ async function registerRestaurant(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
@@ -315,18 +315,28 @@ async function login(req, res) {
     res.cookie('hotel_token', token, cookieOptions);
     res.cookie('token', token, cookieOptions);
 
+    const userObj = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: effectiveRole
+    };
+
+    const payload = {
+      token,
+      user: userObj,
+      restaurant,
+      restaurants
+    };
+
     res.json({
       success: true,
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: effectiveRole
-      },
+      user: userObj,
       restaurant,
-      restaurants
+      restaurants,
+      data: payload
     });
 
   } catch (err) {
