@@ -275,10 +275,6 @@ app.get('/health/db', async (req, res) => {
   }
 });
 
-const { tenantResolver } = require('./middleware/tenantResolver');
-
-app.use(tenantResolver);
-
 app.get(['/api/health', '/api/v1/health'], (req, res) => {
   res.status(200).json({
     success: true,
@@ -288,6 +284,10 @@ app.get(['/api/health', '/api/v1/health'], (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+const { tenantResolver } = require('./middleware/tenantResolver');
+
+app.use(tenantResolver);
 
 // ──────────────────────────────────────────────────────────
 // 5. RESTAURANT & KOT API ROUTES

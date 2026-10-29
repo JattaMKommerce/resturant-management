@@ -19,6 +19,10 @@
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # SPA Fallback - let Node.js handle everything else
+  # Do NOT rewrite API, Health, Socket.IO, or Uploads to index.html - pass directly to Node.js backend
+  RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
+  RewriteRule ^ - [L]
+
+  # SPA Fallback - let frontend routing work for page navigation
   RewriteRule ^ /index.html [L]
 </IfModule>

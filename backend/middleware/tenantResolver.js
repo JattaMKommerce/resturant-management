@@ -2,7 +2,7 @@ const { query } = require('../config/db');
 
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'app', 'admin', 'api', 'localhost', 'mail', 'cpanel', 'webmail',
-  'staging', 'dev', 'test', 'demo', 'shop', 'store'
+  'staging', 'dev', 'test', 'demo', 'shop', 'store', 'hotel'
 ]);
 
 /**
@@ -11,8 +11,18 @@ const RESERVED_SUBDOMAINS = new Set([
  */
 async function tenantResolver(req, res, next) {
   try {
+    // Skip tenant lookup for health checks, static assets, or hostingersite.com app URLs
+    if (req.path.includes('/health') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+
     const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
     const host = rawHost.split(':')[0].toLowerCase();
+
+    if (host.includes('hostingersite.com')) {
+      return next();
+    }
+
     const parts = host.split('.');
 
     let subdomain = null;
