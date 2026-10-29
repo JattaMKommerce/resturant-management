@@ -23,7 +23,11 @@ PassengerStartupFile server.js
   RewriteCond %{REQUEST_URI} ^/(resturant|restaurant|hotel)(/.*)?$ [NC]
   RewriteRule ^ https://hotel.jattamkommerce.com/ [R=301,L]
 
-  # 2. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
+  # 2. Reverse Proxy Socket.IO WebSockets to Node.js backend
+  RewriteCond %{HTTP:Upgrade} =websocket [NC]
+  RewriteRule ^(.*)$ ws://127.0.0.1:5000/$1 [P,L]
+
+  # 3. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
   RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
 
