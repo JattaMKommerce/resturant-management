@@ -29,6 +29,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
 
+console.log('📍 [Backend] PORT resolved to:', PORT);
+console.log('📍 [Backend] NODE_ENV:', process.env.NODE_ENV);
+console.log('📍 [Backend] isProduction:', isProduction);
+console.log('📍 [Backend] DB_HOST:', process.env.DB_HOST);
+console.log('📍 [Backend] DB_NAME:', process.env.DB_NAME);
+
 const app = express();
 app.set('trust proxy', true);
 const server = http.createServer(app);
