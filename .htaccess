@@ -1,42 +1,24 @@
 # ======================================================================
-# Hostinger CloudLinux / Phusion Passenger Node.js Configuration
+# Hostinger Web App - Node.js serves everything directly
 # ======================================================================
-# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
-PassengerAppRoot "/home/u605028047/domains/springgreen-gorilla-821094.hostingersite.com/public_html/backend"
-PassengerBaseURI "/"
-PassengerNodejs "/opt/alt/alt-nodejs22/root/usr/bin/node"
-PassengerAppType node
-PassengerStartupFile server.js
-# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+# No Passenger config needed - Web App platform manages Node.js runtime
+# No proxy rules needed - Frontend calls Web App API directly via CORS
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Pass Authorization header to Node.js backend
+  # Pass Authorization header
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
   <IfModule mod_setenvif.c>
     SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
   </IfModule>
 
-  # 1. Seamless redirect for legacy /resturant, /restaurant, or /hotel paths to official subdomain
-  RewriteCond %{REQUEST_URI} ^/(resturant|restaurant|hotel)(/.*)?$ [NC]
-  RewriteRule ^ https://hotel.jattamkommerce.com/ [R=301,L]
-
-  # 2. Pass all API, Health, Sockets, and Uploads directly to Node.js backend / Passenger
-  # (No reverse proxy to 127.0.0.1:5000 - Passenger handles all routes directly)
-
-  # 3. Serve static assets if present
+  # Serve static files directly if they exist
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # 4. Fallback for hotel subfolder if mapped
-  RewriteCond %{DOCUMENT_ROOT}/hotel/index.html -f
-  RewriteRule ^.*$ /hotel/index.html [L]
-
-  # 5. Fallback for root index.html
-  RewriteCond %{DOCUMENT_ROOT}/index.html -f
-  RewriteRule ^.*$ /index.html [L]
+  # SPA Fallback - let Node.js handle everything else
+  RewriteRule ^ /index.html [L]
 </IfModule>
-

@@ -54,6 +54,7 @@ const rawOrigins = [
   'http://127.0.0.1:5173',
   'https://hotel.jattamkommerce.com',
   'https://jattamkommerce.com',
+  'https://springgreen-gorilla-821094.hostingersite.com',
   'https://resturant-management-pied.vercel.app'
 ].filter(Boolean).join(',');
 
