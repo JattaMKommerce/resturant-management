@@ -34,6 +34,7 @@ const authRateLimiter = rateLimit({
   max: 100, // Max 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: {
     success: false,
     message: 'Too many authentication attempts from this IP. Please try again in 15 minutes.',
@@ -50,6 +51,7 @@ const generalRateLimiter = rateLimit({
   max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   skip: (req) => req.path === '/health' || req.path === '/health/db' || req.path.startsWith('/uploads'),
   message: {
     success: false,
