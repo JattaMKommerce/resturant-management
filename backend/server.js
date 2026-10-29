@@ -279,6 +279,7 @@ app.get(['/api/health', '/api/v1/health'], (req, res) => {
   res.status(200).json({
     success: true,
     status: 'OK',
+    version: '2.0.1-v1-mounted',
     message: 'Hotel & HMS Restaurant Unified API is healthy and running.',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString()
