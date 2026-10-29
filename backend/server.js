@@ -1,3 +1,7 @@
+if (typeof(PhusionPassenger) !== 'undefined') {
+  PhusionPassenger.configure({ autoInstall: false });
+}
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -431,12 +435,10 @@ app.use(errorHandler);
 // ──────────────────────────────────────────────────────────
 // 8. SERVER STARTUP & GRACEFUL SHUTDOWN
 // ──────────────────────────────────────────────────────────
-const secondaryServers = [];
-
 async function startServer() {
-  console.log(`🚀 Starting Hotel & Restaurant Backend on primary port ${PORT}...`);
+  console.log(`🚀 Starting Hotel & Restaurant Backend on port ${PORT}...`);
 
-  // 1. BIND TO PRIMARY PORT IMMEDIATELY
+  // Bind to port / passenger socket
   if (typeof(PhusionPassenger) !== 'undefined') {
     server.listen('passenger', () => {
       console.log(`🚀 Hotel Restaurant Backend Server running under Phusion Passenger`);
@@ -452,31 +454,7 @@ async function startServer() {
     });
   }
 
-  // 2. DUAL LISTENER ON BOTH 3000 AND 5000
-  // Ensures whether Apache .htaccess or Hostinger Web App reverse proxies to 3000 or 5000, both are open!
-  const targetPorts = [3000, 5000];
-  targetPorts.forEach((targetPort) => {
-    if (typeof(PhusionPassenger) === 'undefined' && Number(PORT) === targetPort) {
-      return; // Already bound as primary
-    }
-    try {
-      const altServer = http.createServer(app);
-      altServer.on('error', (err) => {
-        console.log(`ℹ️ Dual listener on port ${targetPort} status: ${err.message}`);
-      });
-      try {
-        io.attach(altServer);
-      } catch (e) { }
-      altServer.listen(targetPort, '0.0.0.0', () => {
-        console.log(`📡 Dual HTTP & Socket.IO listener successfully active on 0.0.0.0:${targetPort}`);
-      });
-      secondaryServers.push(altServer);
-    } catch (e) {
-      console.warn(`Dual listener setup note for port ${targetPort}:`, e.message);
-    }
-  });
-
-  // 3. Initialize database asynchronously in the background so it never blocks HTTP/WebSocket readiness
+  // Initialize database asynchronously in the background so it never blocks HTTP/WebSocket readiness
   initDatabase()
     .then(() => {
       console.log(`✅ System database initialized and ready for production requests.`);
@@ -491,11 +469,6 @@ async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   console.log(`\n🛑 Received ${signal}. Initiating graceful shutdown...`);
-
-  // Close secondary listeners
-  secondaryServers.forEach((sec) => {
-    try { sec.close(); } catch (e) { }
-  });
 
   server.close(async () => {
     console.log('  ↳ Closed incoming HTTP & WebSocket server.');

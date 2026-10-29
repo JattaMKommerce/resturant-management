@@ -1,3 +1,7 @@
+if (typeof(PhusionPassenger) !== 'undefined') {
+  PhusionPassenger.configure({ autoInstall: false });
+}
+
 // Root entry file for Hostinger Node.js Web App deployment
 console.log('🚀 [Hostinger Web App] Initializing Hotel Restaurant Backend...');
 console.log('📍 __dirname:', __dirname);
