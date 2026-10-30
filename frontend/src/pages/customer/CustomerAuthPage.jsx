@@ -8,7 +8,7 @@ import {
   Award, Zap, KeyRound
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
+const API_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
 
 const getMediaUrl = (url, fallback) => {
   if (!url) return fallback;

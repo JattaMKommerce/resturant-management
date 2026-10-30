@@ -7,11 +7,11 @@ function resolveApiBaseUrl() {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') {
-      return 'http://localhost:5000/api/v1';
+      return 'http://localhost:5000/api';
     }
-    return `${window.location.origin}/api/v1`;
+    return `${window.location.origin}/api`;
   }
-  return 'https://hotel.jattamkommerce.com/api/v1';
+  return 'https://hotel.jattamkommerce.com/api';
 }
 
 const API_BASE_URL = resolveApiBaseUrl();

@@ -100,20 +100,16 @@ export default function AdminCategoriesPage() {
       }
 
       if (editingCategory) {
-        await api.put(`/admin/categories/${editingCategory.id}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await api.put(`/admin/categories/${editingCategory.id}`, formData);
       } else {
-        await api.post('/admin/categories', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        await api.post('/admin/categories', formData);
       }
 
       setShowModal(false);
       fetchCategories();
 
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving category.');
+      alert(err.response?.data?.message || err.message || 'Error saving category.');
     } finally {
       setFormLoading(false);
     }
