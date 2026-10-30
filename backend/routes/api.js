@@ -107,8 +107,8 @@ router.get('/driver/wallet/history', ...driverAuth, driverPayoutController.getDr
 // 6. CUSTOMER ORDER ROUTES (Guest Identity)
 // ═══════════════════════════════════════════════
 router.post('/orders/checkout', resolveGuestIdentity, orderController.placeOrder);
-router.get('/orders/:id', resolveGuestIdentity, orderController.getOrderById);
 router.get('/orders/my-orders', authenticateToken, orderController.getUserOrders);
+router.get('/orders/:id', resolveGuestIdentity, orderController.getOrderById);
 
 // ═══════════════════════════════════════════════
 // 7. PAYMENT ROUTES (Guest or Auth)

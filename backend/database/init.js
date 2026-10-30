@@ -11,6 +11,8 @@ const dbName = process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.M
 const dbUser = process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER || (dbName !== 'hotel_db' ? dbName : 'root');
 const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : (process.env.MYSQLPASSWORD !== undefined ? process.env.MYSQLPASSWORD : (process.env.MYSQL_PASSWORD !== undefined ? process.env.MYSQL_PASSWORD : ''));
 
+let demoSeedEnabled = false;
+
 function isValidUri(uri) {
   if (!uri || typeof uri !== 'string') return false;
   const trimmed = uri.trim();
@@ -101,7 +103,12 @@ async function initDatabase(options = {}) {
 
         // Seed data check
         const [userRows] = await connection.query('SELECT COUNT(*) as count FROM users');
-        const [menuRows] = await connection.query('SELECT COUNT(*) as count FROM menu_items');
+
+        // Demo data (staff passwords, sample menus, fleet drivers, fake orders) is only written to a
+        // brand-new database, or when SEED_DEMO_DATA=true. Running it on every boot was overwriting
+        // real production data (resetting passwords, re-adding deleted menu items, re-approving drivers).
+        const isFreshDatabase = userRows[0].count <= 1;
+        demoSeedEnabled = isFreshDatabase || forceReset || process.env.SEED_DEMO_DATA === 'true';
 
         // Always ensure super admin exists
         await getOrCreateUser(connection, 'Master Super Admin', 'superadmin@gmail.com', 'admin@123', '+91 9999999999', 'SUPER_ADMIN');
@@ -109,27 +116,32 @@ async function initDatabase(options = {}) {
         // Ensure default SaaS Subscription Plans exist (without auto-assigning to hotels)
         await ensureSubscriptionPlans(connection);
 
-        if (userRows[0].count <= 1 || menuRows[0].count === 0 || (forceReset && process.env.NODE_ENV !== 'production')) {
+        // Ensure driver payout tables exist (schema only)
+        await ensureDriverPayoutTables(connection);
+
+        if (isFreshDatabase || forceReset) {
           console.log('🌱 Seeding initial data...');
           await seedData(connection);
           console.log('✅ Seed data inserted successfully!');
         } else {
-          console.log('ℹ️ Database already contains data.');
+          console.log('ℹ️ Database already contains data. Existing records are left untouched.');
           await ensureRestaurantAdmins(connection);
-          await ensureEssentialStaffUsers(connection);
-          await seedKOTData(connection);
+          if (demoSeedEnabled) {
+            await ensureEssentialStaffUsers(connection);
+            await seedKOTData(connection);
+          }
         }
 
-        // Ensure driver payout tables & fleet exist
-        await ensureDriverPayoutTables(connection);
-        await ensureEssentialFleetDrivers(connection);
+        if (demoSeedEnabled) {
+          await ensureEssentialFleetDrivers(connection);
 
-        // Seed / Ensure menu for all restaurants in database
-        const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
-        for (const r of allRestaurants) {
-          await ensureRestaurantMenu(connection, r.id);
+          // Seed / Ensure menu for all restaurants in database
+          const [allRestaurants] = await connection.query('SELECT id FROM restaurants');
+          for (const r of allRestaurants) {
+            await ensureRestaurantMenu(connection, r.id);
+          }
+          await ensureFleetAssignedToRestaurant(connection, 1);
         }
-        await ensureFleetAssignedToRestaurant(connection, 1);
 
       } catch (err) {
         console.error('❌ Database initialization error:', err);
@@ -1627,6 +1639,7 @@ async function initDatabase(options = {}) {
       }
 
       // Ensure Delivery Fleet & Payout Structure for primary demo restaurant (#1)
+      if (!demoSeedEnabled) return;
       try {
         await ensureEssentialFleetDrivers(conn);
         await ensureFleetAssignedToRestaurant(conn, 1);

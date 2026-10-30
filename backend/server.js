@@ -505,6 +505,11 @@ async function gracefulShutdown(signal) {
   }, 10000).unref();
 }
 
+// A single failed async handler must not take the whole server down (Node exits on unhandled rejections by default)
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️ Unhandled promise rejection:', reason);
+});
+
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 

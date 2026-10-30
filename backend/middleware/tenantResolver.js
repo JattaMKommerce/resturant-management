@@ -10,19 +10,21 @@ const RESERVED_SUBDOMAINS = new Set([
  * Automatically attaches resolved restaurant to req.tenantRestaurant when accessed via subdomain
  */
 async function tenantResolver(req, res, next) {
+  // Skip tenant lookup for health checks, static assets, or hostingersite.com app URLs.
+  // These early exits must stay outside try/finally: calling next() twice makes Express
+  // run (and skip) route layers twice, causing random 404s and ERR_HTTP_HEADERS_SENT crashes.
+  if (req.path.includes('/health') || req.path.startsWith('/uploads')) {
+    return next();
+  }
+
+  const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
+  const host = rawHost.split(',')[0].trim().split(':')[0].toLowerCase();
+
+  if (host.includes('hostingersite.com')) {
+    return next();
+  }
+
   try {
-    // Skip tenant lookup for health checks, static assets, or hostingersite.com app URLs
-    if (req.path.includes('/health') || req.path.startsWith('/uploads')) {
-      return next();
-    }
-
-    const rawHost = req.headers['x-forwarded-host'] || req.headers.host || '';
-    const host = rawHost.split(':')[0].toLowerCase();
-
-    if (host.includes('hostingersite.com')) {
-      return next();
-    }
-
     const parts = host.split('.');
 
     let subdomain = null;

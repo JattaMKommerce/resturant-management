@@ -2,24 +2,20 @@
   RewriteEngine On
   RewriteBase /
 
-  # Pass Authorization header to Node.js backend
-  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-  <IfModule mod_setenvif.c>
-    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-  </IfModule>
-
   # Explicitly allow Let's Encrypt ACME SSL validation
   RewriteRule ^\.well-known/ - [L]
 
-  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend Web App
-  RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
-  RewriteRule ^(.*)$ https://springgreen-gorilla-821094.hostingersite.com/$1 [P,L]
+  # 1. API, health, sockets and uploaded images live on the Node.js Web App.
+  #    Hostinger shared hosting has no mod_proxy, so a [P] proxy rule returns 503.
+  #    Redirect instead (307 keeps POST/PATCH bodies intact).
+  RewriteCond %{HTTP_HOST} !hostingersite\.com$ [NC]
+  RewriteRule ^((api|health|socket\.io|uploads)(/.*)?)$ https://springgreen-gorilla-821094.hostingersite.com/$1 [R=307,L]
 
-  # 2. Serve static files directly if found
+  # 2. Serve existing files and folders directly
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
 
-  # 3. Clean SPA Fallback: Route all client page requests to index.html
+  # 3. SPA fallback: route all client page requests to index.html
   RewriteRule . /index.html [L]
 </IfModule>
