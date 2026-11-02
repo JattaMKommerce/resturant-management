@@ -4,12 +4,13 @@ import {
   ShoppingBag, IndianRupee, Bike, Clock, CheckCircle2, ChefHat, 
   PackageCheck, TrendingUp, AlertCircle, ArrowRight, ExternalLink, Sparkles, Globe, Settings, RefreshCw,
   BedDouble, Receipt, Search, Phone, MessageSquare, Check, X, ChevronRight,
-  CalendarCheck, ArrowUpRight, Wrench, Tag, Activity, Sparkle, Zap
+  CalendarCheck, ArrowUpRight, Wrench, Tag, Activity, Sparkle, Zap, Bot
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
+import GrokAICopilotModal from '../../components/ai/GrokAICopilotModal';
 
 export default function AdminDashboardPage() {
   const { slug } = useParams();
@@ -43,6 +44,10 @@ export default function AdminDashboardPage() {
   const [assigningRoomId, setAssigningRoomId] = useState(null);
   const [walkInGuestName, setWalkInGuestName] = useState('');
   const [walkInGuestPhone, setWalkInGuestPhone] = useState('');
+
+  // Grok AI Operations Copilot State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiInitialPrompt, setAiInitialPrompt] = useState('');
 
   const currentSlug = slug || restaurant?.slug || 'grand-palace';
 
@@ -309,6 +314,15 @@ export default function AdminDashboardPage() {
                       Synced: {new Date(oq.lastLiveSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => { setAiInitialPrompt(''); setAiModalOpen(true); }}
+                    className="flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-900/60 hover:bg-emerald-800/80 px-2.5 py-0.5 rounded-full border border-emerald-400/50 shadow-sm transition-all hover:scale-105 cursor-pointer"
+                    title="Open Grok AI Copilot"
+                  >
+                    <Bot className="w-3 h-3 text-emerald-300 animate-bounce" />
+                    <span>Grok AI Copilot Active</span>
+                  </button>
                 </div>
                 <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
                   Design every screen around the owner's questions
@@ -484,19 +498,39 @@ export default function AdminDashboardPage() {
 
             {/* Slide 03 Bottom Action Bar */}
             <div className="mt-3.5 pt-3 border-t border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 relative z-10">
-              <button
-                onClick={() => openDrilldown('EXECUTIVE_SUMMARY', '⚡ Executive Daily Briefing')}
-                className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
-                <span>OWNER COMMAND: "HOW IS MY HOTEL PERFORMING TODAY?"</span>
-              </button>
-              <p className="text-[10px] text-slate-400 font-medium">
-                Click any card to view exact live room numbers, guests, or folios.
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => openDrilldown('EXECUTIVE_SUMMARY', '⚡ Executive Daily Briefing')}
+                  className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+                  <span>OWNER COMMAND: "HOW IS MY HOTEL PERFORMING TODAY?"</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAiInitialPrompt(''); setAiModalOpen(true); }}
+                  className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                >
+                  <Bot className="w-3.5 h-3.5 fill-slate-950" />
+                  <span>ASK GROK AI: PLATFORM COPILOT</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium text-center sm:text-right">
+                Click any card or Ask Grok AI for live operational analysis.
               </p>
             </div>
           </div>
         )}
+
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* GROK AI OPERATIONS COPILOT MODAL                                */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <GrokAICopilotModal
+          isOpen={aiModalOpen}
+          onClose={() => { setAiModalOpen(false); setAiInitialPrompt(''); }}
+          restaurant={restaurant}
+          initialPrompt={aiInitialPrompt}
+        />
 
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* LIVE REAL-TIME DRILLDOWN DRAWER / MODAL                        */}

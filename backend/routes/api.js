@@ -20,6 +20,7 @@ const superAdminController = require('../controllers/superAdminController');
 const staffController = require('../controllers/staffController');
 const driverPayoutController = require('../controllers/driverPayoutController');
 const offeringController = require('../controllers/offeringController');
+const aiAssistantController = require('../controllers/aiAssistantController');
 const pushRoutes = require('./pushRoutes');
 
 // Rate limiters
@@ -156,6 +157,10 @@ router.get('/admin/dashboard/kpis', ...adminAuth, orderController.getDashboardKP
 router.get('/admin/dashboard/owner-questions', ...adminAuth, orderController.getOwnerQuestionsLive);
 router.get('/admin/dashboard/question-drilldown', ...adminAuth, orderController.getOwnerQuestionDrilldown);
 router.post('/admin/dashboard/quick-action', ...adminAuth, orderController.executeDashboardQuickAction);
+
+// Grok AI Operations Copilot (Online, Offline & Accommodation Intelligence)
+router.post('/admin/ai/chat', ...adminAuth, aiAssistantController.chatWithAssistant);
+router.get('/admin/ai/snapshot', ...adminAuth, aiAssistantController.getAISnapshot);
 
 // Restaurant management (specific routes BEFORE :id parameterized routes)
 router.get('/admin/restaurant', ...adminAuth, restaurantController.getAdminRestaurant);
