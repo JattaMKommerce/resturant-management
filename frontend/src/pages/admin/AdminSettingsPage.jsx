@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Save, Power, MapPin, Phone, Mail, Building, Image as ImageIcon, CheckCircle2, CreditCard, Upload, Trash2, AlertCircle, ShieldCheck, Star, RefreshCw } from 'lucide-react';
+import { Settings, Save, Power, MapPin, Phone, Mail, Building, Image as ImageIcon, CheckCircle2, CreditCard, Upload, Trash2, AlertCircle, ShieldCheck, Star, RefreshCw, ChefHat } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
+import OfferingsManager from '../../components/offerings/OfferingsManager';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminSettingsPage() {
@@ -800,6 +801,20 @@ export default function AdminSettingsPage() {
           </div>
 
         </form>
+
+        {/* WHAT WE OFFER: kept outside the settings form because each offering saves on its own */}
+        <section className="bg-white rounded-2xl p-6 border border-[#D7E5E8] shadow-xs space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-[#1F2937] flex items-center gap-2">
+              <ChefHat className="w-4 h-4 text-[#3A7D7C]" />
+              <span>What We Offer: Today's Special, Brunch, Lunch, Dinner & Combos</span>
+            </h3>
+            <p className="text-xs text-[#64748B] mt-0.5">
+              Add, edit or delete the offerings shown on your website. Changes save instantly; no need to press "Save Restaurant Settings".
+            </p>
+          </div>
+          <OfferingsManager />
+        </section>
 
       </div>
 

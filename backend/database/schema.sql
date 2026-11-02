@@ -841,6 +841,26 @@ CREATE TABLE IF NOT EXISTS `driver_payout_settlements` (
   INDEX `idx_settled_at` (`settled_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 39. Restaurant Offerings (Today's Special, Brunch, Lunch, Dinner, Combos shown on the storefront)
+CREATE TABLE IF NOT EXISTS restaurant_offerings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  restaurant_id INT NOT NULL,
+  offering_type VARCHAR(30) NOT NULL DEFAULT 'TODAYS_SPECIAL',
+  title VARCHAR(150) NOT NULL,
+  description TEXT DEFAULT NULL,
+  image_url VARCHAR(500) DEFAULT NULL,
+  price DECIMAL(10, 2) DEFAULT NULL,
+  available_time VARCHAR(100) DEFAULT NULL,
+  includes_text TEXT DEFAULT NULL,
+  is_veg TINYINT(1) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  display_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_offerings_restaurant (restaurant_id, is_active),
+  FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+);
+
 
 
 

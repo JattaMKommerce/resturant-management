@@ -5,9 +5,24 @@ import {
   Building, MapPin, Image as ImageIcon, Layers, Utensils, Eye, Globe,
   CheckCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle, Upload, Sparkles,
   Trash2, Clock, ShieldCheck, Star, CreditCard, Lock, Navigation, Crosshair,
-  Sliders
+  Sliders, ChefHat
 } from 'lucide-react';
 import { WEBSITE_TEMPLATES } from '../../config/templates';
+import OfferingsManager from '../../components/offerings/OfferingsManager';
+
+// Step numbers live here so inserting a step never leaves a stale setStep(n) behind.
+const STEP = {
+  DETAILS: 1,
+  LOCATION: 2,
+  THEME: 3,
+  BRANDING: 4,
+  CATEGORIES: 5,
+  MENU_ITEMS: 6,
+  OFFERINGS: 7,
+  PREVIEW: 8,
+  SUBDOMAIN: 9,
+  PUBLISH: 10
+};
 
 const API_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
 
@@ -71,7 +86,7 @@ export default function RestaurantOnboarding() {
       }, 1000);
     } else if (showSkipModal && skipCountdown === 0) {
       setShowSkipModal(false);
-      setStep(8);
+      setStep(STEP.PUBLISH);
     }
     return () => clearTimeout(timer);
   }, [showSkipModal, skipCountdown]);
@@ -416,10 +431,11 @@ export default function RestaurantOnboarding() {
     { number: 3, title: 'Choose Website Theme', icon: Sparkles },
     { number: 4, title: 'Branding & About', icon: ImageIcon },
     { number: 5, title: 'Menu Categories', icon: Layers },
-    { number: 6, title: 'Menu Items', icon: Utensils },
-    { number: 7, title: 'Website Preview', icon: Eye },
-    { number: 8, title: 'Subdomain Branding', icon: Star },
-    { number: 9, title: 'Publish Website', icon: Globe },
+    { number: STEP.MENU_ITEMS, title: 'Menu Items', icon: Utensils },
+    { number: STEP.OFFERINGS, title: 'What We Offer', icon: ChefHat },
+    { number: STEP.PREVIEW, title: 'Website Preview', icon: Eye },
+    { number: STEP.SUBDOMAIN, title: 'Subdomain Branding', icon: Star },
+    { number: STEP.PUBLISH, title: 'Publish Website', icon: Globe },
   ];
 
   return (
@@ -869,19 +885,45 @@ export default function RestaurantOnboarding() {
 
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => setStep(5)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
-                <button type="button" onClick={() => setStep(7)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                <button type="button" onClick={() => setStep(STEP.OFFERINGS)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                  Continue to Offerings <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 7: What We Offer (Today's Special, Brunch, Lunch, Dinner, Combos) */}
+          {step === STEP.OFFERINGS && (
+            <div className="space-y-4 text-xs">
+              <div>
+                <h2 className="text-base font-bold text-[#1F2937] mb-1 flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-[#3A7D7C]" />
+                  <span>Step 7: What Are You Offering?</span>
+                </h2>
+                <p className="text-[#64748B] text-xs">
+                  Add your Today's Special, Brunch, Lunch, Dinner and Combos with photos, descriptions, prices and timings.
+                  Customers see them in the "What We Offer" section of your website. You can skip this and add them later
+                  from Store Website Settings.
+                </p>
+              </div>
+
+              <OfferingsManager />
+
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setStep(STEP.MENU_ITEMS)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
+                <button type="button" onClick={() => setStep(STEP.PREVIEW)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
                   Preview Website <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 7: Visual Storefront Preview */}
-          {step === 7 && (
+          {/* STEP 8: Visual Storefront Preview */}
+          {step === STEP.PREVIEW && (
             <div className="space-y-5 text-xs">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-bold text-[#1F2937]">Step 7: Visual Storefront Preview</h2>
+                  <h2 className="text-base font-bold text-[#1F2937]">Step 8: Visual Storefront Preview</h2>
                   <p className="text-[#64748B] text-xs mt-0.5">Review your uploaded cover image, logo, and digital menu dishes before publishing live.</p>
                 </div>
                 <a
@@ -964,20 +1006,20 @@ export default function RestaurantOnboarding() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setStep(6)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
-                <button type="button" onClick={() => setStep(8)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                <button type="button" onClick={() => setStep(STEP.OFFERINGS)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
+                <button type="button" onClick={() => setStep(STEP.SUBDOMAIN)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
                   Subdomain Branding <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 8: Subdomain Branding Add-On (₹99/mo) */}
-          {step === 8 && (
+          {/* STEP 9: Subdomain Branding Add-On (₹99/mo) */}
+          {step === STEP.SUBDOMAIN && (
             <div className="space-y-5 text-xs">
               <div>
                 <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
-                  Step 8: Custom Subdomain Branding
+                  Step 9: Custom Subdomain Branding
                 </span>
                 <h2 className="text-base font-bold text-[#1F2937] mt-1.5">Official Restaurant Name Subdomain (₹99/mo)</h2>
                 <p className="text-[#64748B] text-xs mt-0.5 leading-relaxed">
@@ -1038,21 +1080,21 @@ export default function RestaurantOnboarding() {
               )}
 
               <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setStep(7)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
-                <button type="button" onClick={() => setStep(9)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
+                <button type="button" onClick={() => setStep(STEP.PREVIEW)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
+                <button type="button" onClick={() => setStep(STEP.PUBLISH)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
                   Proceed to Publish <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 9: Publish Website */}
-          {step === 9 && (
+          {/* STEP 10: Publish Website */}
+          {step === STEP.PUBLISH && (
             <div className="space-y-4 text-xs text-center py-8">
               <div className="w-14 h-14 bg-emerald-50 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto border border-emerald-200">
                 <Globe className="w-7 h-7" />
               </div>
-              <h2 className="text-lg font-bold text-[#1F2937]">Step 9: Publish Website Live</h2>
+              <h2 className="text-lg font-bold text-[#1F2937]">Step 10: Publish Website Live</h2>
               <p className="text-[#64748B]">Your storefront setup is ready! Click below to publish your website live and start receiving customer orders.</p>
               <button onClick={handlePublish} disabled={saving} className="px-8 py-3.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white text-sm rounded-xl shadow-2xs transition-colors cursor-pointer">
                 {saving ? 'Publishing...' : '🚀 Publish Live Website'}
@@ -1164,7 +1206,7 @@ export default function RestaurantOnboarding() {
                 <CreditCard className="w-4 h-4" /> Wait! Upgrade for ₹99/mo
               </button>
               <button
-                onClick={() => { setShowSkipModal(false); setStep(8); }}
+                onClick={() => { setShowSkipModal(false); setStep(STEP.PUBLISH); }}
                 className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-[#64748B] font-bold text-xs rounded-xl border border-[#D7E5E8] transition-all cursor-pointer"
               >
                 Continue Free & Skip Now

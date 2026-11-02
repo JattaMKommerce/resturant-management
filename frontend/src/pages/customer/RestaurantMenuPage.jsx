@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import AccommodationCustomerTab from '../../components/customer/AccommodationCustomerTab';
 import CustomerAuthModal from '../../components/customer/CustomerAuthModal';
+import OfferingsShowcase from '../../components/offerings/OfferingsShowcase';
 import CustomerAuthPage from './CustomerAuthPage';
 import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel, Gift, User, ShieldCheck } from 'lucide-react';
 import { getTemplateById } from '../../config/templates';
@@ -30,6 +31,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
   const [restaurant, setRestaurant] = useState(null);
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [offerings, setOfferings] = useState([]);
   const { user } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [customerRewards, setCustomerRewards] = useState(null);
@@ -84,10 +86,13 @@ export default function RestaurantMenuPage({ overrideSlug }) {
         setRestaurant(r);
         const targetSlug = r.slug || r.random_slug || slug;
 
-        const [catRes, menuRes] = await Promise.all([
+        const [catRes, menuRes, offeringsRes] = await Promise.all([
           api.get(`/restaurants/${targetSlug}/categories`).catch(() => ({ data: { categories: [] } })),
-          api.get(`/restaurants/${targetSlug}/menu`).catch(() => ({ data: { items: [] } }))
+          api.get(`/restaurants/${targetSlug}/menu`).catch(() => ({ data: { items: [] } })),
+          api.get(`/restaurants/${targetSlug}/offerings`).catch(() => ({ data: { offerings: [] } }))
         ]);
+
+        setOfferings(offeringsRes.data?.offerings || []);
 
         if (catRes.data && catRes.data.categories) {
           setCategories(catRes.data.categories);
@@ -212,7 +217,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
       {isDraft && (
         <div className="bg-amber-500 text-white px-4 py-2.5 text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm sticky top-0 z-50">
           <Eye className="w-4 h-4" />
-          <span>STOREFRONT PREVIEW MODE (DRAFT): This is how your store looks. Publish in Step 7 of the Setup Wizard to make it live for customers.</span>
+          <span>STOREFRONT PREVIEW MODE (DRAFT): This is how your store looks. Publish it from the last step of the Setup Wizard to make it live for customers.</span>
         </div>
       )}
 
@@ -394,6 +399,9 @@ export default function RestaurantMenuPage({ overrideSlug }) {
             </button>
           ))}
         </div>
+
+        {/* Today's Special, Brunch, Lunch, Dinner & Combos (hidden while filtering the menu) */}
+        {!searchQuery && !activeCategory && <OfferingsShowcase offerings={offerings} template={template} />}
 
         {/* Menu Items */}
         {Object.keys(groupedItems).length === 0 ? (

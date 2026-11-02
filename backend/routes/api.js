@@ -19,6 +19,7 @@ const notificationController = require('../controllers/notificationController');
 const superAdminController = require('../controllers/superAdminController');
 const staffController = require('../controllers/staffController');
 const driverPayoutController = require('../controllers/driverPayoutController');
+const offeringController = require('../controllers/offeringController');
 const pushRoutes = require('./pushRoutes');
 
 // Rate limiters
@@ -67,6 +68,7 @@ router.get('/restaurants/published', restaurantController.getPublishedRestaurant
 router.get('/restaurants/:slug', restaurantController.getRestaurantBySlug);
 router.get('/restaurants/:slug/categories', categoryController.getCategoriesBySlug);
 router.get('/restaurants/:slug/menu', menuController.getMenuBySlug);
+router.get('/restaurants/:slug/offerings', offeringController.getOfferingsBySlug);
 router.get('/restaurants/:slug/rooms', restaurantController.getPublicRoomsBySlug);
 router.post('/restaurants/:slug/room-inquiry', restaurantController.submitRoomInquiry);
 
@@ -190,6 +192,12 @@ router.post('/admin/menu', ...adminAuth, upload.single('image'), menuController.
 router.put('/admin/menu/:id', ...adminAuth, upload.single('image'), menuController.updateMenuItem);
 router.patch('/admin/menu/:id/availability', ...adminAuth, menuController.toggleAvailability);
 router.delete('/admin/menu/:id', ...adminAuth, menuController.deleteMenuItem);
+
+// Storefront Offerings (Today's Special, Brunch, Lunch, Dinner, Combos)
+router.get('/admin/offerings', ...adminAuth, offeringController.getAdminOfferings);
+router.post('/admin/offerings', ...adminAuth, upload.single('image'), offeringController.createOffering);
+router.put('/admin/offerings/:id', ...adminAuth, upload.single('image'), offeringController.updateOffering);
+router.delete('/admin/offerings/:id', ...adminAuth, offeringController.deleteOffering);
 
 // Orders
 router.get('/admin/orders', ...adminAuth, orderController.getAllOrders);
