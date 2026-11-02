@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import api from '../../services/api';
 import {
   UserPlus,
   BedDouble,
@@ -15,6 +16,8 @@ import {
 export default function CheckInDeskTab({
   rooms = [],
   onCheckInSubmit,
+  onCheckInSuccess,
+  onRefresh,
   onCancel
 }) {
   const vacantRooms = rooms.filter(r => r.status === 'VACANT');
@@ -25,6 +28,12 @@ export default function CheckInDeskTab({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if ((!selectedRoomId || !vacantRooms.some(r => String(r.id) === String(selectedRoomId))) && vacantRooms.length > 0) {
+      setSelectedRoomId(vacantRooms[0].id);
+    }
+  }, [rooms, selectedRoomId]);
 
   const selectedRoom = rooms.find(r => String(r.id) === String(selectedRoomId));
 
@@ -43,18 +52,29 @@ export default function CheckInDeskTab({
     setError('');
 
     try {
-      await onCheckInSubmit(selectedRoomId, {
+      const payload = {
         guest_name: guestName.trim(),
         guest_phone: guestPhone.trim(),
         guest_email: guestEmail.trim(),
         notes: notes.trim()
-      });
+      };
+      if (typeof onCheckInSubmit === 'function') {
+        await onCheckInSubmit(selectedRoomId, payload);
+      } else {
+        await api.post(`/rooms/${selectedRoomId}/check-in`, payload);
+      }
       setGuestName('');
       setGuestPhone('');
       setGuestEmail('');
       setNotes('');
+      if (typeof onCheckInSuccess === 'function') {
+        onCheckInSuccess();
+      }
+      if (typeof onRefresh === 'function') {
+        onRefresh();
+      }
     } catch (err) {
-      setError(err.message || 'Check-in failed.');
+      setError(err.response?.data?.message || err.message || 'Check-in failed.');
     } finally {
       setLoading(false);
     }

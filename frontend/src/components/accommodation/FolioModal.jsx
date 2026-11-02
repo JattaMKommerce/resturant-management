@@ -22,24 +22,29 @@ import {
 export default function FolioModal({
   isOpen,
   onClose,
-  room,
-  onCheckOut
+  room = null,
+  roomId = null,
+  onCheckOut,
+  onFolioUpdated
 }) {
   const [folioData, setFolioData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const targetRoomId = room?.id || roomId;
+
   useEffect(() => {
-    if (isOpen && room?.id) {
+    if (isOpen && targetRoomId) {
       fetchFolio();
     }
-  }, [isOpen, room]);
+  }, [isOpen, targetRoomId]);
 
   const fetchFolio = async () => {
+    if (!targetRoomId) return;
     setLoading(true);
     setError('');
     try {
-      const res = await api.get(`/rooms/${room.id}/folio`);
+      const res = await api.get(`/rooms/${targetRoomId}/folio`);
       if (res?.success) {
         setFolioData(res.data);
       } else if (res?.data) {
@@ -49,23 +54,25 @@ export default function FolioModal({
       }
     } catch (err) {
       console.error('Failed to fetch room folio:', err);
-      setError(err.message || 'Failed to load folio details');
+      setError(err.response?.data?.message || err.message || 'Failed to load folio details');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!room) return null;
+  if (!isOpen || !targetRoomId) return null;
 
   const folio = folioData?.folio;
   const charges = folioData?.charges || [];
-  const balance = parseFloat(folio?.balance || room.folio_balance || 0);
+  const roomObj = room || folioData?.room || {};
+  const roomNumber = roomObj.room_number || folio?.room_number || targetRoomId;
+  const balance = parseFloat(folio?.balance ?? roomObj.folio_balance ?? 0);
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Room ${room.room_number} • Guest Folio & Account Statement`}
+      title={`Room ${roomNumber} • Guest Folio & Account Statement`}
       maxWidth="max-w-3xl"
     >
       {loading ? (
@@ -91,11 +98,11 @@ export default function FolioModal({
           <div className="p-4 rounded-2xl bg-[#EAF4F7]/60 border border-[#D7E5E8] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-[#3A7D7C] text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
-                {room.room_number}
+                {roomNumber}
               </div>
               <div>
                 <span className="text-[10px] text-[#3A7D7C] font-bold uppercase tracking-wider block">
-                  {room.floor} • {room.room_type}
+                  {roomObj.floor || folio.floor || 'Hotel Floor'} • {roomObj.room_type || folio.room_type || 'Hotel Room'}
                 </span>
                 <h3 className="text-base font-black text-slate-900">
                   {folio.guest_name}
@@ -230,9 +237,12 @@ export default function FolioModal({
 
             {folio.folio_status === 'OPEN' && (
               <button
+                type="button"
                 onClick={() => {
                   onClose();
-                  onCheckOut(room);
+                  if (typeof onCheckOut === 'function') {
+                    onCheckOut(roomObj.id ? roomObj : { id: targetRoomId, room_number: roomNumber });
+                  }
                 }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-all"
               >

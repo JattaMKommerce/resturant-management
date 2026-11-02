@@ -376,6 +376,24 @@ export default function RestaurantMenuPage({ overrideSlug }) {
           <AccommodationCustomerTab restaurant={restaurant} slug={slug} />
         ) : (
           <>
+            {/* Today's Special, Brunch, Lunch, Dinner & Combos AT TOP OF MENU */}
+            {!searchQuery && !activeCategory && (
+              <OfferingsShowcase
+                offerings={offerings}
+                template={template}
+                onSelectOffering={(offering) => {
+                  const matched = menuItems.find(
+                    m => m.name?.toLowerCase().trim() === offering.title?.toLowerCase().trim()
+                  );
+                  if (matched && matched.is_available && canOrder) {
+                    handleAddToCart(matched);
+                  } else {
+                    setSearchQuery(offering.title);
+                  }
+                }}
+              />
+            )}
+
             {/* Search */}
             <div className="relative mb-6">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -388,20 +406,17 @@ export default function RestaurantMenuPage({ overrideSlug }) {
               />
             </div>
 
-        {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-          <button onClick={() => setActiveCategory(null)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${!activeCategory ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
-            All
-          </button>
-          {categories.map(cat => (
-            <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeCategory === cat.id ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Today's Special, Brunch, Lunch, Dinner & Combos (hidden while filtering the menu) */}
-        {!searchQuery && !activeCategory && <OfferingsShowcase offerings={offerings} template={template} />}
+            {/* Category Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+              <button onClick={() => setActiveCategory(null)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${!activeCategory ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
+                All
+              </button>
+              {categories.map(cat => (
+                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeCategory === cat.id ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
 
         {/* Menu Items */}
         {Object.keys(groupedItems).length === 0 ? (

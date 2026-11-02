@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Modal from '../common/Modal';
+import api from '../../services/api';
 import { 
   User, 
   Phone, 
@@ -17,7 +18,8 @@ export default function CheckInModal({
   isOpen,
   onClose,
   room,
-  onCheckInSubmit
+  onCheckInSubmit,
+  onSuccess
 }) {
   const [formData, setFormData] = useState({
     guest_name: '',
@@ -46,10 +48,21 @@ export default function CheckInModal({
 
     setSubmitting(true);
     try {
-      await onCheckInSubmit(room.id, formData);
-      onClose();
+      let result;
+      if (typeof onCheckInSubmit === 'function') {
+        result = await onCheckInSubmit(room.id, formData);
+      } else {
+        const res = await api.post(`/rooms/${room.id}/check-in`, formData);
+        result = res?.data?.data || res?.data || res;
+      }
+      if (typeof onSuccess === 'function') {
+        onSuccess(result);
+      }
+      if (typeof onClose === 'function') {
+        onClose();
+      }
     } catch (err) {
-      setError(err.message || 'Failed to complete guest check-in.');
+      setError(err.response?.data?.message || err.message || 'Failed to complete guest check-in.');
     } finally {
       setSubmitting(false);
     }

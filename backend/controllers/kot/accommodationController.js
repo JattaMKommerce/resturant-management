@@ -716,7 +716,11 @@ async function checkInGuest(req, res, next) {
 
     const [openFolios] = await connection.query(`SELECT id FROM room_folios WHERE room_id = ? AND folio_status = 'OPEN'`, [id]);
     if (openFolios.length > 0) {
-      return sendError(res, 'An open folio already exists for this room. Please close it first.', 400);
+      if (room.status === 'VACANT') {
+        await connection.query(`UPDATE room_folios SET folio_status = 'CLOSED', check_out_date = NOW() WHERE room_id = ? AND folio_status = 'OPEN'`, [id]);
+      } else {
+        return sendError(res, 'An open folio already exists for this room. Please close it first.', 400);
+      }
     }
 
     const expectedDate = expected_check_out ? new Date(expected_check_out) : null;

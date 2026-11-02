@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
+import api from '../../services/api';
 import { 
   Building, 
   Layers, 
@@ -91,9 +92,17 @@ export default function RoomFormModal({
   isOpen,
   onClose,
   onSubmit,
+  onSaved,
+  room = null,
   initialData = null,
-  autoNextRoomNumber = ''
+  autoNextRoomNumber = '',
+  floors = PRESET_FLOORS,
+  roomTypes = PRESET_ROOM_TYPES
 }) {
+  const targetData = initialData || room;
+  const activeFloors = (floors && floors.length > 0) ? floors : PRESET_FLOORS;
+  const activeRoomTypes = (roomTypes && roomTypes.length > 0) ? roomTypes : PRESET_ROOM_TYPES;
+
   const [formData, setFormData] = useState({
     room_number: '',
     floor: '1st Floor',
@@ -119,19 +128,19 @@ export default function RoomFormModal({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (initialData) {
+    if (targetData) {
       setFormData({
-        room_number: initialData.room_number || '',
-        floor: initialData.floor || '1st Floor',
-        room_type: initialData.room_type || 'Deluxe Room',
-        status: initialData.status || 'VACANT',
-        rate_per_night: initialData.rate_per_night || 2500,
-        capacity: initialData.capacity || 2,
-        bed_type: initialData.bed_type || 'King Bed',
-        room_size: initialData.room_size || '320 sq.ft',
-        amenities: Array.isArray(initialData.amenities) ? initialData.amenities : AVAILABLE_AMENITIES.slice(0, 6),
-        description: initialData.description || '',
-        image_url: initialData.image_url || PRESET_IMAGES[0].url
+        room_number: targetData.room_number || '',
+        floor: targetData.floor || '1st Floor',
+        room_type: targetData.room_type || 'Deluxe Room',
+        status: targetData.status || 'VACANT',
+        rate_per_night: targetData.rate_per_night || 2500,
+        capacity: targetData.capacity || 2,
+        bed_type: targetData.bed_type || 'King Bed',
+        room_size: targetData.room_size || '320 sq.ft',
+        amenities: Array.isArray(targetData.amenities) ? targetData.amenities : AVAILABLE_AMENITIES.slice(0, 6),
+        description: targetData.description || '',
+        image_url: targetData.image_url || PRESET_IMAGES[0].url
       });
     } else {
       setFormData({
@@ -149,7 +158,7 @@ export default function RoomFormModal({
       });
     }
     setError('');
-  }, [initialData, autoNextRoomNumber, isOpen]);
+  }, [targetData, autoNextRoomNumber, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -179,14 +188,32 @@ export default function RoomFormModal({
 
     setSubmitting(true);
     try {
-      await onSubmit({
+      const payload = {
         ...formData,
         room_number: String(formData.room_number).trim(),
         rate_per_night: parseFloat(formData.rate_per_night) || 0,
         capacity: parseInt(formData.capacity, 10) || 2
-      });
+      };
+
+      let result;
+      if (typeof onSubmit === 'function') {
+        result = await onSubmit(payload);
+      } else if (targetData?.id) {
+        const res = await api.put(`/rooms/${targetData.id}`, payload);
+        result = res?.data?.data || res?.data || res;
+      } else {
+        const res = await api.post('/rooms', payload);
+        result = res?.data?.data || res?.data || res;
+      }
+
+      if (typeof onSaved === 'function') {
+        onSaved(result);
+      }
+      if (typeof onClose === 'function') {
+        onClose();
+      }
     } catch (err) {
-      setError(err.message || 'Failed to save room details.');
+      setError(err.response?.data?.message || err.message || 'Failed to save room details.');
     } finally {
       setSubmitting(false);
     }
@@ -196,7 +223,7 @@ export default function RoomFormModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? `Edit Room ${initialData.room_number}` : 'Add New Hotel Room'}
+      title={targetData ? `Edit Room ${targetData.room_number}` : 'Add New Hotel Room'}
       maxWidth="max-w-3xl"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -236,7 +263,7 @@ export default function RoomFormModal({
                 onChange={handleChange}
                 className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]"
               >
-                {PRESET_FLOORS.map(f => (
+                {activeFloors.map(f => (
                   <option key={f} value={f}>{f}</option>
                 ))}
               </select>
@@ -253,7 +280,7 @@ export default function RoomFormModal({
                 onChange={handleChange}
                 className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]"
               >
-                {PRESET_ROOM_TYPES.map(t => (
+                {activeRoomTypes.map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
@@ -432,7 +459,7 @@ export default function RoomFormModal({
             className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs shadow-xs transition-all disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" />
-            <span>{submitting ? 'Saving...' : (initialData ? 'Update Room' : 'Create Room')}</span>
+            <span>{submitting ? 'Saving...' : (targetData ? 'Update Room' : 'Create Room')}</span>
           </button>
         </div>
       </form>

@@ -552,11 +552,17 @@ async function getSetupProgress(req, res) {
 
     const [catCount] = await query('SELECT COUNT(*) as cnt FROM categories WHERE restaurant_id = ?', [restId]);
     const [menuCount] = await query('SELECT COUNT(*) as cnt FROM menu_items WHERE restaurant_id = ?', [restId]);
+    let offeringCount = { cnt: 0 };
+    try {
+      const [oCnt] = await query('SELECT COUNT(*) as cnt FROM restaurant_offerings WHERE restaurant_id = ?', [restId]);
+      if (oCnt) offeringCount = oCnt;
+    } catch (e) {}
 
     const steps = [
       { id: 'details', name: 'Basic Details & Location', completed: !!(rest.name && rest.phone && rest.address) },
       { id: 'categories', name: 'Menu Categories', completed: catCount.cnt > 0, count: catCount.cnt },
       { id: 'menu', name: 'Menu Items', completed: menuCount.cnt > 0, count: menuCount.cnt },
+      { id: 'offerings', name: "Today's Special, Brunch, Lunch, Dinner & Combos", completed: offeringCount.cnt > 0, count: offeringCount.cnt },
       { id: 'delivery', name: 'Delivery & Pricing Rules', completed: !!(rest.delivery_radius_km > 0) },
       { id: 'publish', name: 'Publish Website', completed: rest.website_status === 'PUBLISHED' }
     ];
@@ -570,6 +576,9 @@ async function getSetupProgress(req, res) {
       website_status: rest.website_status,
       is_online_ordering_enabled: rest.is_online_ordering_enabled === 1,
       progressPercent,
+      completedCount: completedSteps,
+      totalSteps: steps.length,
+      isSetupComplete: completedSteps === steps.length,
       isReadyToPublish: catCount.cnt > 0 && menuCount.cnt > 0 && !!rest.name && !!rest.address,
       steps
     });

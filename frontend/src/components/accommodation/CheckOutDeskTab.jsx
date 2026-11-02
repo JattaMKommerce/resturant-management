@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import api from '../../services/api';
 import {
   LogOut,
   BedDouble,
@@ -15,9 +16,35 @@ import {
 export default function CheckOutDeskTab({
   rooms = [],
   onCheckOutClick,
-  onViewFolioClick
+  onViewFolioClick,
+  onCheckOutSuccess,
+  onRefresh
 }) {
+  const [processingId, setProcessingId] = useState(null);
   const occupiedRooms = rooms.filter(r => r.status === 'OCCUPIED');
+
+  const handleProcessCheckOut = async (r) => {
+    if (typeof onCheckOutClick === 'function') {
+      onCheckOutClick(r);
+      return;
+    }
+    const hasBalance = parseFloat(r.folio_balance || 0) > 0;
+    const confirmMsg = hasBalance
+      ? `Room ${r.room_number} has an outstanding folio balance of ₹${parseFloat(r.folio_balance).toFixed(2)}. Are you sure you want to proceed with check-out?`
+      : `Confirm check-out for Room ${r.room_number}? Room will be marked for Housekeeping.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setProcessingId(r.id);
+    try {
+      await api.post(`/rooms/${r.id}/check-out`);
+      if (typeof onCheckOutSuccess === 'function') onCheckOutSuccess(r);
+      if (typeof onRefresh === 'function') onRefresh();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Check-out failed.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-200">
@@ -135,7 +162,8 @@ export default function CheckOutDeskTab({
                 {/* Actions */}
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2 mt-4">
                   <button
-                    onClick={() => onViewFolioClick(r)}
+                    type="button"
+                    onClick={() => onViewFolioClick?.(r)}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-[#3A7D7C] hover:text-white text-slate-700 text-xs font-bold transition-all"
                   >
                     <Receipt className="w-3.5 h-3.5" />
@@ -143,11 +171,13 @@ export default function CheckOutDeskTab({
                   </button>
 
                   <button
-                    onClick={() => onCheckOutClick(r)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold transition-all shadow-xs active:scale-95"
+                    type="button"
+                    onClick={() => handleProcessCheckOut(r)}
+                    disabled={processingId === r.id}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold transition-all shadow-xs active:scale-95 disabled:opacity-50"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Process Check-Out</span>
+                    <span>{processingId === r.id ? 'Checking out...' : 'Process Check-Out'}</span>
                   </button>
                 </div>
               </div>

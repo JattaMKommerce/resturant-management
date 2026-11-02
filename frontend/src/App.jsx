@@ -435,6 +435,16 @@ export default function App() {
             <RestaurantOnboarding />
           </ProtectedRoute>
         } />
+        <Route path="/admin/:slug/setup-wizard" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
+            <RestaurantOnboarding />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/setup-wizard" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
+            <RestaurantOnboarding />
+          </ProtectedRoute>
+        } />
 
         {/* ========================================================= */}
         {/* 2. OFFLINE RESTAURANT & KOT SYSTEM ROUTES (Exact 10)     */}

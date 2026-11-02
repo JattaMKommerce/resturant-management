@@ -313,8 +313,9 @@ export default function FoliosTab({
                           )}
 
                           <button
-                            onClick={() => onViewFolioClick({ id: f.room_id, room_number: f.room_number, floor: f.floor, room_type: f.room_type, folio_balance: balance, guest_name: f.guest_name })}
-                            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all shadow-2xs"
+                            type="button"
+                            onClick={() => onViewFolioClick?.({ id: f.room_id, room_number: f.room_number, floor: f.floor, room_type: f.room_type, folio_balance: balance, guest_name: f.guest_name })}
+                            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all shadow-2xs cursor-pointer"
                             title="View Statement"
                           >
                             <Eye className="w-3.5 h-3.5" />

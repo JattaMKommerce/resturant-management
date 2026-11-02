@@ -21,8 +21,10 @@ export default function GuestManagementTab({
   onCheckInClick,
   onCheckOutClick,
   onViewFolioClick,
+  onViewFolio,
   refreshKey
 }) {
+  const handleViewFolio = onViewFolioClick || onViewFolio;
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -226,10 +228,11 @@ export default function GuestManagementTab({
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {onViewFolioClick && (
+                    {handleViewFolio && (
                       <button
-                        onClick={() => onViewFolioClick({ id: g.room_id, room_number: g.room_number, floor: g.floor, room_type: g.room_type, folio_balance: g.balance, guest_name: g.guest_name })}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-[#3A7D7C] hover:text-white text-slate-700 text-xs font-bold transition-all shadow-2xs"
+                        type="button"
+                        onClick={() => handleViewFolio({ id: g.room_id, room_number: g.room_number, floor: g.floor, room_type: g.room_type, folio_balance: g.balance, guest_name: g.guest_name })}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-[#3A7D7C] hover:text-white text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
                         title="View Room Folio & Charges"
                       >
                         <Receipt className="w-3.5 h-3.5" />

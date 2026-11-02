@@ -1018,10 +1018,10 @@ export default function AdminDashboardPage() {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-[#1F2937]">Complete Your Restaurant Online Setup</h3>
-                <p className="text-xs text-[#64748B] mt-0.5">Finish setup steps to publish your online ordering website ({setupProgress.completedCount}/7 steps complete).</p>
+                <p className="text-xs text-[#64748B] mt-0.5">Finish setup steps to publish your online ordering website ({setupProgress.completedCount ?? setupProgress.steps?.filter(s => s.completed).length ?? 0}/{setupProgress.totalSteps ?? setupProgress.steps?.length ?? 6} steps complete).</p>
               </div>
             </div>
-            <Link to={`/admin/${currentSlug}/onboarding`} className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl font-bold text-xs transition-all shadow-2xs shrink-0">
+            <Link to={`/admin/${currentSlug}/onboarding`} className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white rounded-xl font-bold text-xs transition-all shadow-2xs shrink-0 flex items-center gap-1.5">
               Open Setup Wizard →
             </Link>
           </div>

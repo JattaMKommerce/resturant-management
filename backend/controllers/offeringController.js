@@ -68,7 +68,7 @@ function parseOfferingFields(body = {}, { requireTitle }) {
 }
 
 async function resolveAdminRestaurantId(req) {
-  let restId = req.adminRestaurantId || req.query?.restaurant_id || req.body?.restaurant_id;
+  let restId = req.adminRestaurantId || req.user?.restaurant_id || req.query?.restaurant_id || req.body?.restaurant_id;
   if (!restId && req.isSuperAdmin) {
     const [first] = await query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
     restId = first ? first.id : null;
@@ -95,16 +95,17 @@ async function loadOwnedOffering(req, res) {
 async function getOfferingsBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
+    const isNum = !isNaN(Number(slug)) && Number(slug) > 0;
     const [restaurant] = await query(
       `SELECT id FROM restaurants
-       WHERE LOWER(slug) = ? OR LOWER(random_slug) = ? OR LOWER(custom_subdomain_slug) = ?
+       WHERE LOWER(slug) = ? OR LOWER(random_slug) = ? OR LOWER(custom_subdomain_slug) = ? ${isNum ? 'OR id = ?' : ''}
        LIMIT 1`,
-      [slug, slug, slug]
+      isNum ? [slug, slug, slug, Number(slug)] : [slug, slug, slug]
     );
     if (!restaurant) return res.json({ success: true, offerings: [] });
 
     const offerings = await query(
-      `SELECT id, offering_type, title, description, image_url, price, available_time, includes_text, is_veg, display_order
+      `SELECT id, offering_type, title, description, image_url, price, available_time, includes_text, is_veg, is_active, display_order
        FROM restaurant_offerings
        WHERE restaurant_id = ? AND is_active = 1
        ORDER BY display_order ASC, id DESC`,
@@ -156,6 +157,8 @@ async function createOffering(req, res) {
       return res.status(400).json({ success: false, message: validationErr.message });
     }
 
+    const imageUrl = uploadedImage || (req.body?.image_url ? req.body.image_url : null);
+
     const result = await query(
       `INSERT INTO restaurant_offerings
          (restaurant_id, offering_type, title, description, image_url, price, available_time, includes_text, is_veg, is_active, display_order)
@@ -165,7 +168,7 @@ async function createOffering(req, res) {
         fields.offering_type || 'TODAYS_SPECIAL',
         fields.title,
         fields.description ?? null,
-        uploadedImage,
+        imageUrl,
         fields.price ?? null,
         fields.available_time ?? null,
         fields.includes_text ?? null,
@@ -204,6 +207,7 @@ async function updateOffering(req, res) {
     const removeImage = req.body?.remove_image === '1' || req.body?.remove_image === true;
     if (uploadedImage) fields.image_url = uploadedImage;
     else if (removeImage) fields.image_url = null;
+    else if (req.body?.image_url) fields.image_url = req.body.image_url;
 
     const columns = Object.keys(fields);
     if (columns.length > 0) {

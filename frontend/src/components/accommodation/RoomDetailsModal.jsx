@@ -40,7 +40,8 @@ const STATUS_OPTIONS = [
 export default function RoomDetailsModal({
   isOpen,
   onClose,
-  room,
+  room = null,
+  roomId = null,
   onCheckIn,
   onCheckOut,
   onViewFolio,
@@ -50,12 +51,13 @@ export default function RoomDetailsModal({
   const [activeImage, setActiveImage] = useState(room?.image_url);
 
   useEffect(() => {
-    if (room) {
+    if (room?.image_url) {
       setActiveImage(room.image_url);
     }
   }, [room]);
 
-  if (!room) return null;
+  if (!room && !roomId) return null;
+  const currentRoom = room || { id: roomId, room_number: roomId, status: 'VACANT' };
 
   const currentStatusObj = STATUS_OPTIONS.find(s => s.value === room.status) || STATUS_OPTIONS[0];
 
@@ -233,7 +235,8 @@ export default function RoomDetailsModal({
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onViewFolio(room)}
+                  type="button"
+                  onClick={() => onViewFolio?.(room)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 font-bold text-xs shadow-2xs transition-colors"
                 >
                   <Receipt className="w-4 h-4 text-blue-600" />
@@ -285,9 +288,10 @@ export default function RoomDetailsModal({
 
             {room.status === 'VACANT' && (
               <button
+                type="button"
                 onClick={() => {
                   onClose();
-                  onCheckIn(room);
+                  onCheckIn?.(room);
                 }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all"
               >
@@ -306,7 +310,7 @@ export default function RoomDetailsModal({
             <span className="text-xs font-bold text-slate-600">Change Status:</span>
             <select
               value={room.status}
-              onChange={(e) => onStatusChange(room.id, e.target.value)}
+              onChange={(e) => onStatusChange?.(room.id, e.target.value)}
               className="text-xs font-semibold py-1.5 px-3 rounded-xl border border-[#D7E5E8] bg-white text-slate-800 focus:outline-hidden focus:border-[#3A7D7C]"
             >
               <option value="VACANT">VACANT (Available)</option>
@@ -319,9 +323,10 @@ export default function RoomDetailsModal({
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => {
                 onClose();
-                onEdit(room);
+                onEdit?.(room);
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#D7E5E8] bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs shadow-2xs transition-colors"
             >
@@ -331,9 +336,10 @@ export default function RoomDetailsModal({
 
             {room.status === 'OCCUPIED' && (
               <button
+                type="button"
                 onClick={() => {
                   onClose();
-                  onCheckOut(room);
+                  onCheckOut?.(room);
                 }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-all"
               >

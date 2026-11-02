@@ -1,28 +1,25 @@
-# ======================================================================
-# Hostinger Web App - Node.js serves everything directly
-# ======================================================================
-# No Passenger config needed - Web App platform manages Node.js runtime
-# No proxy rules needed - Frontend calls Web App API directly via CORS
-
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Pass Authorization header
+  # Pass Authorization header to Node.js backend
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
   <IfModule mod_setenvif.c>
     SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
   </IfModule>
 
-  # Serve static files directly if they exist
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
+  # Explicitly allow Let's Encrypt ACME SSL validation
+  RewriteRule ^\.well-known/ - [L]
 
-  # Do NOT rewrite API, Health, Socket.IO, or Uploads to index.html - pass directly to Node.js backend
+  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend Web App
   RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
-  RewriteRule ^ - [L]
+  RewriteRule ^(.*)$ https://springgreen-gorilla-821094.hostingersite.com/$1 [P,L]
 
-  # SPA Fallback - let frontend routing work for page navigation
-  RewriteRule ^ /index.html [L]
+  # 2. Serve static files directly if found
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # 3. Clean SPA Fallback: Route all client page requests to index.html
+  RewriteRule . /index.html [L]
 </IfModule>

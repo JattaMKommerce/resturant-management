@@ -70,6 +70,7 @@ export default function RestaurantOnboarding() {
   const [newItemForm, setNewItemForm] = useState({ name: '', price: '', category_id: '', is_veg: true, description: '' });
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [offerings, setOfferings] = useState([]);
   const [customSlugInput, setCustomSlugInput] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('royal_heritage');
 
@@ -104,11 +105,12 @@ export default function RestaurantOnboarding() {
     try {
       setLoading(true);
       setError('');
-      const [restRes, progRes, catRes, menuRes] = await Promise.all([
+      const [restRes, progRes, catRes, menuRes, offeringsRes] = await Promise.all([
         api.get('/admin/restaurant').catch(err => err.response || { data: { success: false } }),
         api.get('/admin/restaurant/setup-progress').catch(err => err.response || { data: { success: false } }),
         api.get('/admin/categories').catch(err => err.response || { data: { success: false } }),
-        api.get('/admin/menu').catch(err => err.response || { data: { success: false } })
+        api.get('/admin/menu').catch(err => err.response || { data: { success: false } }),
+        api.get('/admin/offerings').catch(err => err.response || { data: { success: false } })
       ]);
 
       if (restRes.data && restRes.data.success) {
@@ -141,6 +143,7 @@ export default function RestaurantOnboarding() {
       if (progRes.data && progRes.data.success) setProgress(progRes.data);
       if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
       if (menuRes.data && menuRes.data.success) setMenuItems(menuRes.data.items || []);
+      if (offeringsRes.data && offeringsRes.data.success) setOfferings(offeringsRes.data.offerings || []);
 
     } catch (err) {
       console.error('Onboarding load error:', err);
@@ -432,7 +435,7 @@ export default function RestaurantOnboarding() {
     { number: 4, title: 'Branding & About', icon: ImageIcon },
     { number: 5, title: 'Menu Categories', icon: Layers },
     { number: STEP.MENU_ITEMS, title: 'Menu Items', icon: Utensils },
-    { number: STEP.OFFERINGS, title: 'What We Offer', icon: ChefHat },
+    { number: STEP.OFFERINGS, title: "Specials & Combos", icon: ChefHat },
     { number: STEP.PREVIEW, title: 'Website Preview', icon: Eye },
     { number: STEP.SUBDOMAIN, title: 'Subdomain Branding', icon: Star },
     { number: STEP.PUBLISH, title: 'Publish Website', icon: Globe },
@@ -898,12 +901,11 @@ export default function RestaurantOnboarding() {
               <div>
                 <h2 className="text-base font-bold text-[#1F2937] mb-1 flex items-center gap-2">
                   <ChefHat className="w-5 h-5 text-[#3A7D7C]" />
-                  <span>Step 7: What Are You Offering?</span>
+                  <span>Step 7: Today's Special, Brunch, Lunch, Dinner & Combos</span>
                 </h2>
                 <p className="text-[#64748B] text-xs">
-                  Add your Today's Special, Brunch, Lunch, Dinner and Combos with photos, descriptions, prices and timings.
-                  Customers see them in the "What We Offer" section of your website. You can skip this and add them later
-                  from Store Website Settings.
+                  Configure your Today's Special, Brunch, Lunch, Dinner options and value Combos with photos, descriptions, prices and available timings.
+                  Customers will see them highlighted in cards right at the top of your website menu! You can skip this or update them anytime later from Store Website Settings.
                 </p>
               </div>
 
@@ -911,8 +913,20 @@ export default function RestaurantOnboarding() {
 
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => setStep(STEP.MENU_ITEMS)} className="px-6 py-2.5 bg-slate-100 text-[#1F2937] font-bold rounded-xl border border-[#D7E5E8]">Back</button>
-                <button type="button" onClick={() => setStep(STEP.PREVIEW)} className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors">
-                  Preview Website <ArrowRight className="w-4 h-4" />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await api.get('/admin/offerings');
+                      if (res.data?.success && res.data.offerings) {
+                        setOfferings(res.data.offerings);
+                      }
+                    } catch (e) {}
+                    setStep(STEP.PREVIEW);
+                  }}
+                  className="flex-1 py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] font-bold text-white rounded-xl flex items-center justify-center gap-2 shadow-2xs transition-colors"
+                >
+                  Continue to Website Preview <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -983,6 +997,45 @@ export default function RestaurantOnboarding() {
                     </span>
                   ))}
                 </div>
+
+                {/* Specials & Combos Preview Strip at top of menu */}
+                {offerings.length > 0 && (
+                  <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-[#D7E5E8]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-xs text-[#1F2937] flex items-center gap-1.5">
+                        ⭐ Specials & Combos ({offerings.length})
+                      </span>
+                      <span className="text-[10px] font-bold text-[#3A7D7C]">Top of Menu Card Strip</span>
+                    </div>
+                    <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+                      {offerings.map(o => (
+                        <div key={o.id} className="shrink-0 w-44 bg-white rounded-xl border border-[#D7E5E8] shadow-2xs overflow-hidden flex flex-col">
+                          <div className="h-20 bg-slate-100 relative">
+                            {o.image_url ? (
+                              <img src={getMediaUrl(o.image_url)} alt={o.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-2xl bg-amber-100/50">
+                                {o.offering_type === 'TODAYS_SPECIAL' ? '⭐' : o.offering_type === 'COMBO' ? '🍱' : '🍽️'}
+                              </div>
+                            )}
+                            <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-black/75 text-white text-[9px] font-bold">
+                              {o.offering_type === 'TODAYS_SPECIAL' ? '⭐ Special' : o.offering_type === 'COMBO' ? '🍱 Combo' : o.offering_type}
+                            </span>
+                            {o.price && (
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-900 font-black text-[10px] shadow-xs">
+                                ₹{o.price}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-2">
+                            <span className="font-bold text-[11px] text-slate-900 block truncate">{o.title}</span>
+                            {o.available_time && <span className="text-[9px] text-[#64748B] block truncate mt-0.5">🕒 {o.available_time}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Sample Dishes Preview */}
                 <div className="p-4 space-y-3 max-h-64 overflow-y-auto">

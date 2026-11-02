@@ -205,6 +205,24 @@ export default function AccommodationPage() {
     fetchAccommodationData();
   };
 
+  // Handle Guest Check-Out
+  const handleCheckOut = async (room) => {
+    if (!room?.id) return;
+    const hasBalance = parseFloat(room.folio_balance || 0) > 0;
+    const confirmMsg = hasBalance
+      ? `Room ${room.room_number} has an outstanding folio balance of ₹${parseFloat(room.folio_balance).toFixed(2)}. Are you sure you want to proceed with guest check-out and close this stay?`
+      : `Confirm guest check-out for Room ${room.room_number}? The room will be marked for Housekeeping.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await api.post(`/rooms/${room.id}/check-out`);
+      showToast(res?.data?.message || `Room ${room.room_number} checked out successfully! Marked for Housekeeping.`);
+      fetchAccommodationData();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to complete check-out.');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* 1. TOP HEADER & MAIN NAVIGATION TABS */}
@@ -585,6 +603,7 @@ export default function AccommodationPage() {
                   onDelete={() => handleDeleteRoom(room.id)}
                   onStatusChange={(status) => handleStatusChange(room.id, status)}
                   onCheckIn={() => setCheckInRoom(room)}
+                  onCheckOut={() => handleCheckOut(room)}
                   onViewFolio={() => setFolioRoom(room)}
                   canManage={isAdminOrManager}
                 />
@@ -597,8 +616,9 @@ export default function AccommodationPage() {
       {/* TAB D: GUEST DIRECTORY */}
       {activeTab === 'guests' && (
         <GuestManagementTab
+          onViewFolioClick={(room) => setFolioRoom(room)}
           onViewFolio={(room) => setFolioRoom(room)}
-          onCheckOutClick={(room) => handleTabChange('checkout')}
+          onCheckOutClick={(room) => handleCheckOut(room)}
           refreshKey={refreshKey}
         />
       )}
@@ -607,6 +627,9 @@ export default function AccommodationPage() {
       {activeTab === 'checkin' && (
         <CheckInDeskTab
           rooms={rooms}
+          onCheckInSubmit={async (roomId, data) => {
+            await api.post(`/rooms/${roomId}/check-in`, data);
+          }}
           onCheckInSuccess={() => {
             showToast('Guest checked in successfully!');
             fetchAccommodationData();
@@ -620,6 +643,8 @@ export default function AccommodationPage() {
       {activeTab === 'checkout' && (
         <CheckOutDeskTab
           rooms={rooms}
+          onCheckOutClick={handleCheckOut}
+          onViewFolioClick={(room) => setFolioRoom(room)}
           onCheckOutSuccess={() => {
             showToast('Guest checked out successfully! Room marked for Housekeeping.');
             fetchAccommodationData();
@@ -632,6 +657,7 @@ export default function AccommodationPage() {
       {/* TAB G: ROOM FOLIOS */}
       {activeTab === 'folios' && (
         <FoliosTab
+          onViewFolioClick={(room) => setFolioRoom(room)}
           refreshKey={refreshKey}
           onRefresh={() => fetchAccommodationData()}
         />
@@ -660,10 +686,16 @@ export default function AccommodationPage() {
         <RoomDetailsModal
           isOpen={true}
           onClose={() => setSelectedRoomDetails(null)}
+          room={selectedRoomDetails}
           roomId={selectedRoomDetails.id}
           onCheckIn={() => {
             setCheckInRoom(selectedRoomDetails);
             setSelectedRoomDetails(null);
+          }}
+          onCheckOut={() => {
+            const r = selectedRoomDetails;
+            setSelectedRoomDetails(null);
+            handleCheckOut(r);
           }}
           onViewFolio={() => {
             setFolioRoom(selectedRoomDetails);
@@ -672,6 +704,9 @@ export default function AccommodationPage() {
           onEdit={() => {
             handleOpenEditRoom(selectedRoomDetails);
             setSelectedRoomDetails(null);
+          }}
+          onStatusChange={(roomId, status) => {
+            handleStatusChange(roomId, status);
           }}
         />
       )}
@@ -692,6 +727,9 @@ export default function AccommodationPage() {
           isOpen={true}
           onClose={() => setCheckInRoom(null)}
           room={checkInRoom}
+          onCheckInSubmit={async (roomId, data) => {
+            return await api.post(`/rooms/${roomId}/check-in`, data);
+          }}
           onSuccess={() => {
             setCheckInRoom(null);
             showToast(`Guest checked into Room ${checkInRoom.room_number}`);
@@ -704,7 +742,12 @@ export default function AccommodationPage() {
         <FolioModal
           isOpen={true}
           onClose={() => setFolioRoom(null)}
+          room={folioRoom}
           roomId={folioRoom.id}
+          onCheckOut={(r) => {
+            setFolioRoom(null);
+            handleCheckOut(r);
+          }}
           onFolioUpdated={() => fetchAccommodationData()}
         />
       )}

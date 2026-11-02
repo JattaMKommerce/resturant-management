@@ -241,16 +241,18 @@ export default function RoomCard({
           {isAdminOrManager && (
             <>
               <button
-                onClick={() => onEdit(room)}
+                type="button"
+                onClick={() => onEdit?.(room)}
                 title="Edit Room Details"
-                className="p-1.5 text-slate-600 hover:text-[#3A7D7C] hover:bg-[#EAF4F7] rounded-lg transition-colors"
+                className="p-1.5 text-slate-600 hover:text-[#3A7D7C] hover:bg-[#EAF4F7] rounded-lg transition-colors cursor-pointer"
               >
                 <Edit3 className="w-4 h-4" />
               </button>
               <button
-                onClick={() => onDelete(room)}
+                type="button"
+                onClick={() => onDelete?.(room)}
                 title="Delete Room"
-                className="p-1.5 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                className="p-1.5 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -263,8 +265,9 @@ export default function RoomCard({
           {/* Quick Check-In when VACANT */}
           {room.status === 'VACANT' && (
             <button
-              onClick={() => onCheckIn(room)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all hover:shadow-xs active:scale-95"
+              type="button"
+              onClick={() => onCheckIn?.(room)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all hover:shadow-xs active:scale-95 cursor-pointer"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Check-In</span>
@@ -274,8 +277,9 @@ export default function RoomCard({
           {/* Quick Check-Out when OCCUPIED */}
           {room.status === 'OCCUPIED' && (
             <button
-              onClick={() => onCheckOut(room)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-2xs transition-all hover:shadow-xs active:scale-95"
+              type="button"
+              onClick={() => onCheckOut ? onCheckOut(room) : onViewFolio?.(room)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-2xs transition-all hover:shadow-xs active:scale-95 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Check-Out</span>
@@ -284,8 +288,9 @@ export default function RoomCard({
 
           {/* View Details Primary Button */}
           <button
-            onClick={() => onViewDetails(room)}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs shadow-2xs transition-all hover:shadow-xs active:scale-95"
+            type="button"
+            onClick={() => onViewDetails?.(room)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-xs shadow-2xs transition-all hover:shadow-xs active:scale-95 cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5" />
             <span>Details</span>

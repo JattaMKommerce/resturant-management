@@ -44,6 +44,7 @@ export default function AdminSettingsPage() {
 
   const logoInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const offeringsRef = useRef(null);
 
   // Dedicated Merchant Razorpay & UPI Gateway
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
@@ -64,6 +65,14 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    if ((window.location.hash === '#specials' || window.location.hash === '#offerings') && offeringsRef.current) {
+      setTimeout(() => {
+        offeringsRef.current.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, [loading]);
 
   const fetchSettings = async () => {
     try {
@@ -343,6 +352,26 @@ export default function AdminSettingsPage() {
             <AlertCircle className="w-4 h-4" /> {imageError}
           </div>
         )}
+
+        {/* Quick jump to Specials & Combos */}
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-700 flex items-center justify-center font-bold text-lg border border-amber-300 shrink-0">
+              ⭐
+            </div>
+            <div>
+              <h4 className="font-bold text-xs text-amber-950">Looking to update Today's Special or Combos?</h4>
+              <p className="text-[11px] text-amber-800">Add or edit today's special dishes, brunch, lunch, dinner & combo menus shown at the top of your digital menu.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => offeringsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            className="px-4 py-2 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold rounded-xl text-xs transition-colors shadow-2xs shrink-0 flex items-center gap-1.5 cursor-pointer"
+          >
+            <ChefHat className="w-3.5 h-3.5" /> Jump to Specials & Combos ↓
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 border border-[#D7E5E8] shadow-xs space-y-6">
           
@@ -803,15 +832,20 @@ export default function AdminSettingsPage() {
         </form>
 
         {/* WHAT WE OFFER: kept outside the settings form because each offering saves on its own */}
-        <section className="bg-white rounded-2xl p-6 border border-[#D7E5E8] shadow-xs space-y-4">
-          <div>
-            <h3 className="text-sm font-bold text-[#1F2937] flex items-center gap-2">
-              <ChefHat className="w-4 h-4 text-[#3A7D7C]" />
-              <span>What We Offer: Today's Special, Brunch, Lunch, Dinner & Combos</span>
-            </h3>
-            <p className="text-xs text-[#64748B] mt-0.5">
-              Add, edit or delete the offerings shown on your website. Changes save instantly; no need to press "Save Restaurant Settings".
-            </p>
+        <section id="specials" ref={offeringsRef} className="bg-white rounded-2xl p-6 border border-[#D7E5E8] shadow-xs space-y-4 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#D7E5E8] pb-4">
+            <div>
+              <h3 className="text-sm font-bold text-[#1F2937] flex items-center gap-2">
+                <ChefHat className="w-4 h-4 text-[#3A7D7C]" />
+                <span>Today's Special, Brunch, Lunch, Dinner & Combos</span>
+              </h3>
+              <p className="text-xs text-[#64748B] mt-0.5">
+                Add, edit, toggle visibility, or delete the offerings shown at the top of your website menu. Changes save instantly; no need to press "Save Restaurant Settings".
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-[#3A7D7C] bg-[#EAF4F7] px-3 py-1 rounded-full border border-[#D7E5E8] shrink-0">
+              Live on Website Top Menu
+            </span>
           </div>
           <OfferingsManager />
         </section>

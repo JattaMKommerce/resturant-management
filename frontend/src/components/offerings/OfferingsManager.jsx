@@ -30,14 +30,15 @@ export default function OfferingsManager() {
   const [filter, setFilter] = useState('ALL');
   const [busyId, setBusyId] = useState(null);
 
-  // Modal form state. `editing` is null when closed, {} for a new offering, or the offering being edited.
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [reusedImageUrl, setReusedImageUrl] = useState(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [menuItems, setMenuItems] = useState([]);
   const fileInputRef = useRef(null);
 
   const loadOfferings = async () => {
@@ -55,6 +56,13 @@ export default function OfferingsManager() {
 
   useEffect(() => {
     loadOfferings();
+    api.get('/admin/menu')
+      .then(res => {
+        if (res.data?.success && res.data.items) {
+          setMenuItems(res.data.items);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Free the temporary preview URL when it is replaced or the modal closes.
@@ -77,6 +85,7 @@ export default function OfferingsManager() {
     setForm({ ...EMPTY_FORM, offering_type: filter === 'ALL' ? EMPTY_FORM.offering_type : filter });
     setImageFile(null);
     setImagePreview(null);
+    setReusedImageUrl(null);
     setRemoveImage(false);
     setFormError('');
   };
@@ -94,9 +103,29 @@ export default function OfferingsManager() {
       is_active: Boolean(Number(offering.is_active))
     });
     setImageFile(null);
+    setReusedImageUrl(offering.image_url || null);
     setImagePreview(getMediaUrl(offering.image_url));
     setRemoveImage(false);
     setFormError('');
+  };
+
+  const handleSelectMenuItem = (menuItemId) => {
+    if (!menuItemId) return;
+    const dish = menuItems.find(m => String(m.id) === String(menuItemId));
+    if (!dish) return;
+    setForm(f => ({
+      ...f,
+      title: dish.name || f.title,
+      price: dish.price ?? f.price,
+      description: dish.description || f.description,
+      is_veg: dish.is_veg === null || dish.is_veg === undefined ? '' : String(Number(dish.is_veg))
+    }));
+    if (dish.image_url) {
+      setReusedImageUrl(dish.image_url);
+      setImagePreview(getMediaUrl(dish.image_url));
+      setRemoveImage(false);
+      setImageFile(null);
+    }
   };
 
   const closeModal = () => {
@@ -115,12 +144,14 @@ export default function OfferingsManager() {
     }
     setFormError('');
     setImageFile(file);
+    setReusedImageUrl(null);
     setImagePreview(URL.createObjectURL(file));
     setRemoveImage(false);
   };
 
   const handleRemoveImage = () => {
     setImageFile(null);
+    setReusedImageUrl(null);
     setImagePreview(null);
     setRemoveImage(true);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -151,6 +182,7 @@ export default function OfferingsManager() {
       fd.append('is_active', form.is_active ? '1' : '0');
       if (imageFile) fd.append('image', imageFile);
       else if (removeImage) fd.append('remove_image', '1');
+      else if (reusedImageUrl) fd.append('image_url', reusedImageUrl);
 
       const isEdit = Boolean(editing?.id);
       const res = isEdit
@@ -376,6 +408,27 @@ export default function OfferingsManager() {
               ))}
             </div>
           </div>
+
+          {menuItems.length > 0 && !editing?.id && (
+            <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/80 space-y-1.5">
+              <label htmlFor="quick-dish-select" className="block text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                <span>⚡ Quick Autofill from Menu Items (Optional):</span>
+              </label>
+              <select
+                id="quick-dish-select"
+                defaultValue=""
+                onChange={(e) => handleSelectMenuItem(e.target.value)}
+                className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500 shadow-2xs"
+              >
+                <option value="">-- Select a dish to autofill details, or enter manually below --</option>
+                {menuItems.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} • ₹{m.price} {m.is_veg ? '(🟢 Veg)' : '(🔴 Non-Veg)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label htmlFor="offering-title" className="block font-bold text-[#1F2937] mb-1">Title *</label>

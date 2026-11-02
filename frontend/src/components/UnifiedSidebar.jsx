@@ -113,11 +113,13 @@ export default function UnifiedSidebar({
       featureKey: 'online_ordering'
     },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
+    { name: '✨ Setup Wizard', path: `/admin/${activeSlug}/onboarding`, icon: Sparkles },
     { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users, featureKey: 'delivery_fleet' },
     { name: 'Driver Money & Payouts', path: `/admin/${activeSlug}/driver-payouts`, icon: IndianRupee, featureKey: 'delivery_fleet' },
     { name: 'Menu Items Catalog', path: `/admin/${activeSlug}/menu`, icon: Utensils },
     { name: 'Menu Categories', path: `/admin/${activeSlug}/categories`, icon: Layers },
+    { name: "⭐ Specials & Combos", path: `/admin/${activeSlug}/settings#specials`, icon: ChefHat },
     { name: '🎁 Kratu Rewards & Wallet', path: '/admin/wallet', icon: Gift, featureKey: 'rewards_wallet' },
     { name: 'Store Website Settings', path: `/admin/${activeSlug}/settings`, icon: Settings },
   ];
