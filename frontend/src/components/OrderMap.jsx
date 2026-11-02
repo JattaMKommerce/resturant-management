@@ -6,6 +6,22 @@ import 'leaflet/dist/leaflet.css';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBoPZYg3ouXbJG5vZrNRQN78ShROooE4ac';
 
+// Google rejects a key (billing disabled, domain not allowed, API not enabled...)
+// AFTER the script has loaded fine, so `loadError` stays empty. The only signal is
+// the global `gm_authFailure` callback. Track it here so every map falls back to
+// Leaflet instead of showing Google's "can't load Google Maps correctly" overlay.
+let googleAuthFailed = false;
+const googleAuthFailureListeners = new Set();
+if (typeof window !== 'undefined') {
+  const previousAuthFailure = window.gm_authFailure;
+  window.gm_authFailure = () => {
+    googleAuthFailed = true;
+    console.warn('[OrderMap] Google Maps rejected the API key; using OpenStreetMap fallback.');
+    googleAuthFailureListeners.forEach((notify) => notify());
+    if (typeof previousAuthFailure === 'function') previousAuthFailure();
+  };
+}
+
 // Custom Leaflet DivIcons (prevents missing image asset errors in Vite)
 const storeIcon = L.divIcon({
   className: 'custom-pin-store',
@@ -86,6 +102,14 @@ export default function OrderMap({
     id: 'google-map-script',
     googleMapsApiKey: GOOGLE_MAPS_API_KEY
   });
+
+  const [googleAuthError, setGoogleAuthError] = useState(googleAuthFailed);
+  useEffect(() => {
+    const onAuthFailure = () => setGoogleAuthError(true);
+    googleAuthFailureListeners.add(onAuthFailure);
+    if (googleAuthFailed) setGoogleAuthError(true);
+    return () => googleAuthFailureListeners.delete(onAuthFailure);
+  }, []);
 
   const [activeMarker, setActiveMarker] = useState(null);
 
@@ -287,7 +311,7 @@ export default function OrderMap({
 
   return (
     <div className="w-full h-full min-h-[220px] rounded-2xl overflow-hidden shadow-inner border border-[#D7E5E8] relative z-0">
-      {isLoaded && !loadError ? renderGoogleMap() : renderLeafletMap()}
+      {isLoaded && !loadError && !googleAuthError ? renderGoogleMap() : renderLeafletMap()}
 
       {/* Map Legend Overlay */}
       <div className="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#D7E5E8] shadow-md text-[10px] font-semibold text-[#1F2937] flex items-center gap-3 pointer-events-auto">

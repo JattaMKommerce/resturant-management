@@ -2007,6 +2007,7 @@ async function applyToRestaurant(req, res) {
        WHERE o.restaurant_id = ?
          AND (o.assigned_driver_id IS NULL OR o.assigned_driver_id = ?)
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
+         AND NOT (o.assigned_driver_id IS NULL AND o.order_status IN ('PICKED_UP', 'OUT_FOR_DELIVERY'))
          AND o.created_at >= NOW() - INTERVAL 48 HOUR
        ORDER BY o.created_at DESC`,
           [targetRestId, driver.id]
@@ -2077,7 +2078,8 @@ async function applyToRestaurant(req, res) {
        SET assigned_driver_id = ?, order_status = 'DRIVER_ACCEPTED'
        WHERE id = ?
          AND (assigned_driver_id IS NULL OR assigned_driver_id = ?)
-         AND order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')`,
+         AND order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
+         AND NOT (assigned_driver_id IS NULL AND order_status IN ('PICKED_UP', 'OUT_FOR_DELIVERY'))`,
           [driver.id, id, driver.id]
         );
 

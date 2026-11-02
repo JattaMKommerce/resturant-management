@@ -1076,7 +1076,7 @@ async function getUnclaimedOrders(req, res) {
        JOIN restaurants r ON o.restaurant_id = r.id
        WHERE o.restaurant_id = ?
          AND o.assigned_driver_id IS NULL
-         AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
+         AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
          AND o.created_at >= NOW() - INTERVAL 24 HOUR
        ORDER BY o.created_at DESC`,
       [restId]
@@ -1104,7 +1104,7 @@ async function adminSelfDeliverOrder(req, res) {
   try {
     const { id } = req.params;
 
-    const [order] = await query('SELECT o.*, r.phone as rest_phone, r.name as rest_name FROM orders o JOIN restaurants r ON o.restaurant_id = r.id WHERE o.id = ?', [id]);
+    const [order] = await query('SELECT id, restaurant_id FROM orders WHERE id = ?', [id]);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found.' });
     }
@@ -1113,19 +1113,18 @@ async function adminSelfDeliverOrder(req, res) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 
-    await query(
-      `UPDATE orders SET
-         order_status = 'OUT_FOR_DELIVERY',
-         delivery_notes = COALESCE(CONCAT(delivery_notes, ' | Hotel In-House Delivery Staff'), 'Hotel In-House Delivery Staff')
-       WHERE id = ?`,
-      [id]
-    );
-
-    await query(
-      `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id)
-       VALUES (?, 'OUT_FOR_DELIVERY', 'Hotel Admin escalated and assigned for In-House Self-Delivery.', ?)`,
-      [id, req.user?.id || null]
-    );
+    // Goes through the shared state machine so the transition is validated,
+    // the status history row is written and the customer gets notified.
+    try {
+      await OrderService.updateOrderStatus(
+        id,
+        'OUT_FOR_DELIVERY',
+        req.user?.id || null,
+        'Hotel Admin escalated and assigned for In-House Self-Delivery.'
+      );
+    } catch (transitionErr) {
+      return res.status(400).json({ success: false, message: transitionErr.message });
+    }
 
     res.json({
       success: true,
