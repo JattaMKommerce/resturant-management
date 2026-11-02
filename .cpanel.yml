@@ -5,3 +5,5 @@ deployment:
     - export PATH=/opt/cpanel/ea-nodejs22/bin:/usr/local/bin:/usr/bin:$PATH && cd /home/jattamkommerce/hotel-app/backend && node database/init.js
     - mkdir -p /home/jattamkommerce/hotel-app/tmp /home/jattamkommerce/hotel-app/backend/tmp
     - touch /home/jattamkommerce/hotel-app/tmp/restart.txt /home/jattamkommerce/hotel-app/backend/tmp/restart.txt
+    - /bin/cp -rf /home/jattamkommerce/hotel-app/backend/public/* /home/jattamkommerce/public_html/ 2>/dev/null || true
+    - /bin/cp -rf /home/jattamkommerce/hotel-app/backend/public/* /home/jattamkommerce/hotel.jattamkommerce.com/ 2>/dev/null || true
