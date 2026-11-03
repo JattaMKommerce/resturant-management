@@ -342,7 +342,8 @@ function generateLiveLocalResponse(query, snapshot) {
  */
 async function chatWithAssistant(req, res) {
   try {
-    const { messages = [], message = '' } = req.body;
+    const { messages = [], message = '', focus = '' } = req.body;
+    const focusLabel = typeof focus === 'string' ? focus.trim().slice(0, 80) : '';
     let userQuery = message;
     if (!userQuery && Array.isArray(messages) && messages.length > 0) {
       const last = messages[messages.length - 1];
@@ -374,7 +375,7 @@ async function chatWithAssistant(req, res) {
     if (!isHotelRestaurantTopic(userQuery)) {
       return res.json({
         success: true,
-        reply: `I am the AI Operations Copilot for **${restName}**. I am strictly programmed to monitor and answer questions regarding **${restName}'s** hotel accommodation, online storefront & deliveries, and offline dining & KOT operations.\n\nPlease ask about your rooms, check-ins, online orders, dining tables, today's specials, or revenue!`,
+        reply: `I am Your AI Assistant for **${restName}**. I am strictly programmed to monitor and answer questions regarding **${restName}'s** hotel accommodation, online storefront & deliveries, and offline dining & KOT operations.\n\nPlease ask about your rooms, check-ins, online orders, dining tables, today's specials, or revenue!`,
         restaurant_name: restName,
         is_off_topic: true,
         provider: 'guardian-policy'
@@ -383,8 +384,8 @@ async function chatWithAssistant(req, res) {
 
     const apiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
 
-    const systemPrompt = `You are the executive AI Operations Copilot for "${restName}", powered by Grok (xAI).
-You monitor 100% of this hotel & restaurant platform in real-time.
+    const systemPrompt = `You are "Your AI Assistant", the private executive operations assistant for "${restName}".
+You monitor 100% of this hotel & restaurant platform in real-time. Never mention Grok, xAI, or any underlying model/provider; if asked what you are, say you are the owner's AI Assistant for "${restName}".
 
 === REAL-TIME LIVE DATA SNAPSHOT FOR ${restName} ===
 ${JSON.stringify(snapshot, null, 2)}
@@ -398,7 +399,8 @@ STRICT INSTRUCTIONS:
    - ACCOMMODATION: rooms tonight (vacant/occupied), occupancy rate, check-ins/check-outs, in-house guests, pending folios and amounts, housekeeping statuses.
 3. If asked about external topics (programming, politics, unrelated trivia), politely decline and redirect back to ${restName}'s operations.
 4. TONE: Sharp, executive, hospitality-focused, concise. Use markdown formatting with bullet points and bold headers. Use Indian Rupees symbol (₹) for money.
-5. Base all answers strictly on the live snapshot provided above.`;
+5. Base all answers strictly on the live snapshot provided above.${focusLabel ? `
+6. FOCUSED CARD VIEW: The owner opened this chat by clicking the "${focusLabel}" card, so they want to understand THAT section right now. Answer specifically and only about "${focusLabel}" — give the current numbers, what they mean, and the 1–2 best next actions for it. If they ask about a different area, answer briefly but remind them this focused view is about "${focusLabel}".` : ''}`;
 
     const chatHistory = [
       { role: 'system', content: systemPrompt }
@@ -434,7 +436,7 @@ STRICT INSTRUCTIONS:
         reply: fallbackReply,
         restaurant_name: restName,
         provider: 'grok-operations-engine',
-        notice: grokErr.statusCode === 403 ? 'Note: Grok xAI API credits setup pending on console.x.ai; answering via live system intelligence.' : undefined,
+        notice: grokErr.statusCode === 403 ? 'Answering from live system intelligence.' : undefined,
         snapshot
       });
     }

@@ -5,7 +5,7 @@ import {
   BedDouble, UtensilsCrossed, Globe, Loader2, ArrowUpRight, Copy, Check
 } from 'lucide-react';
 
-export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initialPrompt = '' }) {
+export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initialPrompt = '', focus = null }) {
   const restaurantName = restaurant?.name || 'Your Hotel & Restaurant';
   const restaurantSlug = restaurant?.slug || '';
 
@@ -16,16 +16,17 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
   const [copiedIndex, setCopiedIndex] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const lastFocusRef = useRef(null);
 
   // Initialize welcome message with restaurant name when opened
   useEffect(() => {
     if (isOpen) {
       fetchSnapshot();
-      if (messages.length === 0) {
+      if (messages.length === 0 && !focus) {
         setMessages([
           {
             role: 'assistant',
-            content: `👋 **Welcome to ${restaurantName} AI Operations Copilot!**\n\nI am actively monitoring all operations for **${restaurantName}** across:\n\n• **🌐 Online Storefront & Deliveries** (Live orders, delivery radius, today's specials & value combos)\n• **🍽️ Offline Restaurant & KOT** (Dining tables, kitchen orders, waiter requests, offline bills)\n• **🏨 Hotel Accommodation** (Tonight's room availability, occupancy rate, check-ins/check-outs, pending folios)\n\n*Ask me any question about your hotel or restaurant operations today!*`,
+            content: `👋 **Welcome to Your AI Assistant for ${restaurantName}!**\n\nI am actively monitoring all operations for **${restaurantName}** across:\n\n• **🌐 Online Storefront & Deliveries** (Live orders, delivery radius, today's specials & value combos)\n• **🍽️ Offline Restaurant & KOT** (Dining tables, kitchen orders, waiter requests, offline bills)\n• **🏨 Hotel Accommodation** (Tonight's room availability, occupancy rate, check-ins/check-outs, pending folios)\n\n*Ask me any question about your hotel or restaurant operations today!*`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ]);
@@ -34,14 +35,32 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
         inputRef.current?.focus();
       }, 200);
     }
+    if (!isOpen) {
+      lastFocusRef.current = null;
+    }
   }, [isOpen, restaurantName]);
 
-  // Handle optional initial prompt
+  // Handle optional initial prompt (generic open, no card focus)
   useEffect(() => {
-    if (isOpen && initialPrompt) {
+    if (isOpen && initialPrompt && !focus) {
       sendMessage(initialPrompt);
     }
   }, [isOpen, initialPrompt]);
+
+  // Handle card-focused open: reset to a focused welcome and auto-ask about that section
+  useEffect(() => {
+    if (isOpen && focus && focus.key && lastFocusRef.current !== focus.key) {
+      lastFocusRef.current = focus.key;
+      setMessages([
+        {
+          role: 'assistant',
+          content: `🎯 **Focused on ${focus.label} — ${restaurantName}.**\n\nI'll keep this view to the **${focus.label}** section. Pulling the live numbers now…`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      if (focus.prompt) sendMessage(focus.prompt);
+    }
+  }, [isOpen, focus]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -76,6 +95,7 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
     try {
       const payload = {
         message: text,
+        focus: focus?.label || '',
         messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content }))
       };
 
@@ -132,7 +152,7 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
     setMessages([
       {
         role: 'assistant',
-        content: `👋 **Welcome to ${restaurantName} AI Operations Copilot!**\n\nI am actively monitoring all operations for **${restaurantName}** across:\n\n• **🌐 Online Storefront & Deliveries**\n• **🍽️ Offline Restaurant & KOT**\n• **🏨 Hotel Accommodation & Rooms**\n\nHow can I help you manage **${restaurantName}** right now?`,
+        content: `👋 **Welcome to Your AI Assistant for ${restaurantName}!**\n\nI am actively monitoring all operations for **${restaurantName}** across:\n\n• **🌐 Online Storefront & Deliveries**\n• **🍽️ Offline Restaurant & KOT**\n• **🏨 Hotel Accommodation & Rooms**\n\nHow can I help you manage **${restaurantName}** right now?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ]);
@@ -173,15 +193,17 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-black text-sm sm:text-base text-white truncate">
-                  {restaurantName} AI Operations Copilot
+                  Your AI Assistant · {restaurantName}
                 </h3>
                 <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Powered by Grok
+                  Live
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                Monitoring 100% of Online Storefront • Offline Dining & KOT • Hotel Accommodation
+                {focus
+                  ? `Focused on ${focus.label} — answering about this section`
+                  : 'Monitoring 100% of Online Storefront • Offline Dining & KOT • Hotel Accommodation'}
               </p>
             </div>
           </div>
@@ -308,7 +330,7 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
               </div>
               <div className="bg-slate-800/90 text-slate-300 border border-slate-700/80 rounded-2xl rounded-bl-xs px-4 py-3 text-xs flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>Grok AI is analyzing live platform metrics for {restaurantName}...</span>
+                <span>Your AI Assistant is analyzing live metrics for {restaurantName}...</span>
               </div>
             </div>
           )}

@@ -45,9 +45,10 @@ export default function AdminDashboardPage() {
   const [walkInGuestName, setWalkInGuestName] = useState('');
   const [walkInGuestPhone, setWalkInGuestPhone] = useState('');
 
-  // Grok AI Operations Copilot State
+  // Your AI Assistant State
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiInitialPrompt, setAiInitialPrompt] = useState('');
+  const [aiFocus, setAiFocus] = useState(null);
 
   const currentSlug = slug || restaurant?.slug || 'grand-palace';
 
@@ -166,6 +167,31 @@ export default function AdminDashboardPage() {
       // Keep instantData displayed smoothly even if network or server is reloading
       console.warn('Drilldown live background sync fallback active:', err?.message);
     }
+  };
+
+  // Per-card AI focus config: clicking a KPI card opens Your AI Assistant
+  // scoped to that section, so it talks about (and answers only) that card.
+  const CARD_AI = {
+    AVAILABLE_ROOMS: { label: 'Rooms Tonight', prompt: 'Give me a clear briefing on room availability and occupancy tonight — how many rooms are vacant vs occupied, the occupancy %, and the best 1–2 actions to fill the empty rooms.' },
+    ARRIVALS_DEPARTURES: { label: 'Arrivals & Departures', prompt: "Brief me on today's front desk movements — who is arriving and departing today and how many in-house guests we have. What should the front desk prioritise right now?" },
+    PENDING_PAYMENTS: { label: 'Pending Payments', prompt: 'Summarise all pending guest payments and open room folios with their amounts, and tell me how to collect the outstanding balance today.' },
+    UNREADY_ROOMS: { label: 'Rooms Not Ready', prompt: 'Which rooms are not ready right now (cleaning vs maintenance), and what should housekeeping do first to get them sellable again?' },
+    PENDING_INQUIRIES: { label: 'Enquiries Follow-up', prompt: 'Which room enquiries / website leads need follow-up, and how should I respond to convert them into confirmed bookings?' },
+    RATE_RECOMMENDATION: { label: 'Rate to Charge', prompt: 'What nightly rate should I charge tonight based on our current occupancy and demand, and why is that the right number?' }
+  };
+
+  const openCardAI = (key) => {
+    const cfg = CARD_AI[key] || CARD_AI.AVAILABLE_ROOMS;
+    setAiInitialPrompt('');
+    setAiFocus({ key, label: cfg.label, prompt: cfg.prompt });
+    setAiModalOpen(true);
+  };
+
+  // Open Your AI Assistant without a card focus (general operations chat)
+  const openGeneralAI = () => {
+    setAiInitialPrompt('');
+    setAiFocus(null);
+    setAiModalOpen(true);
   };
 
   // Live Quick Action execution from drawer - WORKS 100% RIGHT HERE
@@ -316,12 +342,12 @@ export default function AdminDashboardPage() {
                   )}
                   <button
                     type="button"
-                    onClick={() => { setAiInitialPrompt(''); setAiModalOpen(true); }}
+                    onClick={openGeneralAI}
                     className="flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold bg-emerald-900/60 hover:bg-emerald-800/80 px-2.5 py-0.5 rounded-full border border-emerald-400/50 shadow-sm transition-all hover:scale-105 cursor-pointer"
-                    title="Open Grok AI Copilot"
+                    title="Open Your AI Assistant"
                   >
                     <Bot className="w-3 h-3 text-emerald-300 animate-bounce" />
-                    <span>Grok AI Copilot Active</span>
+                    <span>Your AI Assistant</span>
                   </button>
                 </div>
                 <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
@@ -362,7 +388,7 @@ export default function AdminDashboardPage() {
               
               {/* Card 1: Rooms available tonight? (Warm Cream #FFFDF9) */}
               <div 
-                onClick={() => openDrilldown('AVAILABLE_ROOMS', 'Rooms Available Tonight')}
+                onClick={() => openCardAI('AVAILABLE_ROOMS')}
                 className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
@@ -385,7 +411,7 @@ export default function AdminDashboardPage() {
 
               {/* Card 2: Who arrives and departs? (Crisp White #FFFFFF) */}
               <div 
-                onClick={() => openDrilldown('ARRIVALS_DEPARTURES', 'Who Arrives & Departs Today')}
+                onClick={() => openCardAI('ARRIVALS_DEPARTURES')}
                 className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-400 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
@@ -407,7 +433,7 @@ export default function AdminDashboardPage() {
 
               {/* Card 3: Which payments are pending? (Warm Cream #FFFDF9) */}
               <div 
-                onClick={() => openDrilldown('PENDING_PAYMENTS', 'Pending Payments & Folios')}
+                onClick={() => openCardAI('PENDING_PAYMENTS')}
                 className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-rose-400 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
@@ -429,7 +455,7 @@ export default function AdminDashboardPage() {
 
               {/* Card 4: Which rooms are not ready? (Crisp White #FFFFFF) */}
               <div 
-                onClick={() => openDrilldown('UNREADY_ROOMS', 'Rooms Not Ready')}
+                onClick={() => openCardAI('UNREADY_ROOMS')}
                 className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-400 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
@@ -451,7 +477,7 @@ export default function AdminDashboardPage() {
 
               {/* Card 5: Which enquiries need follow-up? (Warm Cream #FFFDF9) */}
               <div 
-                onClick={() => openDrilldown('PENDING_INQUIRIES', 'Inquiries Needing Follow-up')}
+                onClick={() => openCardAI('PENDING_INQUIRIES')}
                 className="bg-[#FFFDF9] hover:bg-[#FFF9EE] text-[#1F2937] rounded-xl p-3 border border-amber-200/90 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
@@ -473,7 +499,7 @@ export default function AdminDashboardPage() {
 
               {/* Card 6: What rate should I charge? (Crisp White #FFFFFF) */}
               <div 
-                onClick={() => openDrilldown('RATE_RECOMMENDATION', 'Tonight’s Dynamic Rate Recommendation')}
+                onClick={() => openCardAI('RATE_RECOMMENDATION')}
                 className="bg-white hover:bg-slate-50 text-[#1F2937] rounded-xl p-3 border border-slate-200 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-400 cursor-pointer flex flex-col justify-between group"
               >
                 <div>
@@ -508,28 +534,29 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAiInitialPrompt(''); setAiModalOpen(true); }}
+                  onClick={openGeneralAI}
                   className="w-full sm:w-auto px-4 py-2 rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5 cursor-pointer"
                 >
                   <Bot className="w-3.5 h-3.5 fill-slate-950" />
-                  <span>ASK GROK AI: PLATFORM COPILOT</span>
+                  <span>ASK YOUR AI ASSISTANT</span>
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 font-medium text-center sm:text-right">
-                Click any card or Ask Grok AI for live operational analysis.
+                Click any card to ask Your AI Assistant about that section — live operational analysis.
               </p>
             </div>
           </div>
         )}
 
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* GROK AI OPERATIONS COPILOT MODAL                                */}
+        {/* YOUR AI ASSISTANT MODAL                                         */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         <GrokAICopilotModal
           isOpen={aiModalOpen}
-          onClose={() => { setAiModalOpen(false); setAiInitialPrompt(''); }}
+          onClose={() => { setAiModalOpen(false); setAiInitialPrompt(''); setAiFocus(null); }}
           restaurant={restaurant}
           initialPrompt={aiInitialPrompt}
+          focus={aiFocus}
         />
 
         {/* ═══════════════════════════════════════════════════════════════ */}
