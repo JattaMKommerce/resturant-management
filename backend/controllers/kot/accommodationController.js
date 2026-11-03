@@ -62,6 +62,9 @@ async function ensureRoomSchema() {
     if (!colNames.includes('image_url')) {
       await pool.query(`ALTER TABLE rooms ADD COLUMN image_url VARCHAR(500) DEFAULT NULL`);
     }
+    if (!colNames.includes('images')) {
+      await pool.query(`ALTER TABLE rooms ADD COLUMN images TEXT DEFAULT NULL`);
+    }
     if (!colNames.includes('maintenance_notes')) {
       await pool.query(`ALTER TABLE rooms ADD COLUMN maintenance_notes TEXT DEFAULT NULL`);
     }
