@@ -24,7 +24,7 @@ const getEventRestaurantId = (data) => {
 };
 
 export const SocketProvider = ({ children }) => {
-  const { user, restaurant } = useAuth();
+  const { user, restaurant, restaurants } = useAuth();
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
   const [toast, setToast] = useState(null);
@@ -34,19 +34,29 @@ export const SocketProvider = ({ children }) => {
   // reconnect, so they are re-joined on each 'connect'.
   const roomsRef = useRef(new Set());
 
+  // Restaurants the SERVER confirmed this connection may receive alerts for
+  // (sent as 'tenant_scope' after every successful restaurant-room join/leave).
+  const serverScopeRef = useRef(new Set());
+
   // Who is looking at the screen right now — read by socket handlers at event time.
   const viewerRef = useRef(null);
+  const accountRestaurantIds = new Set();
+  if (restaurant?.id != null) accountRestaurantIds.add(String(restaurant.id));
+  (Array.isArray(restaurants) ? restaurants : []).forEach((r) => {
+    if (r?.id != null) accountRestaurantIds.add(String(r.id));
+  });
+  if (accountRestaurantIds.size === 0 && user?.restaurant_id != null) accountRestaurantIds.add(String(user.restaurant_id));
   viewerRef.current = {
     userId: user?.id ?? null,
     role: String(user?.role || '').toUpperCase(),
-    restaurantId: restaurant?.id ?? user?.restaurant_id ?? null
+    restaurantIds: accountRestaurantIds
   };
 
   /**
-   * Restaurant staff must only see alerts for THEIR restaurant. Every staff alert
+   * Restaurant staff must only see alerts for THEIR restaurant(s). Every staff alert
    * carries its restaurant id; anything for another restaurant is ignored.
    */
-  const isForCurrentViewer = (data) => {
+  const isForCurrentViewer = (data, eventName) => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.role === 'SUPER_ADMIN') return true;
     if (data?.userId != null && viewer.userId != null && String(data.userId) === String(viewer.userId)) {
@@ -56,8 +66,13 @@ export const SocketProvider = ({ children }) => {
 
     const eventRestaurantId = getEventRestaurantId(data);
     if (eventRestaurantId === null) return true; // already scoped server-side (user / order room)
-    if (viewer.restaurantId === null || viewer.restaurantId === undefined) return false; // cannot verify ownership
-    return eventRestaurantId === String(viewer.restaurantId);
+    if (viewer.restaurantIds.has(eventRestaurantId) || serverScopeRef.current.has(eventRestaurantId)) return true;
+
+    console.info(
+      `[Realtime] Ignored "${eventName}" for restaurant ${eventRestaurantId} — this screen follows restaurant(s): ` +
+      `${[...new Set([...viewer.restaurantIds, ...serverScopeRef.current])].join(', ') || 'none'}`
+    );
+    return false;
   };
 
   const showToast = (data, durationMs = 5000) => {
@@ -99,6 +114,7 @@ export const SocketProvider = ({ children }) => {
     socketInstance.on('connect', () => {
       console.log('⚡ Connected to Socket.IO Server');
       setConnected(true);
+      serverScopeRef.current = new Set(); // server re-confirms after the re-joins below
       roomsRef.current.forEach((room) => socketInstance.emit('join_room', room));
     });
 
@@ -106,18 +122,28 @@ export const SocketProvider = ({ children }) => {
       setConnected(false);
     });
 
+    socketInstance.on('tenant_scope', (data) => {
+      const ids = Array.isArray(data?.restaurantIds) ? data.restaurantIds.map(String) : [];
+      serverScopeRef.current = new Set(ids);
+      console.info(`[Realtime] Order alerts active for restaurant(s): ${ids.join(', ') || 'none'}`);
+    });
+
+    socketInstance.on('room_error', (data) => {
+      console.warn(`[Realtime] Server refused "${data?.room}": ${data?.message || 'not allowed'}`);
+    });
+
     socketInstance.on('notification', (data) => {
-      if (!isForCurrentViewer(data)) return;
+      if (!isForCurrentViewer(data, 'notification')) return;
       showToast(data, 10000);
     });
 
     socketInstance.on('admin_notification', (data) => {
-      if (!isForCurrentViewer(data)) return;
+      if (!isForCurrentViewer(data, 'admin_notification')) return;
       showToast(data, 10000);
     });
 
     socketInstance.on('new_order', (data) => {
-      if (!isForCurrentViewer(data)) return;
+      if (!isForCurrentViewer(data, 'new_order')) return;
       playServiceChime('new_order');
       showToast({
         title: `🛒 New Order #${data.order_number || data.orderId || ''}!`,
@@ -128,7 +154,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('bill_requested', (data) => {
-      if (!isForCurrentViewer(data)) return;
+      if (!isForCurrentViewer(data, 'bill_requested')) return;
       showToast({
         title: `🧾 Bill Requested: Table ${data.table_number || 'Dine-In'}`,
         message: `Guests at Table ${data.table_number || ''} requested their bill. Click to view POS.`,
@@ -138,7 +164,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('call_waiter', (data) => {
-      if (!isForCurrentViewer(data)) return;
+      if (!isForCurrentViewer(data, 'call_waiter')) return;
       showToast({
         title: `🛎️ Waiter Called: Table ${data.table_number || 'T01'}!`,
         message: `Guests at Table ${data.table_number || ''} (${data.floor || 'Dining Area'}) called for waiter assistance. Click to open.`,
@@ -148,7 +174,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     socketInstance.on('order_status_updated', (data) => {
-      if (!isForCurrentViewer(data)) return;
+      if (!isForCurrentViewer(data, 'order_status_updated')) return;
       showToast({
         title: `🔔 Order Status Updated`,
         message: `Order #${data.orderNumber || data.orderId || ''} updated to ${data.status || 'new status'}.`,

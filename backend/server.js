@@ -135,14 +135,22 @@ io.use((socket, next) => {
   }
 });
 
+const TENANT_ROOM_RE = /^restaurant_(?:admin_)?(\d+)(?:_(?:admin|waiter|kitchen|cashier))?$/;
+
 /**
  * Restaurant IDs the authenticated socket user belongs to (owner, admin or staff),
- * resolved from the same tables the REST layer uses. Cached per socket connection.
+ * resolved from the same tables the REST layer uses. Cached per socket connection;
+ * `refresh` re-reads it (at most every 5s) so a restaurant created or linked after the
+ * socket connected is picked up without a page reload.
  * The master admin account mirrors resolveRestaurantAccess() and may join any tenant room.
  */
-async function getSocketRestaurantIds(socket) {
+async function getSocketRestaurantIds(socket, { refresh = false } = {}) {
   if (!socket.user?.id) return [];
+  if (refresh && socket.data.restaurantIdsPromise && Date.now() - (socket.data.restaurantIdsAt || 0) > 5000) {
+    socket.data.restaurantIdsPromise = null;
+  }
   if (!socket.data.restaurantIdsPromise) {
+    socket.data.restaurantIdsAt = Date.now();
     socket.data.restaurantIdsPromise = (async () => {
       if (socket.user.email === 'admin@hotel.com') {
         const rows = await dbQuery('SELECT id AS restaurant_id FROM restaurants');
@@ -164,6 +172,28 @@ async function getSocketRestaurantIds(socket) {
   return socket.data.restaurantIdsPromise;
 }
 
+/** May this socket receive alerts for restaurantId? (super admin, owner/admin/staff of it) */
+async function canAccessRestaurant(socket, restaurantId) {
+  if (socket.user?.role === 'SUPER_ADMIN') return true;
+  if ((await getSocketRestaurantIds(socket)).includes(restaurantId)) return true;
+  return (await getSocketRestaurantIds(socket, { refresh: true })).includes(restaurantId);
+}
+
+async function resolveRestaurantIdBySlug(slug) {
+  const rows = await dbQuery('SELECT id FROM restaurants WHERE slug = ? LIMIT 1', [String(slug)]);
+  return rows.length ? parseInt(rows[0].id, 10) : null;
+}
+
+/** Tell the client which restaurants this connection is confirmed to receive alerts for. */
+function emitTenantScope(socket) {
+  const ids = new Set();
+  for (const room of socket.rooms) {
+    const m = room.match(TENANT_ROOM_RE);
+    if (m) ids.add(parseInt(m[1], 10));
+  }
+  socket.emit('tenant_scope', { restaurantIds: [...ids] });
+}
+
 io.on('connection', (socket) => {
   const userId = socket.user?.id || 'GUEST';
   const userRole = socket.user?.role || 'GUEST';
@@ -181,6 +211,8 @@ io.on('connection', (socket) => {
   // Tracks the latest join/leave intent per room so a slow membership lookup
   // cannot re-add a room the client already left (e.g. after switching restaurant).
   const roomIntent = new Map();
+  // restaurant_slug_<slug> subscriptions -> resolved restaurant id
+  const slugSubscriptions = new Map();
 
   // Room Join Authorization
   socket.on('join_room', async (room) => {
@@ -193,25 +225,47 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // 2. Super Admin can join any operational room
-    if (socket.user?.role === 'SUPER_ADMIN') {
-      socket.join(room);
+    // 2. "The restaurant this admin screen is showing" (restaurant_slug_<slug>, from /admin/:slug/...).
+    //    Resolved server-side and subscribed to restaurant_<id>_admin only if this user may manage it.
+    const slugMatch = room.match(/^restaurant_slug_(.+)$/);
+    if (slugMatch) {
+      try {
+        const restId = await resolveRestaurantIdBySlug(slugMatch[1]);
+        if (!restId || roomIntent.get(room) !== true) return;
+        const allowed = (await canAccessRestaurant(socket, restId)) || !isProduction;
+        if (roomIntent.get(room) !== true) return; // client left while we were checking
+        if (allowed) {
+          slugSubscriptions.set(room, restId);
+          socket.join(`restaurant_${restId}_admin`);
+          emitTenantScope(socket);
+        } else {
+          socket.emit('room_error', { message: 'Unauthorized access to restaurant management room.', room });
+        }
+      } catch (err) {
+        console.warn('[Socket] Slug subscription failed:', err.message);
+      }
       return;
     }
 
-    // 3. Tenant Rooms: restaurant_${id}, restaurant_admin_${id}, restaurant_${id}_(admin|waiter|kitchen|cashier).
+    // 3. Super Admin can join any operational room
+    if (socket.user?.role === 'SUPER_ADMIN') {
+      socket.join(room);
+      emitTenantScope(socket);
+      return;
+    }
+
+    // 4. Tenant Rooms: restaurant_${id}, restaurant_admin_${id}, restaurant_${id}_(admin|waiter|kitchen|cashier).
     //    Order alerts for a restaurant are delivered ONLY through these rooms, so membership is verified
     //    against the database (the JWT restaurant_id is just the primary restaurant and defaults to 1).
-    const tenantMatch = room.match(/^restaurant_(?:admin_)?(\d+)(?:_(?:admin|waiter|kitchen|cashier))?$/);
+    const tenantMatch = room.match(TENANT_ROOM_RE);
     if (tenantMatch) {
       const targetRestId = parseInt(tenantMatch[1], 10);
-      const memberOf = await getSocketRestaurantIds(socket);
+      const allowed = (await canAccessRestaurant(socket, targetRestId)) || !isProduction; // permissive in dev
       if (roomIntent.get(room) !== true) return; // client left while we were checking
 
-      if (memberOf.includes(targetRestId)) {
+      if (allowed) {
         socket.join(room);
-      } else if (!isProduction) {
-        socket.join(room); // Permissive in dev
+        emitTenantScope(socket);
       } else {
         socket.emit('room_error', { message: 'Unauthorized access to restaurant management room.', room });
       }
@@ -243,7 +297,18 @@ io.on('connection', (socket) => {
   socket.on('leave_room', (room) => {
     if (!room || typeof room !== 'string') return;
     roomIntent.set(room, false);
+
+    if (slugSubscriptions.has(room)) {
+      const restId = slugSubscriptions.get(room);
+      slugSubscriptions.delete(room);
+      const stillViewing = [...slugSubscriptions.values()].includes(restId);
+      if (!stillViewing) socket.leave(`restaurant_${restId}_admin`);
+      emitTenantScope(socket);
+      return;
+    }
+
     socket.leave(room);
+    if (TENANT_ROOM_RE.test(room)) emitTenantScope(socket);
   });
 
   // Driver GPS Location Streaming

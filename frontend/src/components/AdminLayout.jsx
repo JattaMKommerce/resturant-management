@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { Power, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import UnifiedSidebar from './UnifiedSidebar';
 import { useAuth } from '../context/AuthContext';
@@ -11,9 +11,12 @@ import NotificationBellDropdown from './notifications/NotificationBellDropdown';
 import { useSocket } from '../context/SocketContext';
 
 export default function AdminLayout({ children }) {
-  const { user, restaurant, updateRestaurant } = useAuth();
+  const { user, restaurant, restaurants, updateRestaurant } = useAuth();
   const { socket, joinRoom, leaveRoom } = useSocket();
   const location = useLocation();
+  // Restaurant this admin page is showing (/admin/:slug/...). Orders on screen are loaded
+  // by this slug, so its alerts must arrive here too.
+  const { slug: viewedSlug } = useParams();
   const [loadingToggle, setLoadingToggle] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
@@ -31,17 +34,27 @@ export default function AdminLayout({ children }) {
   }, [location.pathname]);
 
   // Subscribe Admin socket to real-time notification rooms.
-  // Order alerts are only delivered to the restaurant's own room, so leave the old
-  // one when the admin switches restaurant or logs out.
+  // Order alerts are only delivered to a restaurant's own rooms, and the server checks
+  // this user may manage each one. Subscribe to every restaurant on the account plus
+  // the one being viewed; leave them when the admin switches restaurant or logs out.
+  const ownedRestaurantKey = (() => {
+    const ids = new Set();
+    if (restaurant?.id != null) ids.add(String(restaurant.id));
+    (Array.isArray(restaurants) ? restaurants : []).forEach((r) => {
+      if (r?.id != null) ids.add(String(r.id));
+    });
+    if (ids.size === 0 && user?.restaurant_id != null) ids.add(String(user.restaurant_id));
+    return [...ids].sort().join(',');
+  })();
+
   useEffect(() => {
     joinRoom('admin_room');
     joinRoom('admin');
-    const restId = restaurant?.id || user?.restaurant_id;
-    if (!restId) return undefined;
-    const restaurantRoom = `restaurant_admin_${restId}`;
-    joinRoom(restaurantRoom);
-    return () => leaveRoom(restaurantRoom);
-  }, [restaurant?.id, user?.restaurant_id, joinRoom, leaveRoom]);
+    const rooms = ownedRestaurantKey ? ownedRestaurantKey.split(',').map((id) => `restaurant_admin_${id}`) : [];
+    if (viewedSlug) rooms.push(`restaurant_slug_${viewedSlug}`);
+    rooms.forEach((room) => joinRoom(room));
+    return () => rooms.forEach((room) => leaveRoom(room));
+  }, [ownedRestaurantKey, viewedSlug, joinRoom, leaveRoom]);
 
   // Real-time synchronization when Super Admin toggles restaurant features
   useEffect(() => {
