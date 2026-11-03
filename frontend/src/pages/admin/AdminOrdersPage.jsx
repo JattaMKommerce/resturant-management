@@ -22,7 +22,7 @@ import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
 import OrderMap from '../../components/OrderMap';
 import { useSocket } from '../../context/SocketContext';
-import { playServiceChime, unlockAudio } from '../../utils/audio';
+import { unlockAudio } from '../../utils/audio';
 
 export default function AdminOrdersPage() {
   const { slug } = useParams();
@@ -94,10 +94,11 @@ export default function AdminOrdersPage() {
       setRefreshCountdown(3);
     };
 
+    // The new-order chime is played by SocketContext, which first checks the order
+    // belongs to this admin's restaurant. Here we only refresh the list.
     const handleNewOrder = () => {
       fetchOrdersAndDrivers(false);
       setRefreshCountdown(3);
-      playServiceChime('new_order');
     };
 
     socket.on('order_update', handleLiveOrderUpdate);

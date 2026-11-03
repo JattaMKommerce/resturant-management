@@ -11,7 +11,8 @@ import { ChefHat, RefreshCw, AlertTriangle, CheckCircle, Clock, Globe, Utensils,
 export default function KitchenDisplayPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, restaurant, logout } = useAuth();
+  const myRestaurantId = restaurant?.id || user?.restaurant_id || null;
   const isStandalone = location.pathname === '/kitchen' || location.pathname === '/kds';
 
   const { joinRoom, leaveRoom, socket } = useSocket();
@@ -83,14 +84,16 @@ export default function KitchenDisplayPage() {
   useEffect(() => {
     fetchKOTs();
 
-    const tenantId = user?.restaurant_id || 1;
-    const tenantRoom = `restaurant_${tenantId}_kitchen`;
+    // Only join this kitchen's own tenant room (never fall back to restaurant #1).
+    const tenantRoom = myRestaurantId ? `restaurant_${myRestaurantId}_kitchen` : null;
 
     joinRoom('kitchen');
-    joinRoom(tenantRoom);
+    if (tenantRoom) joinRoom(tenantRoom);
 
     if (socket) {
       const handleNewKOT = (data) => {
+        // The shared 'kitchen' channel also carries other restaurants' tickets — ignore those.
+        if (data?.restaurant_id && myRestaurantId && String(data.restaurant_id) !== String(myRestaurantId)) return;
         fetchKOTs();
         const isOnline = data?.order_type === 'ONLINE' || data?.is_online === true || data?.channel === 'ONLINE';
         if (isOnline) {
@@ -111,7 +114,7 @@ export default function KitchenDisplayPage() {
 
       return () => {
         leaveRoom('kitchen');
-        leaveRoom(tenantRoom);
+        if (tenantRoom) leaveRoom(tenantRoom);
         socket.off('new_kot', handleNewKOT);
         socket.off('new_order', handleNewKOT);
         socket.off('kot_updated', handleRefresh);
@@ -122,10 +125,10 @@ export default function KitchenDisplayPage() {
     } else {
       return () => {
         leaveRoom('kitchen');
-        leaveRoom(tenantRoom);
+        if (tenantRoom) leaveRoom(tenantRoom);
       };
     }
-  }, [selectedDept, selectedStatus, delayedOnly, socket, user]);
+  }, [selectedDept, selectedStatus, delayedOnly, socket, user, myRestaurantId]);
 
   const handleStatusUpdate = async (kotId, newStatus) => {
     try {

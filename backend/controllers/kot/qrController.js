@@ -113,7 +113,7 @@ async function getPublicTableByToken(req, res, next) {
   }
 }
 
-const { emitToRoom, broadcastEvent } = require('../../config/socket');
+const { emitToRoom } = require('../../config/socket');
 
 async function callWaiterHandler(req, res, next) {
   try {
@@ -123,7 +123,7 @@ async function callWaiterHandler(req, res, next) {
     let table = null;
     if (token && token !== 'default') {
       const [tables] = await pool.query(
-        `SELECT id, table_number, table_name, floor, section FROM restaurant_tables WHERE qr_token = ? OR id = ? OR table_number = ?`,
+        `SELECT id, restaurant_id, table_number, table_name, floor, section FROM restaurant_tables WHERE qr_token = ? OR id = ? OR table_number = ?`,
         [token, token, token]
       );
       if (tables.length > 0) {
@@ -131,7 +131,10 @@ async function callWaiterHandler(req, res, next) {
       }
     }
 
+    const restaurantId = (table && table.restaurant_id) || req.body.restaurant_id || req.tenantRestaurant?.id || null;
+
     const payload = {
+      restaurant_id: restaurantId,
       table_id: table ? table.id : null,
       table_number: table ? table.table_number : (table_number || 'T01'),
       table_name: table ? table.table_name : `Table ${table_number || 'T01'}`,
@@ -152,6 +155,7 @@ async function callWaiterHandler(req, res, next) {
     } catch (nErr) { }
 
     const notificationPayload = {
+      restaurant_id: restaurantId,
       title: `🛎️ Waiter Called: Table ${payload.table_number}`,
       message: `Guests at Table ${payload.table_number} (${payload.floor}) requested waiter assistance!`,
       link: '/hotel/admin/offline/tables',
@@ -164,7 +168,7 @@ async function callWaiterHandler(req, res, next) {
     emitToRoom('admin', 'call_waiter', payload);
     emitToRoom('waiter', 'notification', notificationPayload);
     emitToRoom('admin', 'notification', notificationPayload);
-    broadcastEvent('call_waiter', payload);
+    // No global broadcast: it pushed this staff pop-up to every restaurant and every customer.
 
     return sendSuccess(res, payload, 'Waiter called successfully');
   } catch (err) {

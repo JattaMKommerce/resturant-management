@@ -30,15 +30,18 @@ export default function AdminLayout({ children }) {
     fetchSubscription();
   }, [location.pathname]);
 
-  // Subscribe Admin socket to real-time notification rooms
+  // Subscribe Admin socket to real-time notification rooms.
+  // Order alerts are only delivered to the restaurant's own room, so leave the old
+  // one when the admin switches restaurant or logs out.
   useEffect(() => {
     joinRoom('admin_room');
     joinRoom('admin');
     const restId = restaurant?.id || user?.restaurant_id;
-    if (restId) {
-      joinRoom(`restaurant_admin_${restId}`);
-    }
-  }, [restaurant?.id, user?.restaurant_id, joinRoom]);
+    if (!restId) return undefined;
+    const restaurantRoom = `restaurant_admin_${restId}`;
+    joinRoom(restaurantRoom);
+    return () => leaveRoom(restaurantRoom);
+  }, [restaurant?.id, user?.restaurant_id, joinRoom, leaveRoom]);
 
   // Real-time synchronization when Super Admin toggles restaurant features
   useEffect(() => {

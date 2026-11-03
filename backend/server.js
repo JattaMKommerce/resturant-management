@@ -17,7 +17,7 @@ const apiRoutes = require('./routes/api');
 const { setSocketIO } = require('./services/NotificationService');
 const { setSocketIO: setKOTSocketIO, trackUserConnection, trackUserDisconnection } = require('./config/socket');
 const { setSocketIOInstance, processDriverLocationUpdate } = require('./services/DriverLocationService');
-const { pool, testConnection } = require('./config/db');
+const { pool, testConnection, query: dbQuery } = require('./config/db');
 
 // Security & Logging Middleware
 const {
@@ -135,6 +135,35 @@ io.use((socket, next) => {
   }
 });
 
+/**
+ * Restaurant IDs the authenticated socket user belongs to (owner, admin or staff),
+ * resolved from the same tables the REST layer uses. Cached per socket connection.
+ * The master admin account mirrors resolveRestaurantAccess() and may join any tenant room.
+ */
+async function getSocketRestaurantIds(socket) {
+  if (!socket.user?.id) return [];
+  if (!socket.data.restaurantIdsPromise) {
+    socket.data.restaurantIdsPromise = (async () => {
+      if (socket.user.email === 'admin@hotel.com') {
+        const rows = await dbQuery('SELECT id AS restaurant_id FROM restaurants');
+        return rows.map((r) => parseInt(r.restaurant_id, 10));
+      }
+      const rows = await dbQuery(
+        `SELECT restaurant_id FROM restaurant_admins WHERE user_id = ?
+         UNION
+         SELECT id AS restaurant_id FROM restaurants WHERE admin_user_id = ?`,
+        [socket.user.id, socket.user.id]
+      );
+      return rows.map((r) => parseInt(r.restaurant_id, 10));
+    })().catch((err) => {
+      console.warn('[Socket] Restaurant membership lookup failed:', err.message);
+      socket.data.restaurantIdsPromise = null; // retry on next join
+      return [];
+    });
+  }
+  return socket.data.restaurantIdsPromise;
+}
+
 io.on('connection', (socket) => {
   const userId = socket.user?.id || 'GUEST';
   const userRole = socket.user?.role || 'GUEST';
@@ -149,9 +178,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Tracks the latest join/leave intent per room so a slow membership lookup
+  // cannot re-add a room the client already left (e.g. after switching restaurant).
+  const roomIntent = new Map();
+
   // Room Join Authorization
-  socket.on('join_room', (room) => {
+  socket.on('join_room', async (room) => {
     if (!room || typeof room !== 'string') return;
+    roomIntent.set(room, true);
 
     // 1. Public Order & Customer tracking rooms (Permitted for live tracking)
     if (room.startsWith('order_') || room.startsWith('customer_') || room.startsWith('table_')) {
@@ -165,17 +199,16 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // 3. Tenant Admin Rooms: restaurant_${id}_admin or restaurant_admin_${id}
-    const adminMatch = room.match(/^restaurant_(?:admin_)?(\d+)(?:_admin)?$/);
-    if (adminMatch) {
-      const targetRestId = parseInt(adminMatch[1], 10);
-      const isAuthorized = socket.user && (
-        socket.user.role === 'ADMIN' ||
-        socket.user.role === 'RESTAURANT_ADMIN' ||
-        socket.user.role === 'MANAGER'
-      );
+    // 3. Tenant Rooms: restaurant_${id}, restaurant_admin_${id}, restaurant_${id}_(admin|waiter|kitchen|cashier).
+    //    Order alerts for a restaurant are delivered ONLY through these rooms, so membership is verified
+    //    against the database (the JWT restaurant_id is just the primary restaurant and defaults to 1).
+    const tenantMatch = room.match(/^restaurant_(?:admin_)?(\d+)(?:_(?:admin|waiter|kitchen|cashier))?$/);
+    if (tenantMatch) {
+      const targetRestId = parseInt(tenantMatch[1], 10);
+      const memberOf = await getSocketRestaurantIds(socket);
+      if (roomIntent.get(room) !== true) return; // client left while we were checking
 
-      if (isAuthorized && (!socket.user.restaurant_id || parseInt(socket.user.restaurant_id, 10) === targetRestId)) {
+      if (memberOf.includes(targetRestId)) {
         socket.join(room);
       } else if (!isProduction) {
         socket.join(room); // Permissive in dev
@@ -208,7 +241,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('leave_room', (room) => {
-    if (room) socket.leave(room);
+    if (!room || typeof room !== 'string') return;
+    roomIntent.set(room, false);
+    socket.leave(room);
   });
 
   // Driver GPS Location Streaming

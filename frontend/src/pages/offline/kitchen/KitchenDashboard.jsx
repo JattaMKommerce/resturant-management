@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../../services/api';
 import { useSocket } from '../../../context/SocketContext';
+import { useAuth } from '../../../context/AuthContext';
 import { playServiceChime, unlockAudio } from '../../../utils/audio';
 import KOTCard from '../../../components/kds/KOTCard';
 import KOTPrintModal from '../../../components/kds/KOTPrintModal';
@@ -9,6 +10,8 @@ import { ChefHat, RefreshCw, AlertTriangle, CheckCircle, Clock, Boxes, Utensils 
 
 export default function KitchenDashboard() {
   const { joinRoom, leaveRoom, socket } = useSocket();
+  const { user, restaurant } = useAuth();
+  const myRestaurantId = restaurant?.id || user?.restaurant_id || null;
 
   const [activeTab, setActiveTab] = useState('QUEUE'); // 'QUEUE' or 'INGREDIENTS'
   const [departments, setDepartments] = useState([]);
@@ -79,6 +82,8 @@ export default function KitchenDashboard() {
 
     if (socket) {
       const handleNewKOT = (data) => {
+        // The shared 'kitchen' channel also carries other restaurants' tickets — ignore those.
+        if (data?.restaurant_id && myRestaurantId && String(data.restaurant_id) !== String(myRestaurantId)) return;
         fetchKOTs();
         const isOnline = data?.order_type === 'ONLINE' || data?.is_online === true || data?.channel === 'ONLINE';
         if (isOnline) {
@@ -103,7 +108,7 @@ export default function KitchenDashboard() {
     return () => {
       leaveRoom('kitchen');
     };
-  }, [selectedDept, selectedStatus, delayedOnly, activeTab, socket]);
+  }, [selectedDept, selectedStatus, delayedOnly, activeTab, socket, myRestaurantId]);
 
   const handleStatusUpdate = async (kotId, newStatus) => {
     try {

@@ -284,17 +284,18 @@ async function updateTableStatus(req, res, next) {
     broadcastEvent('table_status_changed', { table_id: parseInt(id), status, table: updated[0] });
 
     if (status === 'BILL_REQUESTED') {
-      const payload = { 
-        table_id: parseInt(id), 
-        table_number: updated[0]?.table_number, 
-        table_name: updated[0]?.table_name, 
+      const payload = {
+        restaurant_id: updated[0]?.restaurant_id || null,
+        table_id: parseInt(id),
+        table_number: updated[0]?.table_number,
+        table_name: updated[0]?.table_name,
         floor: updated[0]?.floor,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
+      // Staff pop-up event: station rooms only, never broadcast to every socket.
       emitToRoom('cashier', 'bill_requested', payload);
       emitToRoom('admin', 'bill_requested', payload);
       emitToRoom('waiter', 'bill_requested', payload);
-      broadcastEvent('bill_requested', payload);
     }
 
     return sendSuccess(res, updated[0], `Table status updated to ${status}`);

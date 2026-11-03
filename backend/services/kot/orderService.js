@@ -311,6 +311,7 @@ async function createOrder(orderData, idempotencyKey = null) {
     // 9. Emit Real-time Socket.IO Events & Save Notification
     const createdOrderPayload = {
       id: orderId,
+      restaurant_id: orderRestaurantId,
       order_number: orderNumber,
       order_type: order_type || (tableNumber ? 'DINE_IN' : 'TAKEAWAY'),
       is_online: false,
@@ -322,14 +323,13 @@ async function createOrder(orderData, idempotencyKey = null) {
       kots: fullCreatedKOTs
     };
 
+    // emitToTenant already covers the legacy 'kitchen' / 'waiter' station rooms.
+    // 'new_order' raises a staff pop-up, so it is never broadcast to every socket.
     emitToTenant(orderRestaurantId, 'kitchen', 'new_kot', createdOrderPayload);
     emitToTenant(orderRestaurantId, 'waiter', 'new_order', createdOrderPayload);
     emitToTenant(orderRestaurantId, 'admin', 'new_order', createdOrderPayload);
-    emitToRoom('kitchen', 'new_kot', createdOrderPayload);
-    emitToRoom('waiter', 'new_order', createdOrderPayload);
     emitToRoom('admin', 'new_order', createdOrderPayload);
     broadcastEvent('new_kot', createdOrderPayload);
-    broadcastEvent('new_order', createdOrderPayload);
     if (validatedTableId) {
       broadcastEvent('table_status_changed', { table_id: validatedTableId, status: 'OCCUPIED' });
     }
@@ -339,7 +339,7 @@ async function createOrder(orderData, idempotencyKey = null) {
       const notificationService = require('../NotificationService');
       const tableLabel = tableNumber ? `Table ${tableNumber}` : (room_id ? `Room ${room_id}` : (order_type || 'Dine-In'));
       await notificationService.sendNotification({
-        restaurantId: orderData.restaurant_id || 1,
+        restaurantId: orderRestaurantId,
         orderId: null,
         title: `🍽️ New KOT Order! #${orderNumber}`,
         message: `${tableLabel} — ₹${grandTotal.toFixed(2)} (${validatedItems.length} items)`,

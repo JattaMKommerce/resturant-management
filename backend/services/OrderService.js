@@ -287,9 +287,9 @@ async function createOrder(orderPayload) {
           deliveryAddress,
           createdAt: new Date()
         };
-        io.to(`restaurant_drivers_${restaurant.id}`).emit('available_orders_updated', driverOrderPayload);
-        io.to(`restaurant_${restaurant.id}`).emit('available_orders_updated', driverOrderPayload);
-        io.emit('available_orders_updated', driverOrderPayload);
+        // Only this restaurant's drivers/admins — a global emit made every driver's
+        // app chime for orders at restaurants they don't deliver for.
+        io.to([`restaurant_drivers_${restaurant.id}`, `restaurant_${restaurant.id}`]).emit('available_orders_updated', driverOrderPayload);
       }
     } catch (dErr) {
       console.warn('[ORDER SERVICE] Driver dispatch notification warning:', dErr.message);

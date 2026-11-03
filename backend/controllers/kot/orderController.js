@@ -218,7 +218,11 @@ async function requestCounterPaymentHandler(req, res, next) {
       if (bills.length > 0) bill = bills[0];
     }
 
+    const { emitToTenant } = require('../../config/socket');
+    const restaurantId = order.restaurant_id || 1;
+
     const payload = {
+      restaurant_id: restaurantId,
       order_id: order.id,
       order_number: order.order_number,
       table_id: order.table_id,
@@ -228,13 +232,11 @@ async function requestCounterPaymentHandler(req, res, next) {
       message: `Table ${order.table_number || 'N/A'} requested to Pay at Counter! Amount: ₹${parseFloat(order.total_amount).toFixed(2)}`
     };
 
-    const { emitToTenant } = require('../../config/socket');
-    const restaurantId = order.restaurant_id || 1;
+    // Staff pop-up event: tenant + station rooms only, never broadcast to every socket.
     emitToTenant(restaurantId, 'admin', 'bill_requested', payload);
     emitToTenant(restaurantId, 'waiter', 'bill_requested', payload);
     emitToRoom('cashier', 'bill_requested', payload);
     emitToRoom('admin', 'bill_requested', payload);
-    broadcastEvent('bill_requested', payload);
 
     return sendSuccess(res, payload, 'Counter payment request sent successfully. Cashier & Admin notified.');
   } catch (err) {

@@ -114,6 +114,7 @@ async function notifyKitchen(orderData) {
     // Broadcast new_kot to kitchen via socket
     try {
       const payload = {
+        restaurant_id: orderData.restaurant_id || 1,
         kot_id: kotId,
         kot_number: kotNumber,
         order_id: orderId,
