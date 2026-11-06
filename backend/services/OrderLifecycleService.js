@@ -45,6 +45,16 @@ function ensureOrderSchema() {
       // Online-payment orders are held back from the restaurant until the payment is verified
       await addColumn('orders', 'payment_hold', 'TINYINT(1) NOT NULL DEFAULT 0');
       await addColumn('orders', 'cancelled_reason', 'VARCHAR(255) NULL DEFAULT NULL');
+      // REQ-008: online orders are DELIVERY or TAKEAWAY (pickup); dine-in lives in restaurant_orders
+      await addColumn('orders', 'order_type', "VARCHAR(20) NOT NULL DEFAULT 'DELIVERY'");
+      // REQ-027: GST rate used for this order (the restaurant's rate may change later)
+      await addColumn('orders', 'tax_rate', 'DECIMAL(5,2) NULL DEFAULT NULL');
+      await addColumn('restaurants', 'gstin', 'VARCHAR(20) NULL DEFAULT NULL');
+      await addColumn('restaurants', 'fssai_number', 'VARCHAR(20) NULL DEFAULT NULL');
+      await addColumn('restaurants', 'is_takeaway_enabled', 'TINYINT(1) NOT NULL DEFAULT 1');
+      // REQ-033: how an online/COD payment was actually made (UPI, CARD, CASH, NETBANKING…)
+      await addColumn('payments', 'method_detail', 'VARCHAR(30) NULL DEFAULT NULL');
+      await require('./CouponService').ensureCouponSchema();
 
       // Item-wise stock: NULL = not tracked (unlimited)
       await addColumn('menu_items', 'stock_quantity', 'INT NULL DEFAULT NULL');
@@ -128,7 +138,8 @@ async function releaseOrderToRestaurant(orderId) {
 
   try {
     const io = getSocketIO();
-    if (io) {
+    // Takeaway orders are collected by the customer: no delivery partner needed
+    if (io && order.order_type !== 'TAKEAWAY') {
       io.to([`restaurant_drivers_${order.restaurant_id}`, `restaurant_${order.restaurant_id}`]).emit('available_orders_updated', {
         orderId,
         orderNumber: order.order_number,
@@ -244,11 +255,9 @@ async function onOrderClosed(order, { status, reason = '', userId = null } = {})
     console.warn('[OrderLifecycle] stock restore warning:', e.message);
   }
   try {
-    const CouponService = require('./CouponService');
-    await CouponService.reverseForOrder(order.id);
+    await require('./CouponService').reverseForOrder(order.id);
   } catch (e) {
-    // CouponService arrives with REQ-022; ignore when not present
-    if (e.code !== 'MODULE_NOT_FOUND') console.warn('[OrderLifecycle] coupon reversal warning:', e.message);
+    console.warn('[OrderLifecycle] coupon reversal warning:', e.message);
   }
   let refunds = [];
   if (order.payment_method === 'ONLINE' && order.payment_status === 'COMPLETED') {

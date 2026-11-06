@@ -282,7 +282,30 @@ async function verifyOnlinePayment(orderId, razorpayOrderId, razorpayPaymentId, 
 
   await markOrderPaid(orderId, isOffline);
   broadcastEvent('payment_recorded', { order_id: orderId, order_source: source, status: 'SUCCESS', payment_method: 'ONLINE' });
+
+  // REQ-033: remember how the customer paid (UPI / CARD / NETBANKING / WALLET…). Best effort,
+  // in the background, so a slow gateway lookup never delays the customer.
+  if (isMock) {
+    pool.query(`UPDATE payments SET method_detail = 'MOCK' WHERE id = ?`, [payment.id]).catch(() => {});
+  } else {
+    captureGatewayMethod(config, razorpayPaymentId, payment.id);
+  }
   return { verified: true, isMock, isCustomMerchant: config.isCustom };
+}
+
+function captureGatewayMethod(config, razorpayPaymentId, paymentRowId) {
+  (async () => {
+    const rzp = new Razorpay({ key_id: config.keyId, key_secret: config.keySecret });
+    const details = await rzp.payments.fetch(razorpayPaymentId);
+    const method = String(details?.method || '').toUpperCase().slice(0, 30);
+    if (method) await pool.query(`UPDATE payments SET method_detail = ? WHERE id = ?`, [method, paymentRowId]);
+  })().catch((err) => console.warn('[PaymentService] could not read payment method:', err.message));
+}
+
+/** Normalise how cash-on-delivery money was taken. */
+function normalizeCollectedVia(value) {
+  const v = String(value || 'CASH').trim().toUpperCase();
+  return ['CASH', 'UPI', 'CARD'].includes(v) ? v : 'CASH';
 }
 
 /**
@@ -328,6 +351,7 @@ module.exports = {
   verifyOnlinePayment,
   recordPaymentFailure,
   refundGatewayPayment,
+  normalizeCollectedVia,
   getRestaurantPaymentConfig,
   PaymentError
 };

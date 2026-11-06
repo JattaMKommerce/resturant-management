@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { Phone, User, ArrowLeft, ShoppingBag, AlertCircle, Loader2, CreditCard, Banknote, Minus, Plus, X, Gift } from 'lucide-react';
+import { Phone, User, ArrowLeft, ShoppingBag, AlertCircle, Loader2, CreditCard, Banknote, Minus, Plus, X, Gift, Bike, Store, Tag } from 'lucide-react';
 import KratuRewardsWidget from '../../components/customer/KratuRewardsWidget';
 import { openRazorpayCheckout, newCheckoutKey } from '../../utils/razorpayCheckout';
 
@@ -22,8 +22,15 @@ export default function CheckoutPage({ overrideSlug }) {
     deliveryArea: '',
     deliveryLandmark: '',
     deliveryInstructions: '',
-    paymentMethod: 'COD'
+    paymentMethod: 'COD',
+    orderType: 'DELIVERY'
   });
+
+  // Coupons (REQ-022): the server computes the discount; this is a preview
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponMessage, setCouponMessage] = useState('');
+  const [couponChecking, setCouponChecking] = useState(false);
 
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState(null);
@@ -96,10 +103,42 @@ export default function CheckoutPage({ overrideSlug }) {
     }
   };
 
-  const taxPercentage = parseFloat(restaurant?.tax_percentage || 5);
-  const taxAmount = Math.round(subtotal * (taxPercentage / 100) * 100) / 100;
-  const deliveryFee = parseFloat(restaurant?.delivery_fee || 49);
-  const grossTotal = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
+  const isTakeaway = formData.orderType === 'TAKEAWAY';
+  const takeawayEnabled = restaurant && Number(restaurant.is_takeaway_enabled) !== 0;
+  const couponDiscount = appliedCoupon ? appliedCoupon.discount : 0;
+  // Same rules as the server: GST on the food value after the coupon; 0% and free delivery respected
+  const taxPercentage = Number.isFinite(parseFloat(restaurant?.tax_percentage)) ? parseFloat(restaurant.tax_percentage) : 5;
+  const taxableValue = Math.round((subtotal - couponDiscount) * 100) / 100;
+  const taxAmount = Math.round(taxableValue * (taxPercentage / 100) * 100) / 100;
+  const deliveryFee = isTakeaway ? 0 : (Number.isFinite(parseFloat(restaurant?.delivery_fee)) ? parseFloat(restaurant.delivery_fee) : 49);
+  const grossTotal = Math.round((taxableValue + taxAmount + deliveryFee) * 100) / 100;
+
+  const checkCoupon = async (code, { silent = false } = {}) => {
+    if (!code || !restaurant?.id) return;
+    setCouponChecking(true);
+    if (!silent) setCouponMessage('');
+    try {
+      const res = await api.post('/coupons/validate', {
+        restaurantId: restaurant.id,
+        code,
+        subtotal,
+        customerPhone: formData.customerPhone
+      });
+      setAppliedCoupon({ code: res.data.coupon.code, discount: res.data.coupon.discount, description: res.data.coupon.description });
+      setCouponMessage('');
+    } catch (err) {
+      setAppliedCoupon(null);
+      setCouponMessage(err.response?.data?.message || 'This coupon cannot be used.');
+    } finally {
+      setCouponChecking(false);
+    }
+  };
+
+  // The discount depends on the cart: check the applied coupon again when the cart changes
+  useEffect(() => {
+    if (appliedCoupon) checkCoupon(appliedCoupon.code, { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal]);
   const total = Math.max(0, Math.round((grossTotal - rewardsToRedeem) * 100) / 100);
   const minOrderMet = subtotal >= parseFloat(restaurant?.min_order_amount || 0);
 
@@ -107,7 +146,7 @@ export default function CheckoutPage({ overrideSlug }) {
     e.preventDefault();
     setError(null);
 
-    if (!formData.customerName || !formData.customerPhone || !formData.deliveryAddress || !formData.deliveryArea) {
+    if (!formData.customerName || !formData.customerPhone || (!isTakeaway && (!formData.deliveryAddress || !formData.deliveryArea))) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -148,8 +187,11 @@ export default function CheckoutPage({ overrideSlug }) {
         rewardsDiscount: rewardsToRedeem,
 
         paymentMethod: formData.paymentMethod,
+        orderType: formData.orderType,
+        couponCode: appliedCoupon?.code || undefined,
         idempotencyKey: checkoutKeyFor(
-          cartItems.map(i => `${i.id}x${i.quantity}`).sort().join(',') + `|${formData.paymentMethod}|${formData.customerPhone}`
+          cartItems.map(i => `${i.id}x${i.quantity}`).sort().join(',') +
+          `|${formData.paymentMethod}|${formData.customerPhone}|${formData.orderType}|${appliedCoupon?.code || ''}`
         ),
         items: cartItems.map(item => ({
           menuItemId: item.id,
@@ -282,9 +324,31 @@ export default function CheckoutPage({ overrideSlug }) {
             </div>
           </div>
 
+          {/* Order type (REQ-008) */}
+          {takeawayEnabled && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-4">
+              <h2 className="font-semibold text-slate-800 mb-3">How do you want your order?</h2>
+              <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Order type">
+                {[
+                  { value: 'DELIVERY', label: 'Delivery', hint: 'To your address', Icon: Bike },
+                  { value: 'TAKEAWAY', label: 'Takeaway', hint: 'Collect from restaurant', Icon: Store }
+                ].map(({ value, label, hint, Icon }) => (
+                  <label key={value} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.orderType === value ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <input type="radio" name="orderType" value={value} checked={formData.orderType === value} onChange={handleInputChange} className="sr-only" />
+                    <Icon className={`w-6 h-6 ${formData.orderType === value ? 'text-orange-600' : 'text-slate-400'}`} />
+                    <div>
+                      <p className={`font-medium text-sm ${formData.orderType === value ? 'text-orange-700' : 'text-slate-700'}`}>{label}</p>
+                      <p className="text-xs text-slate-400">{hint}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Customer Details */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
-            <h2 className="font-semibold text-slate-800">Delivery Details</h2>
+            <h2 className="font-semibold text-slate-800">{isTakeaway ? 'Your Details' : 'Delivery Details'}</h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -303,6 +367,9 @@ export default function CheckoutPage({ overrideSlug }) {
               </div>
             </div>
 
+            {isTakeaway ? (
+              <p className="text-xs text-slate-500">You will collect this order from {restaurant?.name || 'the restaurant'}{restaurant?.address ? ` (${restaurant.address})` : ''}. We will notify you when it is ready.</p>
+            ) : (<>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Delivery Address *</label>
               <textarea name="deliveryAddress" value={formData.deliveryAddress} onChange={handleInputChange} placeholder="Flat/House No., Building, Street" required rows={2} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500/40 focus:border-orange-400 outline-none resize-none" />
@@ -323,6 +390,7 @@ export default function CheckoutPage({ overrideSlug }) {
               <label className="block text-sm font-medium text-slate-600 mb-1">Delivery Instructions</label>
               <input type="text" name="deliveryInstructions" value={formData.deliveryInstructions} onChange={handleInputChange} placeholder="Any special instructions for delivery" className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500/40 focus:border-orange-400 outline-none" />
             </div>
+            </>)}
           </div>
 
 
@@ -336,8 +404,8 @@ export default function CheckoutPage({ overrideSlug }) {
                   <input type="radio" name="paymentMethod" value="COD" checked={formData.paymentMethod === 'COD'} onChange={handleInputChange} className="hidden" />
                   <Banknote className={`w-6 h-6 ${formData.paymentMethod === 'COD' ? 'text-orange-600' : 'text-slate-400'}`} />
                   <div>
-                    <p className={`font-medium text-sm ${formData.paymentMethod === 'COD' ? 'text-orange-700' : 'text-slate-700'}`}>Cash on Delivery</p>
-                    <p className="text-xs text-slate-400">Pay when delivered</p>
+                    <p className={`font-medium text-sm ${formData.paymentMethod === 'COD' ? 'text-orange-700' : 'text-slate-700'}`}>{isTakeaway ? 'Pay at Pickup' : 'Cash on Delivery'}</p>
+                    <p className="text-xs text-slate-400">{isTakeaway ? 'Pay when you collect' : 'Pay when delivered'}</p>
                   </div>
                 </label>
               )}
@@ -363,13 +431,44 @@ export default function CheckoutPage({ overrideSlug }) {
             restaurantName={restaurant?.name}
           />
 
+          {/* Coupon (REQ-022) */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <label htmlFor="coupon-code" className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-orange-500" /> Coupon code
+            </label>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
+                <span className="text-emerald-800">
+                  <strong className="font-mono">{appliedCoupon.code}</strong> applied · you save ₹{appliedCoupon.discount.toFixed(2)}
+                </span>
+                <button type="button" onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} className="text-xs font-bold text-emerald-800 hover:underline">Remove</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input id="coupon-code" type="text" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  placeholder="Enter code" maxLength={40}
+                  className="flex-1 min-w-0 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-mono uppercase focus:ring-2 focus:ring-orange-500/40 focus:border-orange-400 outline-none" />
+                <button type="button" onClick={() => checkCoupon(couponInput.trim())} disabled={!couponInput.trim() || couponChecking}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 text-white text-sm font-bold disabled:opacity-50">
+                  {couponChecking ? 'Checking…' : 'Apply'}
+                </button>
+              </div>
+            )}
+            {couponMessage && <p className="mt-2 text-xs text-red-600" role="alert">{couponMessage}</p>}
+          </div>
+
           {/* Bill Summary */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4">
             <h2 className="font-semibold text-slate-800 mb-3">Bill Summary</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-slate-600"><span>Tax ({taxPercentage}%)</span><span>₹{taxAmount.toFixed(2)}</span></div>
-              <div className="flex justify-between text-slate-600"><span>Delivery Fee</span><span>₹{deliveryFee.toFixed(2)}</span></div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-emerald-700"><span>Coupon {appliedCoupon.code}</span><span>-₹{couponDiscount.toFixed(2)}</span></div>
+              )}
+              <div className="flex justify-between text-slate-600"><span>GST ({taxPercentage}%)</span><span>₹{taxAmount.toFixed(2)}</span></div>
+              {!isTakeaway && (
+                <div className="flex justify-between text-slate-600"><span>Delivery Fee</span><span>₹{deliveryFee.toFixed(2)}</span></div>
+              )}
               
               {rewardsToRedeem > 0 && (
                 <div className="flex justify-between text-emerald-700 font-semibold bg-emerald-50/70 p-1.5 rounded-lg">

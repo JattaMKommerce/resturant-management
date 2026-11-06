@@ -469,13 +469,29 @@ export default function OrderTrackingPage({ overrideSlug }) {
 
           <div className="border-t border-slate-200 pt-3 space-y-1.5 text-slate-600">
             <div className="flex justify-between"><span>Subtotal</span><span>₹{order.subtotal}</span></div>
-            <div className="flex justify-between"><span>Taxes & Charges</span><span>₹{order.tax_amount}</span></div>
-            <div className="flex justify-between"><span>Delivery Fee</span><span>₹{order.delivery_fee}</span></div>
+            {Number(order.discount_amount) > 0 && (
+              <div className="flex justify-between text-emerald-700">
+                <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ''}</span><span>-₹{order.discount_amount}</span>
+              </div>
+            )}
+            <div className="flex justify-between"><span>GST</span><span>₹{order.tax_amount}</span></div>
+            {order.order_type !== 'TAKEAWAY' && (
+              <div className="flex justify-between"><span>Delivery Fee</span><span>₹{order.delivery_fee}</span></div>
+            )}
             <div className="flex justify-between pt-2 border-t border-slate-100 text-slate-900 font-extrabold text-sm">
               <span>{isPaid ? 'Total Paid' : 'Total (payment pending)'} ({order.payment_method})</span>
               <span className="text-emerald-600">₹{order.total_amount}</span>
             </div>
           </div>
+
+          {!awaitingPayment && (
+            <Link
+              to={slug ? `/restaurant/${slug}/order/${order.id}/invoice` : `/order/${order.id}/invoice`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:underline"
+            >
+              View / download invoice
+            </Link>
+          )}
         </div>
 
       </main>

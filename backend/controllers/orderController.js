@@ -232,32 +232,64 @@ async function getDashboardKPIs(req, res) {
       return res.status(403).json({ success: false, message: 'No restaurant assigned.' });
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // REQ-015/016/017: numbers must match the real order statuses.
+    //  - "Today" is the restaurant's business day (IST), not the server's UTC date.
+    //  - Active statuses (pending … out for delivery) count every order currently in that state,
+    //    whatever day it was placed; finished statuses count today's orders.
+    //  - Unpaid online checkouts (payment_hold) are not orders yet; revenue excludes
+    //    cancelled/rejected orders.
+    const { start: dayStart, end: dayEnd } = require('../utils/businessTime').businessDayRange();
+    const ACTIVE = ['PENDING', 'ACCEPTED', 'SENT_TO_KITCHEN', 'PREPARING', 'READY_FOR_PICKUP',
+      'ASSIGNED_TO_DRIVER', 'DRIVER_ACCEPTED', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERY_FAILED'];
 
     let todayOrdersRow = { count: 0, revenue: 0 };
     let statusMap = {
       PENDING: 0, ACCEPTED: 0, SENT_TO_KITCHEN: 0, PREPARING: 0,
-      READY_FOR_PICKUP: 0, ASSIGNED_TO_DRIVER: 0, OUT_FOR_DELIVERY: 0,
-      DELIVERED: 0, CANCELLED: 0, REJECTED: 0
+      READY_FOR_PICKUP: 0, ASSIGNED_TO_DRIVER: 0, DRIVER_ACCEPTED: 0, PICKED_UP: 0, OUT_FOR_DELIVERY: 0,
+      DELIVERY_FAILED: 0, DELIVERED: 0, CANCELLED: 0, REJECTED: 0
     };
     let recentOrders = [];
+    let typeCounts = { DELIVERY: 0, TAKEAWAY: 0 };
 
     if (restId) {
       const [orderRow] = await query(
-        'SELECT COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue FROM orders WHERE restaurant_id = ? AND DATE(created_at) = ?',
-        [restId, todayStr]
+        `SELECT COUNT(*) as count,
+                COALESCE(SUM(CASE WHEN order_status NOT IN ('CANCELLED', 'REJECTED') THEN total_amount ELSE 0 END), 0) as revenue
+         FROM orders
+         WHERE restaurant_id = ? AND COALESCE(payment_hold, 0) = 0 AND created_at >= ? AND created_at < ?`,
+        [restId, dayStart, dayEnd]
       );
       if (orderRow) todayOrdersRow = orderRow;
 
-      const statusCounts = await query(
-        'SELECT order_status, COUNT(*) as count FROM orders WHERE restaurant_id = ? AND DATE(created_at) = ? GROUP BY order_status',
-        [restId, todayStr]
+      const activeCounts = await query(
+        `SELECT order_status, COUNT(*) as count FROM orders
+         WHERE restaurant_id = ? AND COALESCE(payment_hold, 0) = 0 AND order_status IN (${ACTIVE.map(() => '?').join(',')})
+         GROUP BY order_status`,
+        [restId, ...ACTIVE]
       );
-      statusCounts.forEach(sc => { statusMap[sc.order_status] = sc.count; });
+      const finishedToday = await query(
+        `SELECT order_status, COUNT(*) as count FROM orders
+         WHERE restaurant_id = ? AND COALESCE(payment_hold, 0) = 0
+           AND order_status IN ('DELIVERED', 'CANCELLED', 'REJECTED')
+           AND updated_at >= ? AND updated_at < ?
+         GROUP BY order_status`,
+        [restId, dayStart, dayEnd]
+      );
+      [...activeCounts, ...finishedToday].forEach(sc => { statusMap[sc.order_status] = Number(sc.count); });
+
+      const types = await query(
+        `SELECT COALESCE(order_type, 'DELIVERY') AS t, COUNT(*) AS n FROM orders
+         WHERE restaurant_id = ? AND COALESCE(payment_hold, 0) = 0 AND order_status IN (${ACTIVE.map(() => '?').join(',')})
+         GROUP BY t`,
+        [restId, ...ACTIVE]
+      );
+      types.forEach(r => { typeCounts[r.t] = Number(r.n); });
 
       recentOrders = await query(
-        `SELECT o.id, o.order_number, o.customer_name, o.order_status, o.total_amount, o.payment_method, o.created_at
-         FROM orders o WHERE o.restaurant_id = ? ORDER BY o.created_at DESC LIMIT 10`,
+        `SELECT o.id, o.order_number, o.customer_name, o.order_status, o.total_amount, o.payment_method,
+                o.payment_status, COALESCE(o.order_type, 'DELIVERY') AS order_type, o.created_at
+         FROM orders o WHERE o.restaurant_id = ? AND COALESCE(o.payment_hold, 0) = 0
+         ORDER BY o.created_at DESC LIMIT 10`,
         [restId]
       );
     }
@@ -268,9 +300,11 @@ async function getDashboardKPIs(req, res) {
     res.json({
       success: true,
       kpis: {
-        todayOrders: todayOrdersRow.count,
+        todayOrders: Number(todayOrdersRow.count),
         todayRevenue: parseFloat(todayOrdersRow.revenue),
         statusCounts: statusMap,
+        activeOrders: ACTIVE.reduce((s, k) => s + (statusMap[k] || 0), 0),
+        activeByType: typeCounts,
         recentOrders,
         ownerQuestions
       }
@@ -1079,6 +1113,7 @@ async function getUnclaimedOrders(req, res) {
        WHERE o.restaurant_id = ?
          AND o.assigned_driver_id IS NULL
          AND COALESCE(o.payment_hold, 0) = 0
+         AND COALESCE(o.order_type, 'DELIVERY') = 'DELIVERY'
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
          AND o.created_at >= NOW() - INTERVAL 24 HOUR
        ORDER BY o.created_at DESC`,
@@ -1203,6 +1238,97 @@ async function adminAssignDriverToOrder(req, res) {
 }
 
 /**
+ * GET /orders/:id/invoice — tax invoice data for an online order (REQ-027 / REQ-028).
+ * GST is shown as CGST + SGST (half each) on the food value after any coupon discount.
+ */
+async function getOrderInvoice(req, res) {
+  try {
+    await require('../services/OrderLifecycleService').ensureOrderSchema();
+    const { id } = req.params;
+    const [order] = await query(
+      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, r.phone AS restaurant_phone,
+              r.email AS restaurant_email, r.gstin AS restaurant_gstin, r.fssai_number AS restaurant_fssai,
+              r.logo_url AS restaurant_logo, r.slug AS restaurant_slug
+       FROM orders o JOIN restaurants r ON r.id = o.restaurant_id
+       WHERE o.id = ? OR o.order_number = ?`,
+      [id, id]
+    );
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+    if (Number(order.payment_hold) === 1) {
+      return res.status(400).json({ success: false, message: 'The invoice is available once the payment is completed.' });
+    }
+
+    const items = await query(
+      'SELECT item_name, unit_price, quantity, item_total FROM order_items WHERE order_id = ? ORDER BY id ASC',
+      [order.id]
+    );
+    const money = (v) => Math.round(Number(v || 0) * 100) / 100;
+    const subtotal = money(order.subtotal);
+    const couponDiscount = money(order.coupon_discount);
+    const taxAmount = money(order.tax_amount);
+    const taxableValue = money(subtotal - couponDiscount);
+    const rate = order.tax_rate != null
+      ? Number(order.tax_rate)
+      : (taxableValue > 0 ? Math.round((taxAmount / taxableValue) * 10000) / 100 : 0);
+    const cgst = money(taxAmount / 2);
+    const sgst = money(taxAmount - cgst);
+    const otherDiscount = money(Number(order.discount_amount || 0) - couponDiscount);
+
+    res.json({
+      success: true,
+      invoice: {
+        invoice_number: `INV-${order.order_number}`,
+        invoice_date: order.created_at,
+        order_id: order.id,
+        order_number: order.order_number,
+        order_type: order.order_type || 'DELIVERY',
+        order_status: order.order_status,
+        is_cancelled: ['CANCELLED', 'REJECTED'].includes(order.order_status),
+        restaurant: {
+          name: order.restaurant_name,
+          address: order.restaurant_address,
+          phone: order.restaurant_phone,
+          email: order.restaurant_email,
+          gstin: order.restaurant_gstin,
+          fssai: order.restaurant_fssai,
+          logo_url: order.restaurant_logo,
+          slug: order.restaurant_slug
+        },
+        customer: {
+          name: order.customer_name,
+          phone: order.customer_phone,
+          address: order.order_type === 'TAKEAWAY' ? null : order.delivery_address
+        },
+        items: items.map((i) => ({
+          name: i.item_name,
+          unit_price: money(i.unit_price),
+          quantity: i.quantity,
+          total: money(i.item_total)
+        })),
+        subtotal,
+        coupon_code: order.coupon_code || null,
+        coupon_discount: couponDiscount,
+        taxable_value: taxableValue,
+        tax_rate: rate,
+        cgst_rate: rate / 2,
+        sgst_rate: rate / 2,
+        cgst_amount: cgst,
+        sgst_amount: sgst,
+        tax_amount: taxAmount,
+        delivery_fee: money(order.delivery_fee),
+        rewards_discount: otherDiscount > 0 ? otherDiscount : 0,
+        total_amount: money(order.total_amount),
+        payment_method: order.payment_method,
+        payment_status: order.payment_status
+      }
+    });
+  } catch (err) {
+    console.error('getOrderInvoice Error:', err);
+    res.status(500).json({ success: false, message: 'Could not build the invoice.' });
+  }
+}
+
+/**
  * POST /orders/:id/cancel — the customer cancels their own order before the restaurant has
  * accepted it (REQ-006). A paid online order is refunded automatically.
  */
@@ -1313,6 +1439,7 @@ async function completeRefund(req, res) {
 }
 
 module.exports = {
+  getOrderInvoice,
   cancelOrderByCustomer,
   listRefunds,
   completeRefund,

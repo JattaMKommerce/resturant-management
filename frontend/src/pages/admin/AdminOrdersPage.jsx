@@ -309,7 +309,9 @@ export default function AdminOrdersPage() {
                 className="bg-white rounded-2xl border border-[#D7E5E8] p-4 shadow-xs space-y-3 cursor-pointer hover:border-[#3A7D7C] transition-all"
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span className="font-mono font-bold text-sm text-[#3A7D7C]">{ord.order_number}</span>
+                  <span className="font-mono font-bold text-sm text-[#3A7D7C]">{ord.order_number}{ord.order_type === 'TAKEAWAY' && (
+                    <span className="ml-1.5 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200 align-middle">TAKEAWAY</span>
+                  )}</span>
                   <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] inline-flex items-center gap-1 uppercase tracking-wider border ${getBadgeStyle(ord.order_status)}`}>
                     {ord.order_status === 'DELIVERED' && <CheckCircle2 className="w-3 h-3" />}
                     {ord.order_status.replace(/_/g, ' ')}
@@ -325,7 +327,7 @@ export default function AdminOrdersPage() {
                   <div className="text-right">
                     <span className="text-[10px] font-bold uppercase text-[#64748B] block">Total Amount</span>
                     <span className="font-mono font-black text-sm text-[#1F2937]">₹{parseFloat(ord.total_amount).toFixed(2)}</span>
-                    <span className="text-[10px] font-bold text-slate-600 block">{ord.payment_method}</span>
+                    <span className="text-[10px] font-bold text-slate-600 block">{ord.payment_method} · {ord.payment_status}</span>
                   </div>
                 </div>
 
@@ -358,7 +360,15 @@ export default function AdminOrdersPage() {
                     </button>
                   )}
 
-                  {ord.order_status === 'READY_FOR_PICKUP' && (
+                  {ord.order_status === 'READY_FOR_PICKUP' && ord.order_type === 'TAKEAWAY' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleUpdateStatus(ord.id, 'DELIVERED'); }}
+                      className="w-full py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Customer collected
+                    </button>
+                  )}
+                  {ord.order_status === 'READY_FOR_PICKUP' && ord.order_type !== 'TAKEAWAY' && (
                     <button
                       onClick={() => setSelectedOrder(ord)}
                       className="w-full py-2.5 bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-colors"
@@ -407,17 +417,21 @@ export default function AdminOrdersPage() {
                       onClick={() => setSelectedOrder(ord)}
                       className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                     >
-                      <td className="p-4 font-bold text-[#3A7D7C] font-mono text-sm">{ord.order_number}</td>
+                      <td className="p-4 font-bold text-[#3A7D7C] font-mono text-sm">{ord.order_number}{ord.order_type === 'TAKEAWAY' && (
+                    <span className="ml-1.5 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200 align-middle">TAKEAWAY</span>
+                  )}</td>
                       <td className="p-4">
                         <span className="font-bold text-[#1F2937] block text-sm">{ord.customer_name}</span>
                         <span className="text-[11px] text-[#64748B] font-mono">{ord.customer_phone}</span>
                       </td>
 
                       <td className="p-4">
-                        <span className="font-semibold text-[#1F2937] block">{ord.delivery_area}</span>
-                        <span className="text-[10px] font-bold text-[#3A7D7C] bg-[#EAF4F7] px-2 py-0.5 rounded-md inline-block mt-0.5 border border-[#D7E5E8]">
-                          {ord.distance_km} km away
-                        </span>
+                        <span className="font-semibold text-[#1F2937] block">{ord.order_type === 'TAKEAWAY' ? 'Customer pickup' : ord.delivery_area}</span>
+                        {ord.order_type !== 'TAKEAWAY' && ord.distance_km != null && (
+                          <span className="text-[10px] font-bold text-[#3A7D7C] bg-[#EAF4F7] px-2 py-0.5 rounded-md inline-block mt-0.5 border border-[#D7E5E8]">
+                            {ord.distance_km} km away
+                          </span>
+                        )}
                       </td>
 
                       <td className="p-4 font-bold text-[#1F2937] text-sm font-mono">₹{parseFloat(ord.total_amount).toFixed(2)}</td>
@@ -455,13 +469,31 @@ export default function AdminOrdersPage() {
                             </button>
                           )}
 
-                          {ord.order_status === 'READY_FOR_PICKUP' && (
+                          {ord.order_status === 'READY_FOR_PICKUP' && ord.order_type === 'TAKEAWAY' && (
+                            <button
+                              onClick={() => handleUpdateStatus(ord.id, 'DELIVERED')}
+                              className="bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-[11px] px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Customer collected
+                            </button>
+                          )}
+                          {ord.order_status === 'READY_FOR_PICKUP' && ord.order_type !== 'TAKEAWAY' && (
                             <button
                               onClick={() => setSelectedOrder(ord)}
                               className="bg-[#3A7D7C] hover:bg-[#2F6665] text-white font-bold text-[11px] px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
                             >
                               <Bike className="w-3.5 h-3.5" /> Assign Rider
                             </button>
+                          )}
+                          {!['PENDING'].includes(ord.order_status) && (
+                            <a
+                              href={`/restaurant/${ord.restaurant_slug || slug}/order/${ord.id}/invoice`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] font-bold text-[#3A7D7C] hover:underline"
+                            >
+                              Invoice
+                            </a>
                           )}
                         </div>
                       </td>

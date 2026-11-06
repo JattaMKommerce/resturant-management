@@ -374,8 +374,19 @@ async function updateRestaurantSettings(req, res) {
       delivery_radius_km, min_order_amount, delivery_fee, tax_percentage,
       is_online_ordering_enabled, is_cod_enabled, is_online_payment_enabled,
       razorpay_key_id, razorpay_key_secret, razorpay_enabled, upi_id, upi_name,
-      template_id
+      template_id, gstin, fssai_number, is_takeaway_enabled
     } = req.body;
+
+    // REQ-027: GSTIN printed on invoices (15 characters, e.g. 29ABCDE1234F1Z5). Empty clears it.
+    const cleanGstin = gstin === undefined ? undefined : String(gstin || '').trim().toUpperCase();
+    if (cleanGstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(cleanGstin)) {
+      return res.status(400).json({ success: false, message: 'GSTIN must be 15 characters, for example 29ABCDE1234F1Z5.' });
+    }
+    const cleanFssai = fssai_number === undefined ? undefined : String(fssai_number || '').replace(/\s/g, '');
+    if (cleanFssai && !/^[0-9]{14}$/.test(cleanFssai)) {
+      return res.status(400).json({ success: false, message: 'FSSAI licence number must be 14 digits.' });
+    }
+    await require('../services/OrderLifecycleService').ensureOrderSchema();
 
     const restId = await resolveTargetRestaurantId(req);
     if (!restId) {
@@ -413,6 +424,7 @@ async function updateRestaurantSettings(req, res) {
     const boolCod = parseBool(is_cod_enabled);
     const boolPayment = parseBool(is_online_payment_enabled);
     const boolRzpEnabled = parseBool(razorpay_enabled);
+    const boolTakeaway = parseBool(is_takeaway_enabled);
 
     let sql = `
       UPDATE restaurants SET
@@ -443,7 +455,8 @@ async function updateRestaurantSettings(req, res) {
         razorpay_enabled = COALESCE(?, razorpay_enabled),
         upi_id = COALESCE(?, upi_id),
         upi_name = COALESCE(?, upi_name),
-        template_id = COALESCE(?, template_id)
+        template_id = COALESCE(?, template_id),
+        is_takeaway_enabled = COALESCE(?, is_takeaway_enabled)
     `;
 
     const params = [
@@ -465,8 +478,11 @@ async function updateRestaurantSettings(req, res) {
       boolRzpEnabled !== undefined ? (boolRzpEnabled ? 1 : 0) : null,
       upi_id !== undefined ? (upi_id ? upi_id.trim() : null) : null,
       upi_name !== undefined ? (upi_name ? upi_name.trim() : null) : null,
-      template_id || null
+      template_id || null,
+      boolTakeaway !== undefined ? (boolTakeaway ? 1 : 0) : null
     ];
+    if (cleanGstin !== undefined) { sql += `, gstin = ?`; params.push(cleanGstin || null); }
+    if (cleanFssai !== undefined) { sql += `, fssai_number = ?`; params.push(cleanFssai || null); }
 
     if (req.body.remove_logo === '1' || req.body.remove_logo === 'true' || req.body.remove_logo === true) {
       sql += `, logo_url = NULL`;

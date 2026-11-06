@@ -13,6 +13,7 @@ const categoryController = require('../controllers/categoryController');
 const menuController = require('../controllers/menuController');
 const orderController = require('../controllers/orderController');
 const paymentController = require('../controllers/paymentController');
+const couponController = require('../controllers/couponController');
 const driverController = require('../controllers/driverController');
 const riderAppController = require('../controllers/riderApplicationController');
 const notificationController = require('../controllers/notificationController');
@@ -119,6 +120,8 @@ router.post('/orders/checkout', resolveGuestIdentity, orderController.placeOrder
 router.get('/orders/my-orders', authenticateToken, orderController.getUserOrders);
 router.get('/orders/:id', resolveGuestIdentity, orderController.getOrderById);
 router.post('/orders/:id/cancel', resolveGuestIdentity, orderController.cancelOrderByCustomer);
+router.get('/orders/:id/invoice', resolveGuestIdentity, orderController.getOrderInvoice);
+router.post('/coupons/validate', couponController.validateCoupon);
 
 // ═══════════════════════════════════════════════
 // 7. PAYMENT ROUTES (Guest or Auth)
@@ -219,6 +222,10 @@ router.post('/admin/orders/:id/self-deliver', ...adminAuth, orderController.admi
 router.get('/admin/history', ...adminAuth, orderController.getUnifiedHistory);
 router.patch('/admin/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
 router.get('/admin/refunds', ...adminAuth, orderController.listRefunds);
+router.get('/admin/coupons', ...adminAuth, couponController.listCoupons);
+router.post('/admin/coupons', ...adminAuth, couponController.createCoupon);
+router.put('/admin/coupons/:id', ...adminAuth, couponController.updateCoupon);
+router.delete('/admin/coupons/:id', ...adminAuth, couponController.deleteCoupon);
 router.post('/admin/refunds/:id/complete', ...adminAuth, orderController.completeRefund);
 router.post('/admin/orders/:id/assign-driver', ...adminAuth, orderController.adminAssignDriverToOrder);
 router.post('/admin/orders/:id/recover-delivery', ...adminAuth, async (req, res) => {

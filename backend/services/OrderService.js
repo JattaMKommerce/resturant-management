@@ -80,6 +80,10 @@ async function buildOrderResult(orderId, restaurant, extra = {}) {
     deliveryFee: parseFloat(o.delivery_fee),
     discountAmount: parseFloat(o.discount_amount || 0),
     totalAmount: parseFloat(o.total_amount),
+    taxRate: o.tax_rate != null ? parseFloat(o.tax_rate) : null,
+    couponCode: o.coupon_code || null,
+    couponDiscount: parseFloat(o.coupon_discount || 0),
+    orderType: o.order_type || 'DELIVERY',
     paymentMethod: o.payment_method,
     paymentStatus: o.payment_status,
     awaitingPayment: Number(o.payment_hold) === 1,
@@ -113,6 +117,16 @@ async function createOrder(orderPayload) {
   const paymentMethod = String(orderPayload.paymentMethod || 'COD').toUpperCase();
   if (!['COD', 'ONLINE'].includes(paymentMethod)) {
     throw new Error('Please choose Cash on Delivery or Online Payment.');
+  }
+
+  // REQ-008: DELIVERY or TAKEAWAY (customer collects from the restaurant)
+  const orderType = String(orderPayload.orderType || orderPayload.order_type || 'DELIVERY').toUpperCase();
+  if (!['DELIVERY', 'TAKEAWAY'].includes(orderType)) {
+    throw new Error('Please choose Delivery or Takeaway.');
+  }
+  const isTakeaway = orderType === 'TAKEAWAY';
+  if (!isTakeaway && !String(deliveryAddress || '').trim()) {
+    throw new Error('Please enter a delivery address.');
   }
 
   // 1. Fetch restaurant
@@ -157,10 +171,13 @@ async function createOrder(orderPayload) {
   if (paymentMethod === 'ONLINE' && Number(restaurant.is_online_payment_enabled) === 0) {
     throw new Error('Online payment is not available at this restaurant. Please choose Cash on Delivery.');
   }
+  if (isTakeaway && Number(restaurant.is_takeaway_enabled) === 0) {
+    throw new Error('Takeaway is not available at this restaurant. Please choose delivery.');
+  }
 
   // 2. Server-side Haversine distance validation (only if location provided)
   let radiusValidation = null;
-  if (customerLatitude && customerLongitude) {
+  if (!isTakeaway && customerLatitude && customerLongitude) {
     radiusValidation = validateDeliveryRadius(
       restaurant.latitude, restaurant.longitude,
       customerLatitude, customerLongitude,
@@ -234,11 +251,22 @@ async function createOrder(orderPayload) {
     throw new Error(`Minimum order amount is ₹${restaurant.min_order_amount}.`);
   }
 
-  // Server-side price calculation
-  const taxPercentage = parseFloat(restaurant.tax_percentage || 5);
-  const taxAmount = Math.round((subtotal * (taxPercentage / 100)) * 100) / 100;
-  const deliveryFee = parseFloat(restaurant.delivery_fee || 49);
-  const grossTotal = subtotal + taxAmount + deliveryFee;
+  // Coupon (REQ-022): discount on the food subtotal. Previewed here, then checked again with the
+  // coupon row locked inside the order transaction.
+  const CouponService = require('./CouponService');
+  const couponCode = orderPayload.couponCode ? CouponService.normalizeCode(orderPayload.couponCode) : null;
+  let couponDiscount = 0;
+  if (couponCode) {
+    couponDiscount = (await CouponService.preview({ restaurantId: restaurant.id, code: couponCode, subtotal, customerPhone })).discount;
+  }
+
+  // Server-side price calculation. GST (REQ-027) is charged on the food value after the coupon
+  // discount and shown as CGST + SGST (half each) on the invoice. A rate or fee of 0 is respected.
+  const taxPercentage = parseFloat(restaurant.tax_percentage ?? 5) || 0;
+  const taxableValue = Math.round((subtotal - couponDiscount) * 100) / 100;
+  const taxAmount = Math.round((taxableValue * (taxPercentage / 100)) * 100) / 100;
+  const deliveryFee = isTakeaway ? 0 : (parseFloat(restaurant.delivery_fee ?? 49) || 0);
+  const grossTotal = taxableValue + taxAmount + deliveryFee;
 
   // Kratu Rewards discount: the amount actually reserved in the wallet, never the browser's figure
   let rewardsDiscount = 0;
@@ -249,8 +277,10 @@ async function createOrder(orderPayload) {
     );
     if (reservation) rewardsDiscount = Math.min(parseFloat(reservation.reserved_amount) || 0, grossTotal);
   }
-  const discountAmount = Math.round(rewardsDiscount * 100) / 100;
-  const totalAmount = Math.max(0, Math.round((grossTotal - discountAmount) * 100) / 100);
+  const rewardsApplied = Math.round(rewardsDiscount * 100) / 100;
+  // discount_amount = everything taken off (coupon + rewards); total = subtotal + tax + fee - discount
+  const discountAmount = Math.round((couponDiscount + rewardsApplied) * 100) / 100;
+  const totalAmount = Math.max(0, Math.round((grossTotal - rewardsApplied) * 100) / 100);
 
   // Resolve actual customer ID if not provided directly
   let actualCustomerId = customerId || null;
@@ -291,11 +321,11 @@ async function createOrder(orderPayload) {
       // Duplicate check 2 (older checkout pages without a key): identical recent order
       const [recent] = await conn.query(
         `SELECT id, total_amount FROM orders
-         WHERE restaurant_id = ? AND customer_phone = ? AND payment_method = ?
+         WHERE restaurant_id = ? AND customer_phone = ? AND payment_method = ? AND COALESCE(order_type, 'DELIVERY') = ?
            AND order_status NOT IN ('CANCELLED', 'REJECTED')
            AND created_at >= (NOW() - INTERVAL ? SECOND)
          ORDER BY id DESC LIMIT 3`,
-        [restaurant.id, customerPhone, paymentMethod, DUPLICATE_WINDOW_SECONDS]
+        [restaurant.id, customerPhone, paymentMethod, orderType, DUPLICATE_WINDOW_SECONDS]
       );
       for (const r of recent) {
         if (Math.abs(parseFloat(r.total_amount) - totalAmount) > 0.009) continue;
@@ -320,9 +350,18 @@ async function createOrder(orderPayload) {
       }
     }
 
-    const safeDeliveryArea = (deliveryArea && String(deliveryArea).trim())
+    let couponRedemption = null;
+    if (couponCode) {
+      couponRedemption = await CouponService.redeemInTransaction(conn, { restaurantId: restaurant.id, code: couponCode, subtotal, customerPhone });
+      if (Math.abs(couponRedemption.discount - couponDiscount) > 0.009) {
+        throw new Error('This coupon was just changed. Please apply it again.');
+      }
+    }
+
+    const finalAddress = isTakeaway ? (String(deliveryAddress || '').trim() || 'Takeaway - collect at restaurant') : deliveryAddress;
+    const safeDeliveryArea = isTakeaway ? 'Takeaway' : ((deliveryArea && String(deliveryArea).trim())
       || (deliveryAddress ? String(deliveryAddress).trim().slice(0, 50) : '')
-      || 'Standard Delivery';
+      || 'Standard Delivery');
 
     const [orderRes] = await conn.query(
       `INSERT INTO orders (
@@ -331,19 +370,22 @@ async function createOrder(orderPayload) {
         delivery_address, delivery_area, delivery_landmark, delivery_instructions,
         customer_latitude, customer_longitude, distance_km,
         subtotal, tax_amount, delivery_fee, discount_amount, total_amount,
-        payment_method, payment_status, order_status, idempotency_key, payment_hold
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?, ?)`,
+        payment_method, payment_status, order_status, idempotency_key, payment_hold,
+        order_type, coupon_code, coupon_discount, tax_rate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?, ?, ?, ?, ?, ?)`,
       [
         orderNumber, restaurant.id, customerIdentityId || null, actualCustomerId || null,
         customerName, customerPhone,
-        deliveryAddress, safeDeliveryArea, deliveryLandmark || null, deliveryInstructions || null,
+        finalAddress, safeDeliveryArea, deliveryLandmark || null, deliveryInstructions || null,
         customerLatitude || null, customerLongitude || null, radiusValidation?.distanceKm || null,
         subtotal, taxAmount, deliveryFee, discountAmount, totalAmount,
-        paymentMethod, idempotencyKey, holdForPayment ? 1 : 0
+        paymentMethod, idempotencyKey, holdForPayment ? 1 : 0,
+        orderType, couponCode, couponDiscount, taxPercentage
       ]
     );
 
     const orderId = orderRes.insertId;
+    if (couponRedemption) await couponRedemption.record(orderId);
 
     // Insert order items (price snapshots)
     for (const pItem of processedItems) {
@@ -405,6 +447,9 @@ async function createOrder(orderPayload) {
       restaurantSlug: restaurant.slug,
       distanceKm: radiusValidation?.distanceKm || null,
       subtotal, taxAmount, deliveryFee, discountAmount, totalAmount,
+      taxRate: taxPercentage,
+      couponCode, couponDiscount,
+      orderType,
       paymentMethod,
       paymentStatus: 'PENDING',
       awaitingPayment: holdForPayment,

@@ -104,9 +104,10 @@ async function markCodCollected(req, res) {
     if (!upd.affectedRows) {
       return res.json({ success: true, alreadyCollected: true, message: 'Cash for this order was already recorded.' });
     }
+    const collectedVia = PaymentService.normalizeCollectedVia(req.body.collected_via);
     await query(
-      `INSERT INTO payments (order_id, order_source, payment_method, amount, status, transaction_id) VALUES (?, 'ONLINE', 'COD', ?, 'SUCCESS', ?)`,
-      [order_id, order.total_amount, `COD_COLLECTED_${Date.now()}`]
+      `INSERT INTO payments (order_id, order_source, payment_method, method_detail, amount, status, transaction_id) VALUES (?, 'ONLINE', 'COD', ?, ?, 'SUCCESS', ?)`,
+      [order_id, collectedVia, order.total_amount, `COD_COLLECTED_${Date.now()}`]
     );
 
     res.json({ success: true, message: `COD payment of ₹${order.total_amount} marked as collected.` });

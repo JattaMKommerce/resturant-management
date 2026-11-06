@@ -6,6 +6,7 @@ import { useAuth } from './context/AuthContext';
 import RestaurantMenuPage from './pages/customer/RestaurantMenuPage';
 import CheckoutPage from './pages/customer/CheckoutPage';
 import OrderTrackingPage from './pages/customer/OrderTrackingPage';
+import InvoicePage from './pages/customer/InvoicePage';
 import CustomerPortalPage from './pages/customer/CustomerPortalPage';
 import CustomerAuthPage from './pages/customer/CustomerAuthPage';
 
@@ -38,6 +39,7 @@ import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminUnclaimedOrdersPage from './pages/admin/AdminUnclaimedOrdersPage';
 import AdminRefundsPage from './pages/admin/AdminRefundsPage';
+import AdminCouponsPage from './pages/admin/AdminCouponsPage';
 import AdminHistoryPage from './pages/admin/AdminHistoryPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminWebsitePage from './pages/admin/AdminWebsitePage';
@@ -240,6 +242,7 @@ export default function App() {
             <Route path="/" element={<RestaurantMenuPage overrideSlug={activeSubdomain} />} />
             <Route path="/checkout" element={<CheckoutPage overrideSlug={activeSubdomain} />} />
             <Route path="/order/:orderId" element={<OrderTrackingPage overrideSlug={activeSubdomain} />} />
+            <Route path="/order/:orderId/invoice" element={<InvoicePage overrideSlug={activeSubdomain} />} />
             <Route path="/portal" element={<CustomerPortalPage overrideSlug={activeSubdomain} />} />
             <Route path="/auth" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
             <Route path="/login" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
@@ -255,6 +258,7 @@ export default function App() {
         <Route path="/restaurant/:slug" element={<RestaurantMenuPage />} />
         <Route path="/restaurant/:slug/checkout" element={<CheckoutPage />} />
         <Route path="/restaurant/:slug/order/:orderId" element={<OrderTrackingPage />} />
+        <Route path="/restaurant/:slug/order/:orderId/invoice" element={<InvoicePage />} />
         <Route path="/restaurant/:slug/portal" element={<CustomerPortalPage />} />
         <Route path="/restaurant/:slug/auth" element={<CustomerAuthPage />} />
         <Route path="/restaurant/:slug/login" element={<CustomerAuthPage />} />
@@ -343,6 +347,11 @@ export default function App() {
         <Route path="/admin/:slug/orders" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
             <AdminOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/:slug/coupons" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
+            <AdminCouponsPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/refunds" element={

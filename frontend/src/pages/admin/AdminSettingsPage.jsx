@@ -32,6 +32,11 @@ export default function AdminSettingsPage() {
   const [isOnlineOrderingEnabled, setIsOnlineOrderingEnabled] = useState(true);
   const [isCodEnabled, setIsCodEnabled] = useState(true);
   const [isOnlinePaymentEnabled, setIsOnlinePaymentEnabled] = useState(true);
+  // REQ-008 / REQ-027: takeaway orders, GST details printed on invoices
+  const [isTakeawayEnabled, setIsTakeawayEnabled] = useState(true);
+  const [gstin, setGstin] = useState('');
+  const [fssaiNumber, setFssaiNumber] = useState('');
+  const [razorpaySecretSaved, setRazorpaySecretSaved] = useState(false);
 
   // Branding Images
   const [logoFile, setLogoFile] = useState(null);
@@ -93,8 +98,12 @@ export default function AdminSettingsPage() {
         setOpeningHours(r.opening_hours || r.opening_time || '09:00 - 22:00');
         setDeliveryRadiusKm(r.delivery_radius_km || '10');
         setMinOrderAmount(r.min_order_amount || '100');
-        setDeliveryFee(r.delivery_fee || '40');
-        setTaxPercentage(r.tax_percentage || '5');
+        // ?? (not ||) so a deliberate 0 (free delivery / no GST) is kept
+        setDeliveryFee(r.delivery_fee ?? '40');
+        setTaxPercentage(r.tax_percentage ?? '5');
+        setIsTakeawayEnabled(Number(r.is_takeaway_enabled ?? 1) !== 0);
+        setGstin(r.gstin || '');
+        setFssaiNumber(r.fssai_number || '');
         setIsOnlineOrderingEnabled(r.is_online_ordering_enabled === 1 || r.is_online_ordering_enabled === true);
         setIsCodEnabled(r.is_cod_enabled === 1 || r.is_cod_enabled === true);
         setIsOnlinePaymentEnabled(r.is_online_payment_enabled === 1 || r.is_online_payment_enabled === true);
@@ -105,7 +114,9 @@ export default function AdminSettingsPage() {
         // Merchant Razorpay & UPI
         setRazorpayEnabled(r.razorpay_enabled === 1 || r.razorpay_enabled === true);
         setRazorpayKeyId(r.razorpay_key_id || '');
-        setRazorpayKeySecret(r.razorpay_key_secret || '');
+        // The server never sends the secret back; it only says whether one is saved
+        setRazorpayKeySecret('');
+        setRazorpaySecretSaved(Boolean(r.razorpay_key_secret_set));
         setUpiId(r.upi_id || '');
         setUpiName(r.upi_name || '');
 
@@ -267,6 +278,9 @@ export default function AdminSettingsPage() {
       formData.append('tax_percentage', taxPercentage);
       formData.append('is_online_ordering_enabled', isOnlineOrderingEnabled ? '1' : '0');
       formData.append('is_cod_enabled', isCodEnabled ? '1' : '0');
+      formData.append('is_takeaway_enabled', isTakeawayEnabled ? '1' : '0');
+      formData.append('gstin', gstin.trim().toUpperCase());
+      formData.append('fssai_number', fssaiNumber.trim());
       formData.append('is_online_payment_enabled', isOnlinePaymentEnabled ? '1' : '0');
 
       // Branding Images
@@ -662,14 +676,33 @@ export default function AdminSettingsPage() {
             </div>
 
             <div>
-              <label className="block font-bold text-[#1F2937] mb-1">Tax Percentage (%)</label>
+              <label className="block font-bold text-[#1F2937] mb-1">GST Rate (%)</label>
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 value={taxPercentage}
                 onChange={(e) => setTaxPercentage(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
               />
+              <p className="text-[11px] text-[#64748B] mt-1">Charged on the food value after coupons and shown as CGST + SGST (half each). Enter 0 if you are not GST-registered.</p>
+            </div>
+          </div>
+
+          {/* GST details printed on customer invoices (REQ-027 / REQ-028) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label htmlFor="settings-gstin" className="block font-bold text-[#1F2937] mb-1">GSTIN</label>
+              <input id="settings-gstin" type="text" maxLength={15} placeholder="e.g. 29ABCDE1234F1Z5"
+                value={gstin} onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-mono text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
+              <p className="text-[11px] text-[#64748B] mt-1">Printed on every invoice. Leave empty if not registered.</p>
+            </div>
+            <div>
+              <label htmlFor="settings-fssai" className="block font-bold text-[#1F2937] mb-1">FSSAI licence number</label>
+              <input id="settings-fssai" type="text" inputMode="numeric" maxLength={14} placeholder="14 digits"
+                value={fssaiNumber} onChange={(e) => setFssaiNumber(e.target.value.replace(/\D/g, ''))}
+                className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-mono text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]" />
             </div>
           </div>
 
@@ -693,6 +726,16 @@ export default function AdminSettingsPage() {
                 className="accent-[#3A7D7C] rounded"
               />
               Enable Online Payments
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isTakeawayEnabled}
+                onChange={(e) => setIsTakeawayEnabled(e.target.checked)}
+                className="accent-[#3A7D7C] rounded"
+              />
+              Enable Takeaway (customer pickup) orders
             </label>
           </div>
 
@@ -738,7 +781,7 @@ export default function AdminSettingsPage() {
                     <label className="block font-bold text-[#1F2937] mb-1">Razorpay Key Secret (Secret) *</label>
                     <input
                       type="password"
-                      placeholder="e.g. your_secret_key"
+                      placeholder={razorpaySecretSaved ? 'Saved (hidden). Type a new secret to replace it.' : 'e.g. your_secret_key'}
                       value={razorpayKeySecret}
                       onChange={(e) => setRazorpayKeySecret(e.target.value)}
                       className="w-full p-2.5 bg-white border border-[#D7E5E8] rounded-xl text-[#1F2937] font-mono text-xs focus:outline-none focus:border-[#3A7D7C]"

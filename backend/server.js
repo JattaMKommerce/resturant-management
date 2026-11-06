@@ -83,6 +83,8 @@ app.use(requestCorrelationId);
 app.use(requestLogger);
 app.use(generalRateLimiter);
 app.use(cookieParser());
+// Never send payment secrets or password hashes in any JSON response
+app.use(require('./middleware/redactSecrets').redactSecrets);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

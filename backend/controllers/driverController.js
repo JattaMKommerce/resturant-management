@@ -943,9 +943,9 @@ async function deliverOrder(req, res) {
       );
 
       await query(
-        `INSERT INTO payments (order_id, order_source, payment_method, amount, status, collected_by, collected_at, transaction_id)
-         VALUES (?, 'ONLINE', 'COD', ?, 'SUCCESS', ?, NOW(), ?)`,
-        [id, order.total_amount, driver.id, `COD_COLLECTED_DRIVER_${driver.id}_${Date.now()}`]
+        `INSERT INTO payments (order_id, order_source, payment_method, method_detail, amount, status, collected_by, collected_at, transaction_id)
+         VALUES (?, 'ONLINE', 'COD', ?, ?, 'SUCCESS', ?, NOW(), ?)`,
+        [id, require('../services/PaymentService').normalizeCollectedVia(req.body.collected_via), order.total_amount, driver.id, `COD_COLLECTED_DRIVER_${driver.id}_${Date.now()}`]
       );
     }
 
@@ -2003,6 +2003,7 @@ async function applyToRestaurant(req, res) {
        WHERE o.restaurant_id = ?
          AND (o.assigned_driver_id IS NULL OR o.assigned_driver_id = ?)
          AND COALESCE(o.payment_hold, 0) = 0
+         AND COALESCE(o.order_type, 'DELIVERY') = 'DELIVERY'
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
          AND NOT (o.assigned_driver_id IS NULL AND o.order_status IN ('PICKED_UP', 'OUT_FOR_DELIVERY'))
          AND o.created_at >= NOW() - INTERVAL 48 HOUR
