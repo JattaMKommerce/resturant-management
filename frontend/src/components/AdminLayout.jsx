@@ -8,6 +8,7 @@ import SubscriptionCountdownBadge from './subscription/SubscriptionCountdownBadg
 import PlanSelectorModal from './subscription/PlanSelectorModal';
 import SubscriptionPaywallModal from './subscription/SubscriptionPaywallModal';
 import NotificationBellDropdown from './notifications/NotificationBellDropdown';
+import IdleSessionGuard from './IdleSessionGuard';
 import { useSocket } from '../context/SocketContext';
 
 export default function AdminLayout({ children }) {
@@ -307,6 +308,9 @@ export default function AdminLayout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* Automatic logout after inactivity (REQ-014) */}
+      <IdleSessionGuard loginPath="/admin/login" />
 
       {/* Blocking Paywall Modal if subscription is expired and user is not on subscription page */}
       {shouldBlockWithPaywall && (

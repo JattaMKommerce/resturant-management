@@ -54,11 +54,11 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
       });
 
       if (res.data.success) {
-        const code = String(res.data.otpPreview || '1234');
+        // The server only returns the code when WhatsApp could not deliver it.
+        const code = res.data.otpPreview ? String(res.data.otpPreview) : null;
         setIsNewUser(res.data.isNewUser);
         setOtpPreview(code);
-        // Automatically pre-fill the OTP code!
-        setOtpDigits(code.slice(0, 4).split(''));
+        setOtpDigits(code ? code.slice(0, 4).split('') : ['', '', '', '']);
         setStep('OTP');
       }
     } catch (err) {
@@ -128,7 +128,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
       });
     } catch (apiErr) {
       console.error('Customer OTP Verification API Error:', apiErr);
-      setError(apiErr.response?.data?.message || 'Invalid code. Please enter the 4-digit code or 1234.');
+      setError(apiErr.response?.data?.message || 'Invalid code. Please check the 4-digit code from WhatsApp.');
       verifyingRef.current = false;
       setVerifying(false);
       return;
@@ -282,7 +282,14 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
           ) : (
             <div className="space-y-4">
               
-              {/* Auto-filled Notification Banner */}
+              {!otpPreview && (
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-semibold" role="status">
+                  We sent a 4-digit code to your WhatsApp. Enter it below to continue.
+                </div>
+              )}
+
+              {/* Auto-filled Notification Banner (only when WhatsApp could not deliver the code) */}
+              {otpPreview && (
               <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs space-y-1 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-black text-emerald-800 flex items-center gap-1.5">
@@ -297,6 +304,7 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                   Your code <strong className="font-mono text-emerald-700 font-black text-sm">{otpPreview}</strong> has been auto-filled in the boxes below. Click <strong>Verify & Continue</strong> to sign in!
                 </p>
               </div>
+              )}
 
               {/* 4 Digit Boxes */}
               <div className="flex items-center justify-center gap-3 py-2 w-full max-w-xs mx-auto">
@@ -314,26 +322,6 @@ export default function CustomerAuthModal({ isOpen, onClose, restaurant, onSucce
                     className="w-14 h-14 shrink-0 text-center font-mono text-3xl font-black rounded-2xl border-2 border-emerald-500 bg-emerald-50/20 text-slate-900 shadow-sm focus:border-emerald-600 focus:bg-emerald-50/40 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all"
                   />
                 ))}
-              </div>
-
-              {/* Master Code Shortcut */}
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <div>
-                  <span className="text-slate-600 font-semibold block">Universal Master Code:</span>
-                  <span className="font-mono text-xs font-bold text-slate-700">1234 (Always works)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOtpDigits(['1', '2', '3', '4']);
-                    setError(null);
-                    verifyCode('1234');
-                  }}
-                  className="font-mono font-black text-slate-800 hover:text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs cursor-pointer flex items-center gap-1 hover:bg-slate-100 transition-colors"
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Use 1234</span>
-                </button>
               </div>
 
               <div className="flex items-center justify-between text-xs text-slate-500 pt-1">

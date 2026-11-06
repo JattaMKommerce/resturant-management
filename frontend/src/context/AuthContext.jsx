@@ -130,17 +130,57 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const logout = () => {
+  // Drop the signed-in state in this tab (no server call).
+  const clearSession = (reason) => {
     localStorage.removeItem('hotel_token');
     localStorage.removeItem('hotel_user');
     localStorage.removeItem('hotel_admin_restaurant');
     localStorage.removeItem('hotel_cart');
     localStorage.removeItem('hotel_cart_slug');
+    localStorage.removeItem('hotel_last_activity');
+    if (reason) {
+      try { sessionStorage.setItem('hotel_logout_reason', reason); } catch (e) {}
+    }
     setUser(null);
     setRestaurant(null);
     setRestaurants([]);
     window.dispatchEvent(new Event('cart_cleared'));
   };
+
+  // Log out: end the session on the server (so the token and its cookie copy stop working
+  // everywhere, REQ-012), then clear this browser. Other open tabs follow via the storage event.
+  const logout = (reason) => {
+    const token = localStorage.getItem('hotel_token');
+    if (token) {
+      api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    }
+    clearSession(typeof reason === 'string' ? reason : undefined);
+  };
+
+  // Keep every tab and the Back button honest (REQ-013):
+  //  - logging out in another tab logs this tab out too;
+  //  - a page restored from the browser's back/forward cache re-checks the session;
+  //  - a 401 from the server (logged out, password changed, account deactivated) ends the session here.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'hotel_token' && !e.newValue) clearSession();
+    };
+    const onPageShow = (e) => {
+      if (e.persisted && !localStorage.getItem('hotel_token')) clearSession();
+    };
+    const onSessionEnded = (e) => {
+      clearSession(e?.detail?.message || 'Your session has ended. Please log in again.');
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('hms_session_ended', onSessionEnded);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('hms_session_ended', onSessionEnded);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AuthContext.Provider value={{

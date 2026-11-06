@@ -71,8 +71,17 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       if (error.response.status === 401) {
-        localStorage.removeItem('hotel_token');
-        localStorage.removeItem('hotel_user');
+        // Only end the staff/admin session when the rejected request actually used it
+        // (a wrong password on the login form, or a customer-token call, must not log anyone out).
+        const staffToken = localStorage.getItem('hotel_token');
+        const sentAuth = error.config?.headers?.Authorization || error.config?.headers?.authorization;
+        if (staffToken && sentAuth === `Bearer ${staffToken}`) {
+          localStorage.removeItem('hotel_token');
+          localStorage.removeItem('hotel_user');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('hms_session_ended', { detail: { message: error.response.data?.message } }));
+          }
+        }
       } else if (
         error.response.status === 403 &&
         (error.response.data?.code === 'SUBSCRIPTION_EXPIRED' || error.response.data?.code === 'SUBSCRIPTION_REQUIRED')

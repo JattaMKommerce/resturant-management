@@ -1,48 +1,32 @@
-const jwt = require('jsonwebtoken');
 const { sendError } = require('../utils/response');
 const { query } = require('../config/db');
-require('dotenv').config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
+const { extractToken, verifyToken, checkSession, STAFF_ROLES } = require('../utils/authSession');
 
 /**
  * Uniform Authentication Middleware for KOT and Table/Operations routes
  */
 async function authenticateToken(req, res, next) {
-  let token = null;
-  const authHeader = req.headers['authorization'] || req.headers['x-authorization'] || req.headers['x-access-token'] || req.headers['auth-token'];
-  if (authHeader) {
-    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    } else if (typeof authHeader === 'string') {
-      token = authHeader;
-    }
-  }
-
-  if (!token && req.cookies) {
-    token = req.cookies.token || req.cookies.hotel_token || req.cookies.jwt;
-  }
+  const token = extractToken(req);
 
   if (!token) {
     return sendError(res, 'Access denied. No authentication token provided. Please log in again.', 401);
   }
 
+  let decoded;
   try {
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (e1) {
-      try {
-        decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026_change_in_production');
-      } catch (e2) {
-        try {
-          decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026');
-        } catch (e3) {
-          decoded = jwt.verify(token, 'super_secret_jwt_key_hotel_management_2026');
-        }
-      }
-    }
+    decoded = verifyToken(token);
+  } catch (err) {
+    return sendError(res, 'Invalid or expired token.', 401);
+  }
+
+  const rejection = await checkSession(decoded, token);
+  if (rejection) {
+    return sendError(res, rejection, 401);
+  }
+
+  try {
     req.user = decoded;
+    req.authToken = token;
 
     // Dynamic role and restaurant verification from database
     if (req.user && req.user.id) {
@@ -59,13 +43,16 @@ async function authenticateToken(req, res, next) {
         if (req.user.role === 'ADMIN') req.user.role = 'RESTAURANT_ADMIN';
         if (req.user.role === 'CHEF') req.user.role = 'KITCHEN';
 
-        // Auto-verify if user is owner or admin in restaurant_admins or restaurants
+        // Auto-verify if user is owner or admin in restaurant_admins or restaurants.
+        // Staff are linked through restaurant_admins too: for them the link only tells us which
+        // restaurant they work at — it must not turn a waiter or chef into an admin.
         const adminCheck = await query(
           'SELECT restaurant_id FROM restaurant_admins WHERE user_id = ? UNION SELECT id as restaurant_id FROM restaurants WHERE admin_user_id = ?',
           [req.user.id, req.user.id]
         );
         if (adminCheck && adminCheck.length > 0) {
-          if (!['SUPER_ADMIN', 'MANAGER'].includes(req.user.role)) {
+          const currentRole = String(req.user.role || '').toUpperCase();
+          if (!['SUPER_ADMIN', 'MANAGER'].includes(currentRole) && !STAFF_ROLES.includes(currentRole)) {
             req.user.role = 'RESTAURANT_ADMIN';
           }
           if (!req.user.restaurant_id) {
@@ -136,7 +123,8 @@ function requireRoles(...allowedRoles) {
           }
         }
 
-        const adminCheck = await query(
+        const isStaff = dbUser && STAFF_ROLES.includes(String(dbUser.role || '').toUpperCase());
+        const adminCheck = isStaff ? [] : await query(
           'SELECT restaurant_id FROM restaurant_admins WHERE user_id = ? UNION SELECT id as restaurant_id FROM restaurants WHERE admin_user_id = ?',
           [req.user.id, req.user.id]
         );

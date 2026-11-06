@@ -31,7 +31,7 @@ const errorHandler = require('./middleware/errorHandler');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
+const { JWT_SECRET } = require('./utils/authSession');
 
 console.log('📍 [Backend] PORT resolved to:', PORT);
 console.log('📍 [Backend] NODE_ENV:', process.env.NODE_ENV);
@@ -568,7 +568,15 @@ async function startServer() {
 
   // Initialize database asynchronously in the background so it never blocks HTTP/WebSocket readiness
   initDatabase()
-    .then(() => {
+    .then(async () => {
+      // Session tables + removal of any passwords stored in readable form (runs after seeding).
+      try {
+        const authSession = require('./utils/authSession');
+        await authSession.ensureAuthSchema();
+        await authSession.scrubPlainPasswords();
+      } catch (authErr) {
+        console.warn('Auth schema/password cleanup warning:', authErr.message);
+      }
       console.log(`✅ System database initialized and ready for production requests.`);
     })
     .catch((err) => {

@@ -162,7 +162,7 @@ export default function UnifiedSidebar({
   const handleLogout = () => {
     if (onCloseMobile) onCloseMobile();
     logout();
-    navigate('/admin/login');
+    navigate('/admin/login', { replace: true });
   };
 
   return (

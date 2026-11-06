@@ -68,7 +68,10 @@ export default function DriverLoginPage() {
           </div>
 
           <div>
-            <label className="block font-bold text-[#1F2937] mb-1">Password *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-bold text-[#1F2937]">Password *</label>
+              <Link to="/forgot-password" className="font-bold text-[#3A7D7C] hover:underline">Forgot password?</Link>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input

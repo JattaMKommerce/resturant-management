@@ -89,10 +89,10 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
       });
 
       if (res.data.success) {
-        const code = String(res.data.otpPreview || '1234');
+        // The server only returns the code when WhatsApp could not deliver it.
+        const code = res.data.otpPreview ? String(res.data.otpPreview) : null;
         setOtpPreview(code);
-        // Automatically pre-fill the OTP boxes with the 4-digit code
-        setOtpDigits(code.slice(0, 4).split(''));
+        setOtpDigits(code ? code.slice(0, 4).split('') : ['', '', '', '']);
         setStep('OTP');
       } else {
         setError(res.data.message || 'Failed to send verification code.');
@@ -415,14 +415,16 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
             /* STEP 2: HIGH-AESTHETIC AUTO-FILLED OTP INPUT */
             <div className="space-y-5">
 
-              {/* Auto-filled Notification Banner */}
-              <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs space-y-1 shadow-sm">
+              {/* Code banner: auto-filled only when WhatsApp could not deliver the code */}
+              <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs space-y-1 shadow-sm" role="status">
                 <div className="flex items-center gap-1.5 font-bold">
                   <Zap className="w-4 h-4 text-emerald-400" />
-                  <span>Verification Code Auto-Filled</span>
+                  <span>{otpPreview ? 'Verification Code Auto-Filled' : 'Check your WhatsApp'}</span>
                 </div>
                 <p className="text-[11px] text-slate-300">
-                  Your code <strong className="font-mono text-emerald-300 font-bold">{otpDigits.join('') || otpPreview || '1234'}</strong> is pre-filled below. Just tap <strong>Verify & Continue</strong>.
+                  {otpPreview
+                    ? <>Your code <strong className="font-mono text-emerald-300 font-bold">{otpPreview}</strong> is pre-filled below. Just tap <strong>Verify & Continue</strong>.</>
+                    : 'We sent a 4-digit code to your WhatsApp. Enter it below to continue.'}
                 </p>
               </div>
 
@@ -441,25 +443,6 @@ export default function CustomerAuthPage({ overrideSlug, onSkip, onSuccessRedire
                     className="w-14 h-16 text-center font-mono text-2xl font-black rounded-2xl bg-white/10 border-2 border-emerald-500/50 text-emerald-400 focus:border-emerald-400 focus:bg-white/15 focus:ring-4 focus:ring-emerald-500/30 outline-none transition-all shadow-inner"
                   />
                 ))}
-              </div>
-
-              {/* Master bypass option if needed */}
-              <div className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs">
-                <div>
-                  <span className="text-slate-400 font-medium block">Universal Master Code:</span>
-                  <span className="font-mono text-xs font-bold text-slate-300">1234</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOtpDigits(['1', '2', '3', '4']);
-                    setError(null);
-                    verifyCode('1234');
-                  }}
-                  className="font-mono font-black text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1.5 rounded-lg border border-amber-500/30 transition-colors cursor-pointer"
-                >
-                  🔑 Fill 1234
-                </button>
               </div>
 
               {/* Back / Resend */}

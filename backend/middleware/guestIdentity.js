@@ -28,9 +28,7 @@ async function resolveGuestIdentity(req, res, next) {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       try {
-        const jwt = require('jsonwebtoken');
-        const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
-        req.user = jwt.verify(token, JWT_SECRET);
+        req.user = require('../utils/authSession').verifyToken(token);
       } catch (e) { }
     }
 

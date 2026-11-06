@@ -1,59 +1,32 @@
-const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
-require('dotenv').config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
+const { extractToken, verifyToken, checkSession, STAFF_ROLES } = require('../utils/authSession');
 
 /**
- * Middleware to verify JWT token and attach user to req.user
+ * Middleware to verify JWT token and attach user to req.user.
+ * Also enforces server-side session state (logout, password reset, deactivated account).
  */
-function authenticateToken(req, res, next) {
-  let token = null;
-
-  // 1. Authorization header (standard or fallback names)
-  const authHeader = req.headers['authorization'] || req.headers['x-authorization'] || req.headers['x-access-token'] || req.headers['auth-token'];
-  if (authHeader) {
-    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    } else if (typeof authHeader === 'string') {
-      token = authHeader;
-    }
-  }
-
-  // 2. Cookie fallback
-  if (!token && req.cookies) {
-    token = req.cookies.hotel_token || req.cookies.token || req.cookies.jwt;
-  }
-
-  // 3. Query parameter fallback
-  if (!token && req.query && req.query.token) {
-    token = req.query.token;
-  }
+async function authenticateToken(req, res, next) {
+  const token = extractToken(req, { allowQuery: true });
 
   if (!token) {
     return res.status(401).json({ success: false, message: 'Authentication token required. Please log in again.' });
   }
 
+  let decoded;
   try {
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (e1) {
-      try {
-        decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026_change_in_production');
-      } catch (e2) {
-        try {
-          decoded = jwt.verify(token, 'super_secret_hotel_jwt_key_2026');
-        } catch (e3) {
-          decoded = jwt.verify(token, 'super_secret_jwt_key_hotel_management_2026');
-        }
-      }
-    }
-    req.user = decoded;
-    next();
+    decoded = verifyToken(token);
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Invalid or expired token. Please log in again.' });
   }
+
+  const rejection = await checkSession(decoded, token);
+  if (rejection) {
+    return res.status(401).json({ success: false, code: 'SESSION_ENDED', message: rejection });
+  }
+
+  req.user = decoded;
+  req.authToken = token;
+  next();
 }
 
 /**
@@ -88,8 +61,11 @@ function authorizeRoles(...allowedRoles) {
     }
 
     // Automatic restaurant owner verification from database:
-    // If the route requires admin/manager, verify if user is assigned to any restaurant
-    if (normalizedAllowed.includes('ADMIN') || normalizedAllowed.includes('RESTAURANT_ADMIN') || normalizedAllowed.includes('MANAGER')) {
+    // If the route requires admin/manager, verify if user is assigned to any restaurant.
+    // Staff (waiters, kitchen, cashiers, drivers…) are linked through restaurant_admins as
+    // well, so they must never be promoted here — that gave every staff member admin access.
+    const isStaffRole = STAFF_ROLES.includes(rawRole);
+    if (!isStaffRole && (normalizedAllowed.includes('ADMIN') || normalizedAllowed.includes('RESTAURANT_ADMIN') || normalizedAllowed.includes('MANAGER'))) {
       try {
         const adminCheck = await query(
           'SELECT id FROM restaurant_admins WHERE user_id = ? UNION SELECT id FROM restaurants WHERE admin_user_id = ?',

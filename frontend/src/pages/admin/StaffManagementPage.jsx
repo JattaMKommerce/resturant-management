@@ -15,6 +15,9 @@ export default function StaffManagementPage() {
   const [selectedTab, setSelectedTab] = useState('ALL'); // ALL, KITCHEN, WAITER, MANAGEMENT
   const [copiedId, setCopiedId] = useState(null);
   const [showPasswordMap, setShowPasswordMap] = useState({});
+  // Passwords are no longer stored in readable form. A password the admin just typed (new staff
+  // or a reset via Edit) is kept here for this browser session so the login details can be shared.
+  const [freshPasswords, setFreshPasswords] = useState({});
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,12 +125,17 @@ export default function StaffManagementPage() {
       if (modalMode === 'CREATE') {
         const res = await api.post('/admin/staff', formData);
         if (res.data.success) {
+          const newId = res.data.staff?.id;
+          if (newId) setFreshPasswords(prev => ({ ...prev, [newId]: formData.password }));
           setIsModalOpen(false);
           fetchStaff();
         }
       } else {
         const res = await api.put(`/admin/staff/${editingStaff.id}`, formData);
         if (res.data.success) {
+          if (formData.password && formData.password.trim()) {
+            setFreshPasswords(prev => ({ ...prev, [editingStaff.id]: formData.password.trim() }));
+          }
           setIsModalOpen(false);
           fetchStaff();
         }
@@ -169,7 +177,7 @@ export default function StaffManagementPage() {
       ? `${window.location.origin}/kitchen/login` 
       : `${window.location.origin}/waiter/login`;
     
-    const textToCopy = `🏨 Staff Login Details:\n• Name: ${member.name}\n• Role: ${member.role === 'KITCHEN' ? 'Kitchen Chef' : 'Service Waiter'}\n• Login / Email: ${member.email}\n• Password: ${member.plain_password || '********'}\n• Portal URL: ${portalUrl}`;
+    const textToCopy = `🏨 Staff Login Details:\n• Name: ${member.name}\n• Role: ${member.role === 'KITCHEN' ? 'Kitchen Chef' : 'Service Waiter'}\n• Login / Email: ${member.email}\n• Password: ${freshPasswords[member.id] || '(ask the admin, or use Forgot password on the login page)'}\n• Portal URL: ${portalUrl}`;
 
     navigator.clipboard.writeText(textToCopy);
     setCopiedId(member.id);
@@ -452,7 +460,7 @@ export default function StaffManagementPage() {
                         <KeyRound className="w-3 h-3 text-[#3A7D7C]" />
                         Password
                       </span>
-                      {member.plain_password && (
+                      {freshPasswords[member.id] && (
                         <button
                           type="button"
                           onClick={() => togglePasswordVisibility(member.id)}
@@ -465,9 +473,9 @@ export default function StaffManagementPage() {
                     </div>
 
                     <div className="font-mono text-xs font-bold text-[#1F2937] truncate select-all">
-                      {member.plain_password 
-                        ? (showPlain ? member.plain_password : '••••••••••••')
-                        : 'Encrypted (Contact Admin)'}
+                      {freshPasswords[member.id]
+                        ? (showPlain ? freshPasswords[member.id] : '••••••••••••')
+                        : 'Hidden for security. Use Edit to set a new password.'}
                     </div>
                   </div>
                 </div>

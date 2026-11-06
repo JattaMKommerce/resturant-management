@@ -98,8 +98,8 @@ async function ensureEssentialFleetDrivers() {
       let userId;
       if (userRows.length === 0) {
         const uRes = await query(
-          `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-           VALUES (?, ?, ?, '123456789', ?, 'DRIVER', 'ACTIVE')`,
+          `INSERT INTO users (name, email, password_hash, phone, role, status)
+           VALUES (?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
           [drv.name, drv.email, defaultPwHash, drv.phone]
         );
         userId = uRes.insertId;

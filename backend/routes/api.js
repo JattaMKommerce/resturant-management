@@ -25,6 +25,8 @@ const pushRoutes = require('./pushRoutes');
 
 // Rate limiters
 const applicationLimiter = createRateLimiter(15 * 60 * 1000, 10); // 10 application requests per 15 min
+const passwordResetLimiter = createRateLimiter(15 * 60 * 1000, 10, 'password-reset'); // reset code requests/attempts per IP
+const loginLimiter = createRateLimiter(15 * 60 * 1000, 30, 'login'); // password guessing guard per IP
 
 // Document upload fields for rider applications
 const riderFieldsUpload = riderUpload.fields([
@@ -45,8 +47,12 @@ const customerController = require('../controllers/customerController');
 // ═══════════════════════════════════════════════
 router.post('/auth/register', authController.register);
 router.post('/auth/register-restaurant', authController.registerRestaurant);
-router.post('/auth/login', authController.login);
+router.post('/auth/login', loginLimiter, authController.login);
 router.get('/auth/me', authenticateToken, authController.getMe);
+router.post('/auth/logout', authController.logout);
+router.post('/auth/forgot-password', passwordResetLimiter, authController.forgotPassword);
+router.post('/auth/reset-password', passwordResetLimiter, authController.resetPassword);
+router.post('/auth/change-password', authenticateToken, authController.changePassword);
 router.post('/auth/customer/send-otp', authController.customerSendOtp);
 router.post('/auth/customer/verify-otp', authController.customerVerifyOtp);
 router.post('/auth/send-otp', authController.customerSendOtp);

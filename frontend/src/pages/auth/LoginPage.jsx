@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Mail, ArrowRight, ShieldCheck, Eye, EyeOff, Building2, UtensilsCrossed } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -10,9 +10,21 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Why the previous session ended (inactivity, password changed, logged out elsewhere…)
+  useEffect(() => {
+    try {
+      const reason = sessionStorage.getItem('hotel_logout_reason');
+      if (reason) {
+        setNotice(reason);
+        sessionStorage.removeItem('hotel_logout_reason');
+      }
+    } catch (e) {}
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,22 +35,24 @@ export default function LoginPage() {
       const res = await login(email, password);
       if (res.success) {
         const r = res.user?.role;
+        // replace: the Back button should not return to this login form
+        const go = (path) => navigate(path, { replace: true });
         if (r === 'DELIVERY_DRIVER' || r === 'DRIVER') {
-          navigate('/driver/dashboard');
+          go('/driver/dashboard');
           return;
         }
         if (r === 'SUPER_ADMIN') {
-          navigate('/super-admin');
+          go('/super-admin');
         } else if (r === 'KITCHEN' || r === 'CHEF') {
-          navigate('/kitchen');
+          go('/kitchen');
         } else if (r === 'WAITER') {
-          navigate('/waiter/dashboard');
+          go('/waiter/dashboard');
         } else if (r === 'ADMIN' || r === 'RESTAURANT_ADMIN' || r === 'MANAGER') {
           const targetSlug = res.restaurant?.slug;
-          if (targetSlug) navigate(`/admin/${targetSlug}`);
-          else navigate('/admin/offline/operations');
+          if (targetSlug) go(`/admin/${targetSlug}`);
+          else go('/admin/offline/operations');
         } else {
-          navigate('/admin/offline/dashboard');
+          go('/admin/offline/dashboard');
         }
       }
     } catch (err) {
@@ -65,6 +79,12 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {notice && !error && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold text-center" role="status">
+              {notice}
+            </div>
+          )}
+
           {error && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold text-center animate-in fade-in">
               {error}
@@ -88,7 +108,10 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block font-bold text-[#1F2937] mb-1">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-bold text-[#1F2937]">Password</label>
+                <Link to="/forgot-password" className="font-bold text-[#3A7D7C] hover:underline">Forgot password?</Link>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input

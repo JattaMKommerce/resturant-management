@@ -12,6 +12,7 @@ export default function KitchenRegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pendingMessage, setPendingMessage] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -31,7 +32,11 @@ export default function KitchenRegisterPage() {
       });
 
       if (res.data.success) {
-        // Automatically login
+        // New staff accounts wait for the restaurant admin to activate them.
+        if (res.data.pending_activation) {
+          setPendingMessage(res.data.message || 'Account created. Ask your restaurant admin to activate it.');
+          return;
+        }
         await login(email, password);
         navigate('/kitchen');
       }
@@ -62,6 +67,14 @@ export default function KitchenRegisterPage() {
           </div>
         )}
 
+        {pendingMessage ? (
+          <div className="space-y-4 text-center" role="status">
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+              {pendingMessage}
+            </div>
+            <Link to="/kitchen/login" className="inline-block font-bold text-xs text-[#3A7D7C] hover:underline">Go to staff login</Link>
+          </div>
+        ) : (
         <form onSubmit={handleRegister} className="space-y-3.5 text-xs">
           <div>
             <label className="block font-bold text-[#1F2937] mb-1">Chef / Cook Name</label>
@@ -145,6 +158,7 @@ export default function KitchenRegisterPage() {
             )}
           </button>
         </form>
+        )}
 
         <div className="text-center text-xs text-[#64748B] pt-3 border-t border-[#D7E5E8]">
           <span>Already have a kitchen account? </span>

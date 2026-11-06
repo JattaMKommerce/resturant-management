@@ -173,10 +173,7 @@ async function driverLogin(req, res) {
       return res.status(403).json({ success: false, message: 'Your user account is disabled. Contact support.' });
     }
 
-    let match = await bcrypt.compare(password, user.password_hash);
-    if (!match && user.plain_password && user.plain_password === password) {
-      match = true;
-    }
+    const match = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!match) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
@@ -246,10 +243,8 @@ async function driverLogin(req, res) {
 
     const assignedRestaurants = restaurant ? [restaurant] : [];
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, name: user.name, role: 'DRIVER', driverId: driver.id },
-      JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    const token = require('../utils/authSession').signToken(
+      { id: user.id, email: user.email, name: user.name, role: 'DRIVER', driverId: driver.id }
     );
 
     const cookieOptions = {
@@ -1288,15 +1283,15 @@ async function createAdminDriver(req, res) {
     if (existingDriverUser) {
       userId = existingDriverUser.id;
       await query(
-        `UPDATE users SET name = ?, phone = ?, role = 'DRIVER', status = 'ACTIVE', password_hash = ?, plain_password = ? WHERE id = ?`,
-        [name.trim(), cleanPhone, hash, userPassword, userId]
+        `UPDATE users SET name = ?, phone = ?, role = 'DRIVER', status = 'ACTIVE', password_hash = ?, plain_password = NULL WHERE id = ?`,
+        [name.trim(), cleanPhone, hash, userId]
       );
     } else {
       try {
         const userRes = await query(
-          `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-           VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
-          [name.trim(), driverEmail, hash, userPassword, cleanPhone]
+          `INSERT INTO users (name, email, password_hash, phone, role, status)
+           VALUES (?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
+          [name.trim(), driverEmail, hash, cleanPhone]
         );
         userId = userRes.insertId;
       } catch (insertErr) {
@@ -1304,9 +1299,9 @@ async function createAdminDriver(req, res) {
           // If email collides with another non-driver user, generate a unique rider email
           driverEmail = `${cleanPhone.replace(/\D/g, '')}_${Date.now()}@hotel.com`;
           const retryRes = await query(
-            `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-             VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
-            [name.trim(), driverEmail, hash, userPassword, cleanPhone]
+            `INSERT INTO users (name, email, password_hash, phone, role, status)
+             VALUES (?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
+            [name.trim(), driverEmail, hash, cleanPhone]
           );
           userId = retryRes.insertId;
         } else {

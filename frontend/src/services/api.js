@@ -58,7 +58,18 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const message = error.response?.data?.message || error.message || 'An unexpected network error occurred';
-    return Promise.reject(new Error(message));
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      const staffToken = localStorage.getItem('hotel_token');
+      const sentAuth = error.config?.headers?.Authorization || error.config?.headers?.authorization;
+      if (staffToken && sentAuth === `Bearer ${staffToken}`) {
+        localStorage.removeItem('hotel_token');
+        localStorage.removeItem('hotel_user');
+        window.dispatchEvent(new CustomEvent('hms_session_ended', { detail: { message } }));
+      }
+    }
+    const wrapped = new Error(message);
+    wrapped.response = error.response;
+    return Promise.reject(wrapped);
   }
 );
 

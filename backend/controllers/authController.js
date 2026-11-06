@@ -1,9 +1,22 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
+const {
+  signToken, tokenExpiryFor, extractToken, revokeToken, revokeAllSessionsForUser,
+  clearAuthCookies, hashCode, ensureAuthSchema, STAFF_ROLES
+} = require('../utils/authSession');
 require('dotenv').config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_hotel_jwt_key_2026';
+const MIN_PASSWORD_LENGTH = 6;
+
+// Local testing conveniences for the customer WhatsApp OTP login (universal code 1234 and
+// showing the code on screen). Never enable this on the live server.
+const DEMO_OTP_ALLOWED = process.env.ALLOW_DEMO_OTP === 'true';
+
+function expiryToMs(expiresIn) {
+  const m = String(expiresIn).match(/^(\d+)\s*([smhd])$/);
+  if (!m) return 7 * 24 * 3600 * 1000;
+  return Number(m[1]) * { s: 1e3, m: 6e4, h: 3.6e6, d: 8.64e7 }[m[2]];
+}
 
 async function register(req, res) {
   try {
@@ -12,6 +25,9 @@ async function register(req, res) {
     if (!name || !email || !password || !phone) {
       return res.status(400).json({ success: false, message: 'All fields are required.' });
     }
+    if (String(password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+    }
 
     const existing = await query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {
@@ -19,37 +35,50 @@ async function register(req, res) {
     }
 
     let assignedRole = 'CUSTOMER';
-    if (role === 'DRIVER') assignedRole = 'DRIVER';
+    if (role === 'DRIVER') {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery partners must apply through the rider application form so the restaurant can verify their documents.'
+      });
+    }
     else if (role === 'WAITER') assignedRole = 'WAITER';
     else if (role === 'KITCHEN' || role === 'CHEF') assignedRole = 'KITCHEN';
+
+    // Staff who sign themselves up start INACTIVE: the restaurant admin activates them from
+    // Staff Management. Before, anyone could attach themselves to any restaurant as staff.
+    const isStaffSignup = assignedRole === 'WAITER' || assignedRole === 'KITCHEN';
+    let staffRestaurantId = null;
+    if (isStaffSignup) {
+      staffRestaurantId = parseInt(req.body.restaurant_id, 10) || 1;
+      const [rest] = await query('SELECT id FROM restaurants WHERE id = ?', [staffRestaurantId]);
+      if (!rest) {
+        return res.status(400).json({ success: false, message: 'Restaurant not found.' });
+      }
+    }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status) VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')`,
-      [name, email, passwordHash, password, phone, assignedRole]
+      `INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, ?, ?)`,
+      [name, email, passwordHash, phone, assignedRole, isStaffSignup ? 'INACTIVE' : 'ACTIVE']
     );
 
     const userId = result.insertId;
 
-    if (assignedRole === 'DRIVER') {
-      await query(
-        `INSERT INTO delivery_drivers (user_id, vehicle_type, vehicle_number, is_active, approval_status, availability_status) VALUES (?, 'Motorbike', 'TEMP-0000', 1, 'PENDING', 'AVAILABLE')`,
-        [userId]
-      );
-    } else if (assignedRole === 'WAITER' || assignedRole === 'KITCHEN') {
-      const restId = req.body.restaurant_id || 1;
+    if (isStaffSignup) {
       await query(
         `INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, ?, 0)`,
-        [userId, restId]
+        [userId, staffRestaurantId]
       );
+      return res.status(201).json({
+        success: true,
+        pending_activation: true,
+        message: 'Account created. Your restaurant admin must activate it in Staff Management before you can log in.',
+        user: { id: userId, name, email, phone, role: assignedRole, status: 'INACTIVE' }
+      });
     }
 
-    const token = jwt.sign(
-      { id: userId, email, name, role: assignedRole },
-      JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = signToken({ id: userId, email, name, role: assignedRole });
 
     res.status(201).json({
       success: true,
@@ -85,11 +114,15 @@ async function registerRestaurant(req, res) {
       return res.status(400).json({ success: false, message: 'Admin email address is already registered.' });
     }
 
+    if (String(adminPassword).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+    }
+
     // Create Admin User with RESTAURANT_ADMIN role
     const passwordHash = await bcrypt.hash(adminPassword, 10);
     const userRes = await query(
-      `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status) VALUES (?, ?, ?, ?, ?, 'RESTAURANT_ADMIN', 'ACTIVE')`,
-      [adminName, adminEmail, passwordHash, adminPassword, adminPhone]
+      `INSERT INTO users (name, email, password_hash, phone, role, status) VALUES (?, ?, ?, ?, 'RESTAURANT_ADMIN', 'ACTIVE')`,
+      [adminName, adminEmail, passwordHash, adminPhone]
     );
 
     const adminUserId = userRes.insertId;
@@ -145,11 +178,7 @@ async function registerRestaurant(req, res) {
     }
 
     // Generate JWT Token
-    const token = jwt.sign(
-      { id: adminUserId, email: adminEmail, name: adminName, role: 'RESTAURANT_ADMIN' },
-      JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = signToken({ id: adminUserId, email: adminEmail, name: adminName, role: 'RESTAURANT_ADMIN' });
 
     const [newRest] = await query('SELECT * FROM restaurants WHERE id = ?', [restaurantId]);
 
@@ -211,13 +240,13 @@ async function login(req, res) {
       if (user.role === 'DRIVER') {
         return res.status(403).json({ success: false, message: 'Your driver account has been locked/disabled by Super Admin.' });
       }
+      if (STAFF_ROLES.includes(String(user.role || '').toUpperCase())) {
+        return res.status(403).json({ success: false, message: 'Your staff account is inactive. Ask your restaurant admin to activate it in Staff Management.' });
+      }
       return res.status(403).json({ success: false, message: 'Account is deactivated. Contact support.' });
     }
 
-    let match = await bcrypt.compare(password, user.password_hash);
-    if (!match && user.plain_password && user.plain_password === password) {
-      match = true;
-    }
+    const match = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!match) {
       return res.status(401).json({ success: false, message: 'Invalid email/mobile or password.' });
     }
@@ -256,7 +285,9 @@ async function login(req, res) {
     if (restRows.length > 0) {
       restaurant = restRows[0];
       restaurants = restRows;
-      if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'DRIVER'].includes(user.role)) {
+      // Owners whose account started as a customer get repaired to RESTAURANT_ADMIN.
+      // Staff are linked to their restaurant the same way and must keep their own role.
+      if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', ...STAFF_ROLES].includes(String(user.role || '').toUpperCase())) {
         await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
         user.role = 'RESTAURANT_ADMIN';
       }
@@ -302,15 +333,13 @@ async function login(req, res) {
       restaurant_id: restaurant ? restaurant.id : 1
     };
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-    });
+    const token = signToken(tokenPayload);
 
     const cookieOptions = {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: expiryToMs(tokenExpiryFor(effectiveRole))
     };
     res.cookie('hotel_token', token, cookieOptions);
     res.cookie('token', token, cookieOptions);
@@ -423,6 +452,7 @@ async function getMe(req, res) {
 
 // In-memory OTP store fallback / fast cache
 const customerOtpStore = new Map();
+const customerOtpAttempts = new Map();
 
 let isCustomerOtpTableEnsured = false;
 async function ensureCustomerOtpsTable() {
@@ -506,7 +536,10 @@ async function customerSendOtp(req, res) {
       console.warn('[customerSendOtp] MySQL OTP persistence warning:', dbErr.message);
     }
 
-    console.log(`📲 [WhatsApp/OTP] Verification code for ${cleanPhone}: ${otp} (Master code: 1234)`);
+    customerOtpAttempts.delete(cleanPhone);
+    if (DEMO_OTP_ALLOWED) {
+      console.log(`📲 [WhatsApp/OTP] Verification code for ${cleanPhone}: ${otp} (demo code 1234 enabled)`);
+    }
 
     // Fetch restaurant name if available
     let restaurantName = 'Hotel & Restaurant';
@@ -533,19 +566,32 @@ async function customerSendOtp(req, res) {
     const waText = encodeURIComponent(`Hi ${restaurantName}, please verify my login code: ${otp}`);
     const whatsappDeepLink = `https://api.whatsapp.com/send?phone=${restaurantWhatsApp}&text=${waText}`;
 
+    // The code is only ever shown on screen when WhatsApp could not deliver it (so customers
+    // can still log in while WhatsApp is not set up). Once WhatsApp delivers, the customer
+    // must type the code they received — showing it to whoever asked made every account
+    // takeable with just a phone number. Set OTP_REQUIRE_WHATSAPP=true to never show it.
+    const requireWhatsApp = process.env.OTP_REQUIRE_WHATSAPP === 'true';
+    const exposeCode = !waDelivery.success && (!requireWhatsApp || DEMO_OTP_ALLOWED);
+    if (!waDelivery.success && !exposeCode) {
+      return res.status(503).json({
+        success: false,
+        message: 'We could not send the WhatsApp code right now. Please try again in a moment.'
+      });
+    }
+
     return res.json({
       success: true,
       phone: cleanPhone,
       isNewUser,
       existingName: existingCust?.name || anyUser?.name || null,
-      otpPreview: otp, // For seamless 1-tap testing
+      otpPreview: exposeCode ? otp : undefined,
       whatsappSent: Boolean(waDelivery.success),
       whatsappMessageId: waDelivery.messageId || null,
       whatsappError: waDelivery.success ? null : (waDelivery.error || 'WhatsApp service not configured or token expired'),
-      whatsappDeepLink,
+      whatsappDeepLink: exposeCode ? whatsappDeepLink : undefined,
       message: waDelivery.success
         ? `WhatsApp verification code sent to +91 ${cleanPhone}!`
-        : `Localhost test mode: Verification code is ${otp} (Master code: 1234)`
+        : `Verification code: ${otp}`
     });
   } catch (err) {
     console.error('customerSendOtp error:', err);
@@ -563,10 +609,15 @@ async function customerVerifyOtp(req, res) {
     const cleanPhone = String(phone || '').replace(/[^0-9]/g, '').slice(-10);
 
     const submittedOtp = String(otp || '').trim();
-    const isFirebaseVerified = Boolean(req.body.firebaseVerified);
 
-    if (!cleanPhone || (!submittedOtp && !isFirebaseVerified)) {
+    if (!cleanPhone || !submittedOtp) {
       return res.status(400).json({ success: false, message: 'Phone and OTP are required.' });
+    }
+
+    // Brute-force guard: 5 wrong codes per phone burns the current code.
+    const attempts = customerOtpAttempts.get(cleanPhone) || 0;
+    if (attempts >= 5) {
+      return res.status(429).json({ success: false, message: 'Too many wrong codes. Please request a new code.' });
     }
 
     // 1. Try in-memory store
@@ -593,27 +644,29 @@ async function customerVerifyOtp(req, res) {
       }
     }
 
-    console.log(`🔍 [Verify OTP Attempt] Phone: ${cleanPhone} | Submitted: "${submittedOtp}" | FirebaseVerified: ${isFirebaseVerified} | Stored: "${stored?.otp}"`);
-
-    // Universal master demo OTP '1234' works for all numbers
-    const isUniversalMaster = (submittedOtp === '1234');
+    // Universal demo code '1234' only when ALLOW_DEMO_OTP=true (local testing)
+    const isUniversalMaster = DEMO_OTP_ALLOWED && submittedOtp === '1234';
     const isStoredOtpMatch = Boolean(stored && stored.otp === submittedOtp);
     const isNotExpired = Boolean(stored && Date.now() <= (Number(stored.expiresAt) + 15 * 60 * 1000));
 
-    // Valid if Firebase verified, universal code, or matching OTP within window
-    const isValid = isFirebaseVerified || isUniversalMaster || (isStoredOtpMatch && isNotExpired);
+    const isValid = isUniversalMaster || (isStoredOtpMatch && isNotExpired);
 
     if (!isValid) {
       if (isStoredOtpMatch && !isNotExpired) {
         return res.status(400).json({ success: false, message: 'OTP code has expired. Please click Resend Code to receive a new one.' });
       }
-      return res.status(400).json({ success: false, message: 'Invalid OTP code. Please check the 4-digit code or enter 1234.' });
+      customerOtpAttempts.set(cleanPhone, attempts + 1);
+      return res.status(400).json({ success: false, message: 'Invalid OTP code. Please check the code you received on WhatsApp.' });
     }
+    customerOtpAttempts.delete(cleanPhone);
 
-    // 1. Look for existing user with this phone number (preferring admin/staff accounts if available)
+    // 1. Look for this phone's CUSTOMER account. The WhatsApp OTP login is for customers only:
+    // it must never sign someone in as an admin or staff member who shares the phone number.
     let [user] = await query(
-      'SELECT id, name, email, phone, role FROM users WHERE (phone = ? OR phone LIKE ?) ORDER BY (role IN ("SUPER_ADMIN", "ADMIN", "RESTAURANT_ADMIN", "MANAGER")) DESC LIMIT 1',
-      [cleanPhone, `%${cleanPhone}%`]
+      `SELECT id, name, email, phone, role FROM users
+       WHERE (phone = ? OR phone LIKE ?) AND role = 'CUSTOMER'
+       ORDER BY (phone = ?) DESC, id ASC LIMIT 1`,
+      [cleanPhone, `%${cleanPhone}%`, cleanPhone]
     );
 
     if (!user) {
@@ -675,30 +728,9 @@ async function customerVerifyOtp(req, res) {
       }
     }
 
-    // Auto-detect if this user is a restaurant owner/admin
-    let effectiveRole = user.role;
-    let assignedRestaurantId = restaurantId || stored?.restaurantId || null;
-    try {
-      const restRows = await query(
-        `SELECT r.id FROM restaurants r
-         LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
-         WHERE ra.user_id = ? OR r.admin_user_id = ?
-         ORDER BY (r.admin_user_id = ?) DESC, ra.is_primary DESC`,
-        [user.id, user.id, user.id]
-      );
-      if (restRows.length > 0) {
-        if (!['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'].includes(effectiveRole)) {
-          await query('UPDATE users SET role = "RESTAURANT_ADMIN" WHERE id = ?', [user.id]);
-          user.role = 'RESTAURANT_ADMIN';
-          effectiveRole = 'RESTAURANT_ADMIN';
-        }
-        if (!assignedRestaurantId) {
-          assignedRestaurantId = restRows[0].id;
-        }
-      }
-    } catch (restErr) {
-      console.warn('[customerVerifyOtp] Restaurant check warning:', restErr.message);
-    }
+    // OTP sessions are always customer sessions (never promoted to admin).
+    const effectiveRole = 'CUSTOMER';
+    const assignedRestaurantId = restaurantId || stored?.restaurantId || null;
 
     // Ensure wallet account exists for this customer at this restaurant
     const tenantId = assignedRestaurantId || 1;
@@ -710,7 +742,7 @@ async function customerVerifyOtp(req, res) {
     }
 
     // Sign JWT with effective role and restaurant_id
-    const token = jwt.sign(
+    const token = signToken(
       {
         id: user.id,
         email: user.email,
@@ -719,8 +751,7 @@ async function customerVerifyOtp(req, res) {
         phone: user.phone,
         restaurant_id: assignedRestaurantId || 1
       },
-      JWT_SECRET,
-      { expiresIn: '30d' }
+      '30d'
     );
 
     // Save for idempotency & multi-tab sessions
@@ -734,7 +765,11 @@ async function customerVerifyOtp(req, res) {
       restaurant_id: assignedRestaurantId || 1
     };
 
+    // A code works once: burn it so it cannot be replayed (the stored value can never match a
+    // submitted 4-digit code).
+    const burnedOtp = 'USED';
     if (stored) {
+      stored.otp = burnedOtp;
       stored.lastToken = token;
       stored.lastUser = cleanUser;
       stored.verifiedAt = verifiedAt;
@@ -743,9 +778,9 @@ async function customerVerifyOtp(req, res) {
     try {
       await query(`
         UPDATE customer_otps
-        SET verified_at = ?, last_token = ?, last_user = ?
+        SET otp = ?, verified_at = ?, last_token = ?, last_user = ?
         WHERE phone = ?
-      `, [verifiedAt, token, JSON.stringify(cleanUser), cleanPhone]);
+      `, [burnedOtp, verifiedAt, token, JSON.stringify(cleanUser), cleanPhone]);
     } catch (dbUpdateErr) {
       console.warn('[customerVerifyOtp] DB update warning:', dbUpdateErr.message);
     }
@@ -762,11 +797,183 @@ async function customerVerifyOtp(req, res) {
   }
 }
 
+/**
+ * POST /api/auth/logout
+ * Ends this session on the server (the token stops working everywhere, including the
+ * cookie copy) and clears the auth cookies. Works even if the token is already invalid.
+ */
+async function logout(req, res) {
+  try {
+    const token = extractToken(req);
+    if (token) await revokeToken(token);
+  } catch (err) {
+    console.warn('logout revoke warning:', err.message);
+  }
+  clearAuthCookies(res);
+  res.set('Cache-Control', 'no-store');
+  return res.json({ success: true, message: 'Logged out.' });
+}
+
+const RESET_CODE_TTL_MS = 10 * 60 * 1000;
+const RESET_MAX_ATTEMPTS = 5;
+
+/** Find the password account (staff/admin/driver — customers use OTP login) for an email or phone. */
+async function findPasswordAccount(identifier) {
+  const input = String(identifier || '').trim();
+  if (!input) return null;
+  if (input.includes('@')) {
+    const [user] = await query(
+      `SELECT id, name, email, phone, role, status FROM users WHERE LOWER(email) = LOWER(?) AND role <> 'CUSTOMER' LIMIT 1`,
+      [input]
+    );
+    return user || null;
+  }
+  const digits = input.replace(/\D/g, '').slice(-10);
+  if (digits.length < 10) return null;
+  const users = await query(
+    `SELECT id, name, email, phone, role, status FROM users
+     WHERE (phone = ? OR phone LIKE ?) AND role <> 'CUSTOMER'
+     ORDER BY id ASC`,
+    [digits, `%${digits}`]
+  );
+  // A phone shared by several password accounts is ambiguous: ask for the email instead.
+  return users.length === 1 ? users[0] : null;
+}
+
+/**
+ * POST /api/auth/forgot-password { identifier }
+ * Sends a 6-digit reset code to the account's registered WhatsApp number.
+ * The response is the same whether or not the account exists.
+ */
+async function forgotPassword(req, res) {
+  const genericMessage = 'If an account exists for these details, a 6-digit reset code has been sent to its registered WhatsApp number. It expires in 10 minutes.';
+  try {
+    await ensureAuthSchema();
+    const identifier = req.body?.identifier || req.body?.email || req.body?.phone;
+    if (!identifier || !String(identifier).trim()) {
+      return res.status(400).json({ success: false, message: 'Enter your email or mobile number.' });
+    }
+
+    const user = await findPasswordAccount(identifier);
+    if (!user || user.status === 'DISABLED' || !user.phone) {
+      return res.json({ success: true, message: genericMessage });
+    }
+
+    const crypto = require('crypto');
+    const code = String(crypto.randomInt(100000, 1000000));
+    await query(`UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0`, [user.id]);
+    await query(
+      `INSERT INTO password_resets (user_id, code_hash, channel, expires_at_ms) VALUES (?, ?, 'WHATSAPP', ?)`,
+      [user.id, hashCode(code), Date.now() + RESET_CODE_TTL_MS]
+    );
+
+    const { sendWhatsAppOtp } = require('../services/WhatsAppOtpService');
+    const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'hms_login_otp';
+    const delivery = await sendWhatsAppOtp(user.phone, code, templateName).catch((e) => ({ success: false, error: e.message }));
+
+    if (!delivery.success) {
+      if (DEMO_OTP_ALLOWED) {
+        return res.json({ success: true, message: genericMessage, dev_code: code });
+      }
+      console.error(`[forgotPassword] WhatsApp delivery failed for user ${user.id}:`, delivery.error);
+      return res.status(503).json({
+        success: false,
+        message: 'We could not send the reset code on WhatsApp right now. Please try again later or ask your administrator to reset your password.'
+      });
+    }
+
+    return res.json({ success: true, message: genericMessage });
+  } catch (err) {
+    console.error('forgotPassword error:', err);
+    return res.status(500).json({ success: false, message: 'Could not start the password reset. Please try again.' });
+  }
+}
+
+/**
+ * POST /api/auth/reset-password { identifier, code, new_password }
+ */
+async function resetPassword(req, res) {
+  try {
+    await ensureAuthSchema();
+    const { identifier, code } = req.body || {};
+    const newPassword = String(req.body?.new_password || req.body?.password || '');
+    if (!identifier || !code || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email/mobile, reset code and new password are required.' });
+    }
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+    }
+
+    const invalidMsg = 'That reset code is invalid or has expired. Please request a new one.';
+    const user = await findPasswordAccount(identifier);
+    if (!user) return res.status(400).json({ success: false, message: invalidMsg });
+
+    const [reset] = await query(
+      `SELECT * FROM password_resets WHERE user_id = ? AND used = 0 ORDER BY id DESC LIMIT 1`,
+      [user.id]
+    );
+    if (!reset || Number(reset.expires_at_ms) < Date.now() || reset.attempts >= RESET_MAX_ATTEMPTS) {
+      return res.status(400).json({ success: false, message: invalidMsg });
+    }
+    if (reset.code_hash !== hashCode(String(code).trim())) {
+      await query(`UPDATE password_resets SET attempts = attempts + 1 WHERE id = ?`, [reset.id]);
+      const left = RESET_MAX_ATTEMPTS - reset.attempts - 1;
+      return res.status(400).json({
+        success: false,
+        message: left > 0 ? `Incorrect code. ${left} attempt(s) left.` : invalidMsg
+      });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await query(`UPDATE users SET password_hash = ?, plain_password = NULL WHERE id = ?`, [hash, user.id]);
+    await query(`UPDATE password_resets SET used = 1 WHERE user_id = ?`, [user.id]);
+    await revokeAllSessionsForUser(user.id);
+
+    return res.json({ success: true, message: 'Password updated. Please log in with your new password.' });
+  } catch (err) {
+    console.error('resetPassword error:', err);
+    return res.status(500).json({ success: false, message: 'Could not reset the password. Please try again.' });
+  }
+}
+
+/**
+ * POST /api/auth/change-password { current_password, new_password } (logged in)
+ * Ends all other sessions and returns a fresh token for this one.
+ */
+async function changePassword(req, res) {
+  try {
+    const current = String(req.body?.current_password || '');
+    const next = String(req.body?.new_password || '');
+    if (!current || !next) {
+      return res.status(400).json({ success: false, message: 'Current and new password are required.' });
+    }
+    if (next.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+    }
+    const [user] = await query('SELECT id, name, email, role, password_hash FROM users WHERE id = ?', [req.user.id]);
+    if (!user || !user.password_hash || !(await bcrypt.compare(current, user.password_hash))) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+    }
+    await query(`UPDATE users SET password_hash = ?, plain_password = NULL WHERE id = ?`, [await bcrypt.hash(next, 10), user.id]);
+    await revokeAllSessionsForUser(user.id);
+    // Fresh iat_ms (>= the cut-off just written, and the check is strict), so this token stays valid.
+    const token = signToken(req.user);
+    return res.json({ success: true, message: 'Password changed. Other devices have been logged out.', token });
+  } catch (err) {
+    console.error('changePassword error:', err);
+    return res.status(500).json({ success: false, message: 'Could not change the password.' });
+  }
+}
+
 module.exports = {
   register,
   registerRestaurant,
   login,
   getMe,
   customerSendOtp,
-  customerVerifyOtp
+  customerVerifyOtp,
+  logout,
+  forgotPassword,
+  resetPassword,
+  changePassword
 };

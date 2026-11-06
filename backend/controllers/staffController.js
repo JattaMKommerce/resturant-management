@@ -10,7 +10,7 @@ async function getRestaurantStaff(req, res) {
     const restaurantId = req.adminRestaurantId || req.user?.restaurant_id || 1;
 
     const staffRows = await query(
-      `SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.plain_password, u.created_at, u.updated_at,
+      `SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.created_at, u.updated_at,
               ra.restaurant_id
        FROM users u
        JOIN restaurant_admins ra ON u.id = ra.user_id
@@ -24,8 +24,7 @@ async function getRestaurantStaff(req, res) {
     const staffWithPresence = staffRows.map(staff => ({
       ...staff,
       role: staff.role === 'CHEF' ? 'KITCHEN' : staff.role,
-      is_online: isUserOnline(staff.id),
-      plain_password: staff.plain_password || null
+      is_online: isUserOnline(staff.id)
     }));
 
     return res.json({
@@ -79,9 +78,9 @@ async function createStaffMember(req, res) {
 
     const result = await withTransaction(async (conn) => {
       const [userRes] = await conn.query(
-        `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-         VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')`,
-        [name, email, passwordHash, password, phone, normalizedRole]
+        `INSERT INTO users (name, email, password_hash, phone, role, status)
+         VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+        [name, email, passwordHash, phone, normalizedRole]
       );
 
       const newUserId = userRes.insertId;
@@ -98,7 +97,8 @@ async function createStaffMember(req, res) {
         email,
         phone,
         role: normalizedRole,
-        plain_password: password,
+        // Returned once so the admin can share the login details; it is not stored.
+        initial_password: password,
         status: 'ACTIVE',
         is_online: false,
         restaurant_id: restaurantId
@@ -153,8 +153,7 @@ async function updateStaffMember(req, res) {
       const passwordHash = await bcrypt.hash(password.trim(), 10);
       updates.push('password_hash = ?');
       params.push(passwordHash);
-      updates.push('plain_password = ?');
-      params.push(password.trim());
+      updates.push('plain_password = NULL');
     }
 
     if (updates.length > 0) {
@@ -162,7 +161,12 @@ async function updateStaffMember(req, res) {
       await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
     }
 
-    const [updatedRows] = await query('SELECT id, name, email, phone, role, status, plain_password FROM users WHERE id = ?', [id]);
+    if (password && String(password).trim().length > 0) {
+      // New password set by the admin: end the staff member's existing sessions.
+      await require('../utils/authSession').revokeAllSessionsForUser(id);
+    }
+
+    const [updatedRows] = await query('SELECT id, name, email, phone, role, status FROM users WHERE id = ?', [id]);
     const updated = updatedRows[0];
 
     return res.json({

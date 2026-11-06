@@ -17,7 +17,7 @@ async function login(req, res, next) {
       [rows] = await pool.query(
         `SELECT u.*, u.role as role_name 
          FROM users u 
-         WHERE LOWER(u.email) = LOWER(?) AND (u.status IS NULL OR u.status = 'ACTIVE')`,
+         WHERE LOWER(u.email) = LOWER(?)`,
         [inputStr]
       );
     } else {
@@ -29,8 +29,7 @@ async function login(req, res, next) {
         `SELECT u.*, u.role as role_name 
          FROM users u 
          WHERE (u.phone = ? OR u.phone = ? OR u.phone LIKE ? OR LOWER(u.email) = LOWER(?))
-           AND (u.status IS NULL OR u.status = 'ACTIVE')
-         ORDER BY id DESC`,
+         ORDER BY (u.status IS NULL OR u.status = 'ACTIVE') DESC, id DESC`,
         [inputStr, phoneCandidate, `%${phoneCandidate}`, fallbackEmail]
       );
     }
@@ -40,12 +39,18 @@ async function login(req, res, next) {
     }
 
     const user = rows[0];
-    let isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch && user.plain_password && user.plain_password === password) {
-      isMatch = true;
-    }
+    const isMatch = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!isMatch) {
       return sendError(res, 'Invalid email/mobile or password.', 401);
+    }
+
+    // Status is only revealed after the password is verified.
+    if (user.status && user.status !== 'ACTIVE') {
+      const role = String(user.role || '').toUpperCase();
+      const msg = ['WAITER', 'KITCHEN', 'CHEF', 'CASHIER', 'INVENTORY_MANAGER', 'MANAGER'].includes(role)
+        ? 'Your staff account is inactive. Ask your restaurant admin to activate it in Staff Management.'
+        : 'Your account is deactivated. Please contact support.';
+      return sendError(res, msg, 403);
     }
 
     // Fetch primary restaurant and all assigned restaurants

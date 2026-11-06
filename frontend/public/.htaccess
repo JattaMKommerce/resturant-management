@@ -1,3 +1,12 @@
+# The app shell must never be served from the browser cache: after logout the Back button has
+# to load a fresh copy, which then sees there is no session and sends the user to the login page.
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|sw\.js)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /

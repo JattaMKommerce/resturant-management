@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import IdleSessionGuard from '../../components/IdleSessionGuard';
 
 export default function SuperAdminPage() {
   const { user, login, logout, loading: authLoading } = useAuth();
@@ -625,6 +626,8 @@ export default function SuperAdminPage() {
 
   return (
     <div className="min-h-screen bg-[#EAF4F7] text-[#1F2937] flex flex-col font-sans antialiased">
+      {/* Automatic logout after inactivity (REQ-014) */}
+      <IdleSessionGuard loginPath="/super-admin" />
       {/* Top Header */}
       <header className="bg-white/95 backdrop-blur-md border-b border-[#D7E5E8] sticky top-0 z-30 px-6 py-4 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">

@@ -574,9 +574,9 @@ async function createRestaurantAdmin(req, res) {
 
     const hash = await bcrypt.hash(password, 10);
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-       VALUES (?, ?, ?, ?, ?, 'RESTAURANT_ADMIN', 'ACTIVE')`,
-      [name, email, hash, password, phone]
+      `INSERT INTO users (name, email, password_hash, phone, role, status)
+       VALUES (?, ?, ?, ?, 'RESTAURANT_ADMIN', 'ACTIVE')`,
+      [name, email, hash, phone]
     );
 
     const userId = result.insertId;
@@ -654,7 +654,7 @@ async function getAllAdmins(req, res) {
   try {
     // 1. Fetch all admins
     const admins = await query(
-      `SELECT u.id as user_id, u.name, u.email, u.phone, u.plain_password, u.status, u.role, u.created_at
+      `SELECT u.id as user_id, u.name, u.email, u.phone, u.status, u.role, u.created_at
        FROM users u
        WHERE u.role IN ('ADMIN', 'RESTAURANT_ADMIN')
        ORDER BY u.created_at DESC`
@@ -949,7 +949,7 @@ async function getAllDrivers(req, res) {
     const drivers = await query(
       `SELECT d.id as driver_id, d.user_id, d.vehicle_type, d.vehicle_number, d.license_number,
               d.approval_status, d.availability_status, d.is_active, d.created_at,
-              u.name, u.email, u.phone, u.plain_password, u.status as user_status,
+              u.name, u.email, u.phone, u.status as user_status,
               GROUP_CONCAT(DISTINCT r.name SEPARATOR ', ') as restaurant_name
        FROM delivery_drivers d
        JOIN users u ON d.user_id = u.id

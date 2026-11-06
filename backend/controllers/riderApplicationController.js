@@ -92,13 +92,13 @@ async function submitApplication(req, res) {
       // Create application record with chosen password
       const [appRes] = await conn.query(
         `INSERT INTO rider_applications (
-          restaurant_id, full_name, mobile, email, password_hash, plain_password,
+          restaurant_id, full_name, mobile, email, password_hash,
           date_of_birth, home_city, current_city, current_address, emergency_contact,
           vehicle_type, vehicle_number, application_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
         [
           restaurantId, fullName.trim(), mobile.trim(), email.trim().toLowerCase(),
-          passwordHash, plainPassword,
+          passwordHash,
           dateOfBirth || null, homeCity || null, currentCity || null,
           currentAddress || null, emergencyContact || null,
           vehicleType, vehicleNumber || null
@@ -353,15 +353,15 @@ async function approveApplication(req, res) {
             role = 'DRIVER',
             status = 'ACTIVE',
             password_hash = COALESCE(?, password_hash),
-            plain_password = COALESCE(?, plain_password)
+            plain_password = NULL
            WHERE id = ?`,
-          [userPasswordHash, userPlainPassword, userId]
+          [userPasswordHash, userId]
         );
       } else {
         const [userRes] = await conn.query(
-          `INSERT INTO users (name, email, password_hash, plain_password, phone, role, status)
-           VALUES (?, ?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
-          [app.full_name, app.email, userPasswordHash, userPlainPassword, app.mobile]
+          `INSERT INTO users (name, email, password_hash, phone, role, status)
+           VALUES (?, ?, ?, ?, 'DRIVER', 'ACTIVE')`,
+          [app.full_name, app.email, userPasswordHash, app.mobile]
         );
         userId = userRes.insertId;
       }
