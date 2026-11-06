@@ -177,6 +177,19 @@ async function resolveRestaurantAccess(req, res, next) {
       return next();
     }
 
+    // Staff (cashier, waiter, kitchen…) work at the restaurants they are linked to. What they may
+    // do there is decided by their permissions (utils/permissions.js).
+    if (STAFF_ROLES.includes(String(userRole || '').toUpperCase())) {
+      const links = await query('SELECT restaurant_id FROM restaurant_admins WHERE user_id = ?', [req.user.id]);
+      if (links.length === 0) {
+        return res.status(403).json({ success: false, message: 'Your account is not linked to a restaurant.' });
+      }
+      req.adminRestaurantIds = links.map((l) => l.restaurant_id);
+      req.adminRestaurantId = targetRestId && req.adminRestaurantIds.includes(targetRestId) ? targetRestId : req.adminRestaurantIds[0];
+      req.isSuperAdmin = false;
+      return next();
+    }
+
     return res.status(403).json({ success: false, message: 'Access denied.' });
   } catch (err) {
     console.error('resolveRestaurantAccess Error:', err);

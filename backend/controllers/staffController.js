@@ -236,10 +236,114 @@ async function deleteStaffMember(req, res) {
   }
 }
 
+// ---- Permissions (REQ-029) ---------------------------------------------------------------
+
+async function loadStaffInRestaurant(staffId, restaurantId) {
+  const [row] = await query(
+    `SELECT u.id, u.name, u.role FROM users u
+     JOIN restaurant_admins ra ON ra.user_id = u.id AND ra.restaurant_id = ?
+     WHERE u.id = ?`,
+    [restaurantId, staffId]
+  );
+  return row || null;
+}
+
+/** GET /admin/staff/:id/permissions */
+async function getStaffPermissions(req, res) {
+  try {
+    const perms = require('../utils/permissions');
+    const staff = await loadStaffInRestaurant(req.params.id, req.adminRestaurantId);
+    if (!staff) return res.status(404).json({ success: false, message: 'Staff member not found for this restaurant.' });
+    const role = String(staff.role || '').toUpperCase();
+    const eff = await perms.effectivePermissions(staff.id, role, req.adminRestaurantId);
+    res.json({
+      success: true,
+      staff: { id: staff.id, name: staff.name, role },
+      editable: !eff.owner,
+      permissions: eff.permissions,
+      custom: eff.custom,
+      role_defaults: perms.ROLE_DEFAULTS[role] || [],
+      catalog: perms.PERMISSIONS
+    });
+  } catch (err) {
+    console.error('getStaffPermissions Error:', err);
+    res.status(500).json({ success: false, message: 'Could not load permissions.' });
+  }
+}
+
+/** PUT /admin/staff/:id/permissions { permissions: [...] } or { reset: true } */
+async function updateStaffPermissions(req, res) {
+  try {
+    const perms = require('../utils/permissions');
+    const staff = await loadStaffInRestaurant(req.params.id, req.adminRestaurantId);
+    if (!staff) return res.status(404).json({ success: false, message: 'Staff member not found for this restaurant.' });
+    const role = String(staff.role || '').toUpperCase();
+    if (perms.OWNER_ROLES.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Restaurant owners always have full access.' });
+    }
+    if (Number(staff.id) === Number(req.user.id)) {
+      return res.status(400).json({ success: false, message: 'You cannot change your own permissions.' });
+    }
+    const editorRole = String(req.user.role || '').toUpperCase();
+    const editorIsOwner = perms.OWNER_ROLES.includes(editorRole) || req.isSuperAdmin;
+
+    if (req.body?.reset) {
+      await perms.setPermissions(staff.id, req.adminRestaurantId, null, req.user.id);
+      return res.json({ success: true, message: `${staff.name} is back to the ${role.toLowerCase()} defaults.`, permissions: perms.ROLE_DEFAULTS[role] || [] });
+    }
+    if (!Array.isArray(req.body?.permissions)) {
+      return res.status(400).json({ success: false, message: 'Send the list of permissions.' });
+    }
+    let requested = req.body.permissions.filter((k) => perms.ALL_KEYS.includes(k));
+    if (!editorIsOwner) {
+      // A manager with staff rights can only hand out what they have themselves
+      const mine = (await perms.effectivePermissions(req.user.id, editorRole, req.adminRestaurantId)).permissions;
+      const notAllowed = requested.filter((k) => !mine.includes(k));
+      if (notAllowed.length) {
+        return res.status(403).json({ success: false, message: 'You can only give permissions you have yourself.' });
+      }
+    }
+    const saved = await perms.setPermissions(staff.id, req.adminRestaurantId, requested, req.user.id);
+    res.json({ success: true, message: `Permissions updated for ${staff.name}.`, permissions: saved });
+  } catch (err) {
+    console.error('updateStaffPermissions Error:', err);
+    res.status(500).json({ success: false, message: 'Could not update permissions.' });
+  }
+}
+
+/** GET /auth/permissions — what the signed-in user may do at the current restaurant */
+async function getMyPermissions(req, res) {
+  try {
+    const perms = require('../utils/permissions');
+    const role = String(req.user.role || '').toUpperCase();
+    let restaurantId = null;
+    const slug = req.query.slug || req.headers['x-restaurant-slug'];
+    if (slug) {
+      const [r] = await query('SELECT id FROM restaurants WHERE slug = ? OR custom_subdomain_slug = ? LIMIT 1', [slug, slug]);
+      if (r) restaurantId = r.id;
+    }
+    if (!restaurantId) {
+      const [link] = await query(
+        `SELECT restaurant_id FROM restaurant_admins WHERE user_id = ? ORDER BY is_primary DESC LIMIT 1`,
+        [req.user.id]
+      );
+      restaurantId = link ? link.restaurant_id : (req.user.restaurant_id || null);
+    }
+    const eff = await perms.effectivePermissions(req.user.id, role, restaurantId);
+    res.json({ success: true, role, owner: eff.owner, restaurant_id: restaurantId, permissions: eff.permissions, catalog: perms.PERMISSIONS });
+  } catch (err) {
+    console.error('getMyPermissions Error:', err);
+    res.status(500).json({ success: false, message: 'Could not load permissions.' });
+  }
+}
+
 module.exports = {
   getRestaurantStaff,
   createStaffMember,
   updateStaffMember,
   toggleStaffStatus,
-  deleteStaffMember
+  deleteStaffMember,
+  getStaffPermissions,
+  updateStaffPermissions,
+  getMyPermissions
 };

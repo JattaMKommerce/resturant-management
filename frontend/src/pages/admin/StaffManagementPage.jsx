@@ -5,6 +5,7 @@ import {
   KeyRound, AlertCircle, X, Sparkles, CheckCircle2
 } from 'lucide-react';
 import api from '../../api/axios';
+import StaffPermissionsModal from '../../components/StaffPermissionsModal';
 import { useSocket } from '../../context/SocketContext';
 
 export default function StaffManagementPage() {
@@ -18,6 +19,7 @@ export default function StaffManagementPage() {
   // Passwords are no longer stored in readable form. A password the admin just typed (new staff
   // or a reset via Edit) is kept here for this browser session so the login details can be shared.
   const [freshPasswords, setFreshPasswords] = useState({});
+  const [permissionsFor, setPermissionsFor] = useState(null);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -500,6 +502,14 @@ export default function StaffManagementPage() {
                   </button>
 
                   <button
+                    onClick={() => setPermissionsFor(member)}
+                    className="p-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] transition-colors shadow-2xs text-[11px] font-bold"
+                    title="What this person may do in the admin area"
+                  >
+                    Permissions
+                  </button>
+
+                  <button
                     onClick={() => handleOpenEditModal(member)}
                     className="p-2 rounded-xl bg-white hover:bg-slate-50 text-[#1F2937] border border-[#D7E5E8] transition-colors shadow-2xs"
                     title="Edit details or password"
@@ -707,6 +717,7 @@ export default function StaffManagementPage() {
           </div>
         </div>
       )}
+      {permissionsFor && <StaffPermissionsModal member={permissionsFor} onClose={() => setPermissionsFor(null)} />}
     </div>
   );
 }

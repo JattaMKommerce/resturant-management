@@ -98,6 +98,25 @@ export default function UnifiedSidebar({
 
   // Feature Guard Helper
   const features = restaurant?.features || {};
+  // REQ-029: admin pages a manager/staff member has no permission for are hidden
+  const { access } = useAuth();
+  const PAGE_PERMISSIONS = {
+    '': 'orders.manage', unclaimed: 'orders.manage', orders: 'orders.manage', sales: 'reports.view',
+    refunds: 'refunds.manage', coupons: 'coupons.manage', onboarding: 'settings.manage', staff: 'staff.manage',
+    drivers: 'drivers.manage', 'driver-payouts': 'drivers.manage', menu: 'menu.manage', categories: 'menu.manage',
+    settings: 'settings.manage', wallet: 'settings.manage'
+  };
+  const permissionFor = (path) => {
+    const p = String(path || '').split('#')[0];
+    if (p === '/admin/wallet') return 'settings.manage';
+    if (!activeSlug || !p.startsWith(`/admin/${activeSlug}`)) return null;
+    return PAGE_PERMISSIONS[p.slice(`/admin/${activeSlug}`.length).replace(/^\//, '').split('/')[0]] ?? null;
+  };
+  const isAllowed = (item) => {
+    if (!access?.loaded || access.owner) return true;
+    const key = permissionFor(item.path);
+    return !key || access.permissions.includes(key);
+  };
   const isFeatureEnabled = (key) => {
     if (!key) return true;
     return features[key] !== 0 && features[key] !== false;
@@ -245,7 +264,7 @@ export default function UnifiedSidebar({
 
           {onlineOpen && (
             <div className="space-y-0.5 pt-0.5">
-              {onlineNavItems.filter(item => isFeatureEnabled(item.featureKey)).map((item, idx) => {
+              {onlineNavItems.filter(item => isFeatureEnabled(item.featureKey) && isAllowed(item)).map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <NavLink

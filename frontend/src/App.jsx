@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
 // Customer Online Pages
@@ -80,8 +80,24 @@ import AdminLayout from './components/AdminLayout';
 import NotificationToast from './components/NotificationToast';
 
 // Role Guard Component
+const STAFF_PERMISSION_ROLES = ['CASHIER', 'WAITER', 'KITCHEN', 'CHEF', 'INVENTORY_MANAGER'];
+
 const ProtectedRoute = ({ children, allowedRoles = [], loginPath = '/admin/login' }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, access } = useAuth();
+  const location = useLocation();
+
+  // REQ-029: staff the admin has given permissions to may use the admin pages
+  // (the server checks each action against their permissions)
+  if (!loading && user && STAFF_PERMISSION_ROLES.includes(user.role) && location.pathname.startsWith('/admin/')) {
+    if (!access?.loaded) {
+      return (
+        <div className="min-h-screen bg-[#EAF4F7] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[#3A7D7C] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+    if (access.permissions.length > 0) return children;
+  }
 
   if (loading) {
     return (

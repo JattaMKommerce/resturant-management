@@ -55,6 +55,7 @@ router.post('/auth/logout', authController.logout);
 router.post('/auth/forgot-password', passwordResetLimiter, authController.forgotPassword);
 router.post('/auth/reset-password', passwordResetLimiter, authController.resetPassword);
 router.post('/auth/change-password', authenticateToken, authController.changePassword);
+router.get('/auth/permissions', authenticateToken, staffController.getMyPermissions);
 router.post('/auth/customer/send-otp', authController.customerSendOtp);
 router.post('/auth/customer/verify-otp', authController.customerVerifyOtp);
 router.post('/auth/send-otp', authController.customerSendOtp);
@@ -162,7 +163,16 @@ router.post('/superadmin/restaurants/:id/features/preset', ...superAuth, superAd
 // 9. RESTAURANT ADMIN ROUTES (With Tenant Isolation & SaaS Subscription Enforcement)
 // ═══════════════════════════════════════════════
 const { enforceSubscriptionAccess } = require('../middleware/subscriptionAuth');
-const adminAuth = [authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN'), resolveRestaurantAccess, enforceSubscriptionAccess];
+// Admin API access (REQ-029): owners and Super Admin can do everything; managers and staff need
+// the permission mapped to the route (utils/permissions.js). Unknown roles go through the
+// original role check, which also repairs restaurant owners whose account role is CUSTOMER.
+const permissions = require('../utils/permissions');
+const adminRoleGate = (req, res, next) => {
+  const role = String(req.user?.role || '').toUpperCase();
+  if (permissions.OWNER_ROLES.includes(role) || permissions.PERMISSION_ROLES.includes(role)) return next();
+  return authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'SUPER_ADMIN')(req, res, next);
+};
+const adminAuth = [authenticateToken, adminRoleGate, resolveRestaurantAccess, permissions.requireAdminPermission, enforceSubscriptionAccess];
 
 // Dashboard & Slide 03 Question-First Hotel Intelligence
 router.get('/admin/dashboard/kpis', ...adminAuth, orderController.getDashboardKPIs);
@@ -252,6 +262,8 @@ router.get('/admin/riders/:riderId/documents/:documentId', authenticateToken, re
 router.patch('/admin/riders/:riderId/documents/:documentId/verify', ...adminAuth, riderAppController.verifyDocument);
 // Staff Management (Chefs & Waiters)
 router.get('/admin/staff', ...adminAuth, staffController.getRestaurantStaff);
+router.get('/admin/staff/:id/permissions', ...adminAuth, staffController.getStaffPermissions);
+router.put('/admin/staff/:id/permissions', ...adminAuth, staffController.updateStaffPermissions);
 router.post('/admin/staff', ...adminAuth, staffController.createStaffMember);
 router.put('/admin/staff/:id', ...adminAuth, staffController.updateStaffMember);
 router.patch('/admin/staff/:id/status', ...adminAuth, staffController.toggleStaffStatus);

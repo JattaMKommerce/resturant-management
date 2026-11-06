@@ -14,6 +14,15 @@ export const AuthProvider = ({ children }) => {
   });
   const [restaurants, setRestaurants] = useState([]);
   const [guestInfo, setGuestInfo] = useState(null);
+  // REQ-029: what this user may do in the admin area (owners: everything)
+  const [access, setAccess] = useState({ owner: false, permissions: [], loaded: false });
+  const loadAccess = () => {
+    if (!localStorage.getItem('hotel_token')) return;
+    api.get('/auth/permissions')
+      .then((res) => setAccess({ owner: Boolean(res.data.owner), permissions: res.data.permissions || [], loaded: true }))
+      .catch(() => setAccess((a) => ({ ...a, loaded: true })));
+  };
+  const can = (key) => access.owner || access.permissions.includes(key);
   const [loading, setLoading] = useState(true);
 
   // Initialize guest identity on mount (for customers, no login needed)
@@ -42,6 +51,7 @@ export const AuthProvider = ({ children }) => {
             if (res.data.restaurants) {
               setRestaurants(res.data.restaurants);
             }
+            loadAccess();
           }
         })
         .catch(() => {
@@ -78,6 +88,7 @@ export const AuthProvider = ({ children }) => {
       if (restaurants) {
         setRestaurants(restaurants);
       }
+      if (!res.data.password_change_required) loadAccess();
       return {
         ...res.data,
         token,
@@ -144,6 +155,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setRestaurant(null);
     setRestaurants([]);
+    setAccess({ owner: false, permissions: [], loaded: false });
     window.dispatchEvent(new Event('cart_cleared'));
   };
 
@@ -185,7 +197,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user, setUser, restaurant, setRestaurant, restaurants, setRestaurants, guestInfo, setGuestInfo,
-      updateRestaurant, updateSuiteMode, loading,
+      updateRestaurant, updateSuiteMode, loading, access, can, loadAccess,
       login, register, registerRestaurant, logout
     }}>
       {children}
