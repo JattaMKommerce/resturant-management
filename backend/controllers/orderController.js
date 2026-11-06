@@ -144,6 +144,8 @@ async function getAllOrders(req, res) {
       params.push(restId);
     }
 
+    // Online-payment checkouts that are not paid yet are not orders for the restaurant (REQ-024)
+    if (req.query.include_unpaid !== '1') { wheres.push('COALESCE(o.payment_hold, 0) = 0'); }
     if (status) { wheres.push('o.order_status = ?'); params.push(status); }
     if (payment_method) { wheres.push('o.payment_method = ?'); params.push(payment_method); }
     if (search) {
@@ -1076,6 +1078,7 @@ async function getUnclaimedOrders(req, res) {
        JOIN restaurants r ON o.restaurant_id = r.id
        WHERE o.restaurant_id = ?
          AND o.assigned_driver_id IS NULL
+         AND COALESCE(o.payment_hold, 0) = 0
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED', 'PICKED_UP', 'OUT_FOR_DELIVERY')
          AND o.created_at >= NOW() - INTERVAL 24 HOUR
        ORDER BY o.created_at DESC`,
@@ -1199,7 +1202,120 @@ async function adminAssignDriverToOrder(req, res) {
   }
 }
 
+/**
+ * POST /orders/:id/cancel — the customer cancels their own order before the restaurant has
+ * accepted it (REQ-006). A paid online order is refunded automatically.
+ */
+async function cancelOrderByCustomer(req, res) {
+  try {
+    const { id } = req.params;
+    const [order] = await query('SELECT * FROM orders WHERE id = ?', [id]);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+
+    const ownsByGuest = req.guestIdentity?.id && order.customer_identity_id && Number(req.guestIdentity.id) === Number(order.customer_identity_id);
+    const ownsByAccount = req.user?.id && order.customer_id && Number(req.user.id) === Number(order.customer_id);
+    if (!ownsByGuest && !ownsByAccount) {
+      return res.status(403).json({ success: false, message: 'You can only cancel your own orders.' });
+    }
+    if (order.order_status !== 'PENDING') {
+      return res.status(400).json({
+        success: false,
+        message: 'The restaurant has already started on this order, so it can no longer be cancelled online. Please call the restaurant.'
+      });
+    }
+
+    const reason = String(req.body?.reason || '').trim().slice(0, 150);
+    const result = await OrderService.updateOrderStatus(
+      id, 'CANCELLED', req.user?.id || null, `Cancelled by customer${reason ? `: ${reason}` : ''}`
+    );
+    res.json({ success: true, message: 'Your order has been cancelled.', refunds: result.refunds || [] });
+  } catch (err) {
+    console.error('cancelOrderByCustomer Error:', err.message);
+    res.status(400).json({ success: false, message: err.message });
+  }
+}
+
+/**
+ * GET /admin/refunds?status=PENDING — refunds for the admin's restaurant (REQ-006)
+ */
+async function listRefunds(req, res) {
+  try {
+    await require('../services/OrderLifecycleService').ensureOrderSchema();
+    const restId = req.adminRestaurantId;
+    const params = [];
+    let where = '1=1';
+    if (!req.isSuperAdmin || restId) {
+      where += ' AND rf.restaurant_id = ?';
+      params.push(restId);
+    }
+    if (req.query.status && ['PENDING', 'PROCESSED', 'FAILED'].includes(String(req.query.status).toUpperCase())) {
+      where += ' AND rf.status = ?';
+      params.push(String(req.query.status).toUpperCase());
+    }
+    const refunds = await query(
+      `SELECT rf.*, o.order_number, o.customer_name, o.customer_phone, o.total_amount, o.cancelled_reason,
+              p.razorpay_payment_id
+       FROM refunds rf
+       LEFT JOIN orders o ON rf.order_source = 'ONLINE' AND o.id = rf.order_id
+       LEFT JOIN payments p ON p.id = rf.payment_id
+       WHERE ${where}
+       ORDER BY rf.created_at DESC
+       LIMIT 200`,
+      params
+    );
+    res.json({ success: true, refunds });
+  } catch (err) {
+    console.error('listRefunds Error:', err);
+    res.status(500).json({ success: false, message: 'Could not load refunds.' });
+  }
+}
+
+/**
+ * POST /admin/refunds/:id/complete { method, reference } — record a refund the restaurant
+ * paid back manually (UPI / cash / bank transfer).
+ */
+async function completeRefund(req, res) {
+  try {
+    const { id } = req.params;
+    const method = String(req.body?.method || 'MANUAL').toUpperCase().slice(0, 20);
+    const reference = String(req.body?.reference || '').trim().slice(0, 150);
+    const [refund] = await query('SELECT * FROM refunds WHERE id = ?', [id]);
+    if (!refund) return res.status(404).json({ success: false, message: 'Refund not found.' });
+    if (!req.isSuperAdmin && !validateRestaurantAccess(refund.restaurant_id, req)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+    if (refund.status === 'PROCESSED') {
+      return res.json({ success: true, alreadyProcessed: true, message: 'This refund was already recorded.' });
+    }
+
+    await query(
+      `UPDATE refunds SET status = 'PROCESSED', method = ?, reference = ?, processed_by_user_id = ?, processed_at = NOW()
+       WHERE id = ? AND status <> 'PROCESSED'`,
+      [method, reference || null, req.user?.id || null, id]
+    );
+    if (refund.payment_id) {
+      await query(`UPDATE payments SET status = 'REFUNDED' WHERE id = ?`, [refund.payment_id]);
+    }
+    if (refund.order_source === 'ONLINE') {
+      const [open] = await query(
+        `SELECT COUNT(*) AS n FROM refunds WHERE order_source = 'ONLINE' AND order_id = ? AND status <> 'PROCESSED'`,
+        [refund.order_id]
+      );
+      if (Number(open.n) === 0) {
+        await query(`UPDATE orders SET payment_status = 'REFUNDED' WHERE id = ?`, [refund.order_id]);
+      }
+    }
+    res.json({ success: true, message: `Refund of ₹${parseFloat(refund.amount).toFixed(2)} recorded.` });
+  } catch (err) {
+    console.error('completeRefund Error:', err);
+    res.status(500).json({ success: false, message: 'Could not record the refund.' });
+  }
+}
+
 module.exports = {
+  cancelOrderByCustomer,
+  listRefunds,
+  completeRefund,
   placeOrder,
   getOrderById,
   getUserOrders,

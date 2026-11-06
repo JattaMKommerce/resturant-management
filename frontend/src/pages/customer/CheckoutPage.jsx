@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { Phone, User, ArrowLeft, ShoppingBag, AlertCircle, Loader2, CreditCard, Banknote, Minus, Plus, X, Gift } from 'lucide-react';
 import KratuRewardsWidget from '../../components/customer/KratuRewardsWidget';
+import { openRazorpayCheckout, newCheckoutKey } from '../../utils/razorpayCheckout';
 
 export default function CheckoutPage({ overrideSlug }) {
   const params = useParams();
@@ -33,6 +34,17 @@ export default function CheckoutPage({ overrideSlug }) {
   const [rewardsStatement, setRewardsStatement] = useState(null);
   const [rewardsToRedeem, setRewardsToRedeem] = useState(0);
   const [checkoutId] = useState(() => 'CHK_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+
+  // One idempotency key per checkout attempt (REQ-025): a double click or a network retry
+  // sends the same key, so the server returns the same order instead of creating another.
+  // Changing the cart or payment method starts a new attempt.
+  const checkoutAttempt = useRef({ signature: null, key: null });
+  const checkoutKeyFor = (signature) => {
+    if (checkoutAttempt.current.signature !== signature) {
+      checkoutAttempt.current = { signature, key: newCheckoutKey() };
+    }
+    return checkoutAttempt.current.key;
+  };
 
   useEffect(() => {
     loadRestaurant();
@@ -105,6 +117,7 @@ export default function CheckoutPage({ overrideSlug }) {
       return;
     }
 
+    if (placing) return;
     setPlacing(true);
     let reservedOk = false;
 
@@ -135,6 +148,9 @@ export default function CheckoutPage({ overrideSlug }) {
         rewardsDiscount: rewardsToRedeem,
 
         paymentMethod: formData.paymentMethod,
+        idempotencyKey: checkoutKeyFor(
+          cartItems.map(i => `${i.id}x${i.quantity}`).sort().join(',') + `|${formData.paymentMethod}|${formData.customerPhone}`
+        ),
         items: cartItems.map(item => ({
           menuItemId: item.id,
           quantity: item.quantity,
@@ -147,16 +163,18 @@ export default function CheckoutPage({ overrideSlug }) {
         const { orderId, orderNumber } = res.data.order;
 
         if (formData.paymentMethod === 'ONLINE') {
-          // Initiate Razorpay payment
+          // The order is held until the payment is verified; it is not sent to the restaurant before that.
+          let payment = null;
           try {
             const payRes = await api.post('/payments/initiate', { order_id: orderId });
-            if (payRes.data.success && payRes.data.payment) {
-              handleRazorpayPayment(payRes.data.payment, orderId, orderNumber);
-              return;
-            }
+            payment = payRes.data?.payment || null;
           } catch (payErr) {
-            console.warn('Razorpay init failed, redirecting to tracking:', payErr);
+            setError(`${payErr.response?.data?.message || 'Online payment could not be started.'} Your card was not charged. You can choose Cash on Delivery instead.`);
+            setPlacing(false);
+            return;
           }
+          await handleRazorpayPayment(payment, orderId, orderNumber);
+          return;
         }
 
         clearCart();
@@ -178,47 +196,25 @@ export default function CheckoutPage({ overrideSlug }) {
     setPlacing(false);
   };
 
-  const handleRazorpayPayment = (paymentData, orderId, orderNumber) => {
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: paymentData.amount,
-      currency: paymentData.currency || 'INR',
+  const handleRazorpayPayment = async (paymentData, orderId, orderNumber) => {
+    const result = await openRazorpayCheckout({
+      post: (url, body) => api.post(url, body).then(r => r.data),
+      payment: paymentData,
+      orderId,
       name: restaurant?.name || 'Restaurant',
       description: `Order #${orderNumber}`,
-      order_id: paymentData.razorpay_order_id || paymentData.orderId,
-      handler: async function (response) {
-        try {
-          await api.post('/payments/verify', {
-            order_id: orderId,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
-          });
-        } catch (err) {
-          console.warn('Payment verification warning:', err);
-        }
-        clearCart();
-        navigate(`/restaurant/${slug}/order/${orderId}`);
-      },
-      modal: {
-        ondismiss: () => {
-          clearCart();
-          navigate(`/restaurant/${slug}/order/${orderId}`);
-        }
-      },
       prefill: { name: formData.customerName, contact: formData.customerPhone },
-      theme: { color: '#f97316' }
-    };
-
-    if (typeof window.Razorpay !== 'undefined') {
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } else {
-      // Mock mode or Razorpay not loaded
-      clearCart();
-      navigate(`/restaurant/${slug}/order/${orderId}`);
-    }
+      themeColor: '#f97316'
+    });
+    // The order now exists either way: paid orders go to the restaurant, unpaid ones wait on the
+    // tracking page where the customer can pay again or cancel.
+    clearCart();
     setPlacing(false);
+    navigate(`/restaurant/${slug}/order/${orderId}`, {
+      state: result.status === 'paid'
+        ? { paymentMessage: 'Payment received. Your order has been sent to the restaurant.' }
+        : { paymentMessage: result.status === 'failed' ? `Payment failed: ${result.message}` : 'Payment was not completed.' }
+    });
   };
 
   if (loading) {

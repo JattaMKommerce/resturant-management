@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import { registerWebPushSubscription } from '../../utils/pushSubscriber';
+import { openRazorpayCheckout } from '../../utils/razorpayCheckout';
 import { 
   UtensilsCrossed, 
   CheckCircle2, 
@@ -164,62 +165,22 @@ export default function CustomerOrderTrackingPage() {
 
       const p = initRes.payment;
 
-      if (p.isMock || !window.Razorpay) {
-        // Mock simulation in dev
-        const verifyRes = await api.post('/payments/verify', {
-          order_id: order.id,
-          razorpay_order_id: p.razorpayOrderId,
-          razorpay_payment_id: `pay_mock_${Date.now()}`,
-          razorpay_signature: 'mock_sig',
-          is_offline: true
-        });
-
-        if (verifyRes.success) {
-          alert('✅ Payment completed successfully via Razorpay (Mock Mode)!');
-          fetchOrderTracking();
-        }
-        return;
-      }
-
-      // Real Razorpay Checkout Popup
-      const options = {
-        key: p.keyId,
-        amount: p.amount,
-        currency: p.currency || 'INR',
-        name: 'The Grand Palace',
+      const result = await openRazorpayCheckout({
+        post: (url, body) => api.post(url, body),
+        payment: p,
+        orderId: order.id,
+        isOffline: true,
+        name: order.restaurant_name || 'Restaurant',
         description: `Dine-In Bill for Table ${order.table_number || ''}`,
-        order_id: p.razorpayOrderId,
-        handler: async function (response) {
-          try {
-            const verifyRes = await api.post('/payments/verify', {
-              order_id: order.id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              is_offline: true
-            });
-            if (verifyRes.success) {
-              alert('🎉 Payment verified and bill settled successfully!');
-              fetchOrderTracking();
-            }
-          } catch (err) {
-            alert(err.message || 'Payment verification failed');
-          }
-        },
-        prefill: {
-          name: order.customer_name || 'Guest',
-          contact: order.customer_phone || ''
-        },
-        theme: {
-          color: '#f59e0b'
-        }
-      };
-
-      const rzp1 = new window.Razorpay(options);
-      rzp1.on('payment.failed', function (response) {
-        alert('Payment Failed: ' + (response.error.description || 'Unknown error'));
+        prefill: { name: order.customer_name || 'Guest', contact: order.customer_phone || '' },
+        themeColor: '#f59e0b'
       });
-      rzp1.open();
+      if (result.status === 'paid') {
+        alert('🎉 Payment verified and bill settled successfully!');
+      } else if (result.status === 'failed') {
+        alert('Payment Failed: ' + result.message);
+      }
+      fetchOrderTracking();
     } catch (err) {
       alert(err.message || 'Payment initiation failed');
     } finally {

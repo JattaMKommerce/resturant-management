@@ -35,15 +35,70 @@ function generateOrderNumber() {
 
 /**
  * Create a new Order with server-side validation
+ *
+ * - Prices, tax, delivery fee and discounts are all computed here; nothing money-related is
+ *   trusted from the browser (the rewards discount comes from the wallet reservation).
+ * - Disabled, hidden-from-online and sold-out items cannot be ordered (REQ-003 / REQ-018);
+ *   tracked stock is taken inside the same transaction as the order.
+ * - Repeated clicks / network retries return the same order instead of creating another
+ *   (REQ-025): by the checkout's idempotency key, or for older pages without one, by an
+ *   identical order from the same phone in the last 2 minutes.
+ * - Online-payment orders are held back from the restaurant, kitchen and drivers until the
+ *   payment is verified (REQ-024). COD orders are released immediately.
  */
+const MAX_QTY_PER_LINE = 100;
+const DUPLICATE_WINDOW_SECONDS = 120;
+
+function cleanIdempotencyKey(raw) {
+  if (!raw) return null;
+  const key = String(raw).trim().slice(0, 64);
+  return /^[A-Za-z0-9_-]{8,64}$/.test(key) ? key : null;
+}
+
+function itemsSignature(lines) {
+  return lines
+    .map((l) => `${l.menu_item_id}x${l.quantity}`)
+    .sort()
+    .join(',');
+}
+
+async function buildOrderResult(orderId, restaurant, extra = {}) {
+  const [o] = await query('SELECT * FROM orders WHERE id = ?', [orderId]);
+  const items = await query(
+    'SELECT menu_item_id, item_name, unit_price, quantity, item_total, special_instructions FROM order_items WHERE order_id = ?',
+    [orderId]
+  );
+  return {
+    id: o.id,
+    orderId: o.id,
+    orderNumber: o.order_number,
+    restaurantName: restaurant.name,
+    restaurantSlug: restaurant.slug,
+    distanceKm: o.distance_km != null ? parseFloat(o.distance_km) : null,
+    subtotal: parseFloat(o.subtotal),
+    taxAmount: parseFloat(o.tax_amount),
+    deliveryFee: parseFloat(o.delivery_fee),
+    discountAmount: parseFloat(o.discount_amount || 0),
+    totalAmount: parseFloat(o.total_amount),
+    paymentMethod: o.payment_method,
+    paymentStatus: o.payment_status,
+    awaitingPayment: Number(o.payment_hold) === 1,
+    orderStatus: o.order_status,
+    items,
+    ...extra
+  };
+}
+
 async function createOrder(orderPayload) {
+  const OrderLifecycle = require('./OrderLifecycleService');
+  await OrderLifecycle.ensureOrderSchema();
+
   const {
     restaurantId, restaurantSlug,
     customerId, customerIdentityId,
     customerName, customerPhone,
     deliveryAddress, deliveryArea, deliveryLandmark, deliveryInstructions,
     customerLatitude, customerLongitude,
-    paymentMethod,
     items
   } = orderPayload;
 
@@ -53,6 +108,11 @@ async function createOrder(orderPayload) {
 
   if (!customerName || !customerPhone) {
     throw new Error('Customer name and phone are required.');
+  }
+
+  const paymentMethod = String(orderPayload.paymentMethod || 'COD').toUpperCase();
+  if (!['COD', 'ONLINE'].includes(paymentMethod)) {
+    throw new Error('Please choose Cash on Delivery or Online Payment.');
   }
 
   // 1. Fetch restaurant
@@ -91,6 +151,12 @@ async function createOrder(orderPayload) {
   if (!restaurant.is_online_ordering_enabled) {
     throw new Error('Online ordering is currently unavailable at this restaurant.');
   }
+  if (paymentMethod === 'COD' && Number(restaurant.is_cod_enabled) === 0) {
+    throw new Error('Cash on Delivery is not available at this restaurant. Please pay online.');
+  }
+  if (paymentMethod === 'ONLINE' && Number(restaurant.is_online_payment_enabled) === 0) {
+    throw new Error('Online payment is not available at this restaurant. Please choose Cash on Delivery.');
+  }
 
   // 2. Server-side Haversine distance validation (only if location provided)
   let radiusValidation = null;
@@ -108,8 +174,18 @@ async function createOrder(orderPayload) {
     }
   }
 
-  // 3. Validate menu items and recalculate prices server-side
-  const itemIds = items.map(i => i.menuItemId || i.menu_item_id);
+  // 3. Validate quantities, then menu items, and recalculate prices server-side
+  const cartLines = items.map((i) => {
+    const qty = Number(i.quantity);
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_QTY_PER_LINE) {
+      throw new Error(`Each item quantity must be a whole number between 1 and ${MAX_QTY_PER_LINE}.`);
+    }
+    const id = parseInt(i.menuItemId || i.menu_item_id, 10);
+    if (!id) throw new Error('Invalid menu item in cart.');
+    return { id, quantity: qty, specialInstructions: i.specialInstructions || i.special_instructions || null };
+  });
+
+  const itemIds = [...new Set(cartLines.map((l) => l.id))];
   const placeholders = itemIds.map(() => '?').join(',');
   const menuItems = await query(
     `SELECT * FROM menu_items WHERE id IN (${placeholders}) AND (restaurant_id = ? OR restaurant_id IS NULL)`,
@@ -119,28 +195,40 @@ async function createOrder(orderPayload) {
   const menuItemMap = {};
   menuItems.forEach(mi => { menuItemMap[mi.id] = mi; });
 
+  const qtyPerItem = {};
   let subtotal = 0;
   const processedItems = [];
 
-  for (const item of items) {
-    const rawId = item.menuItemId || item.menu_item_id;
-    const dbItem = menuItemMap[rawId];
-    if (!dbItem) throw new Error(`Menu item ID ${rawId} is not available at this restaurant.`);
-    if (dbItem.is_available !== 1) throw new Error(`"${dbItem.name}" is currently out of stock.`);
+  for (const line of cartLines) {
+    const dbItem = menuItemMap[line.id];
+    if (!dbItem) throw new Error(`Menu item ID ${line.id} is not available at this restaurant.`);
+    const disabled = Number(dbItem.is_available) !== 1 ||
+      (dbItem.is_active != null && Number(dbItem.is_active) === 0) ||
+      (dbItem.is_available_online != null && Number(dbItem.is_available_online) === 0);
+    if (disabled) throw new Error(`"${dbItem.name}" is currently unavailable. Please remove it from your cart.`);
+
+    qtyPerItem[dbItem.id] = (qtyPerItem[dbItem.id] || 0) + line.quantity;
+    if (dbItem.stock_quantity != null && qtyPerItem[dbItem.id] > Number(dbItem.stock_quantity)) {
+      const left = Math.max(0, Number(dbItem.stock_quantity));
+      throw new Error(left === 0
+        ? `"${dbItem.name}" is sold out. Please remove it from your cart.`
+        : `Only ${left} portion(s) of "${dbItem.name}" are left. Please reduce the quantity.`);
+    }
 
     const unitPrice = dbItem.discounted_price ? parseFloat(dbItem.discounted_price) : parseFloat(dbItem.price);
-    const itemTotal = unitPrice * item.quantity;
+    const itemTotal = Math.round(unitPrice * line.quantity * 100) / 100;
     subtotal += itemTotal;
 
     processedItems.push({
       menu_item_id: dbItem.id,
       item_name: dbItem.name,
       unit_price: unitPrice,
-      quantity: item.quantity,
+      quantity: line.quantity,
       item_total: itemTotal,
-      special_instructions: item.specialInstructions || null
+      special_instructions: line.specialInstructions
     });
   }
+  subtotal = Math.round(subtotal * 100) / 100;
 
   if (subtotal < parseFloat(restaurant.min_order_amount)) {
     throw new Error(`Minimum order amount is ₹${restaurant.min_order_amount}.`);
@@ -150,11 +238,18 @@ async function createOrder(orderPayload) {
   const taxPercentage = parseFloat(restaurant.tax_percentage || 5);
   const taxAmount = Math.round((subtotal * (taxPercentage / 100)) * 100) / 100;
   const deliveryFee = parseFloat(restaurant.delivery_fee || 49);
-
-  // Kratu Rewards discount applied from checkout reservation
-  const rewardsDiscount = Math.max(0, parseFloat(orderPayload.rewardsDiscount || 0));
-  const discountAmount = rewardsDiscount;
   const grossTotal = subtotal + taxAmount + deliveryFee;
+
+  // Kratu Rewards discount: the amount actually reserved in the wallet, never the browser's figure
+  let rewardsDiscount = 0;
+  if (orderPayload.walletCheckoutId) {
+    const [reservation] = await query(
+      `SELECT reserved_amount FROM wallet_reservations WHERE checkout_id = ? AND tenant_id = ? AND status = 'RESERVED' LIMIT 1`,
+      [orderPayload.walletCheckoutId, restaurant.id]
+    );
+    if (reservation) rewardsDiscount = Math.min(parseFloat(reservation.reserved_amount) || 0, grossTotal);
+  }
+  const discountAmount = Math.round(rewardsDiscount * 100) / 100;
   const totalAmount = Math.max(0, Math.round((grossTotal - discountAmount) * 100) / 100);
 
   // Resolve actual customer ID if not provided directly
@@ -167,11 +262,63 @@ async function createOrder(orderPayload) {
     }
   }
 
+  const idempotencyKey = cleanIdempotencyKey(orderPayload.idempotencyKey || orderPayload.idempotency_key);
+  const phoneDigits = String(customerPhone).replace(/\D/g, '').slice(-10);
+  const lockName = `hms_order_${restaurant.id}_${phoneDigits}`.slice(0, 64);
+  const signature = itemsSignature(processedItems);
+  const holdForPayment = paymentMethod === 'ONLINE';
+
   const orderNumber = generateOrderNumber();
   const conn = await getConnection();
+  let lockHeld = false;
 
   try {
+    // Serialise checkouts from the same phone at the same restaurant so two simultaneous
+    // submits cannot both pass the duplicate check.
+    const [[lockRow]] = await conn.query('SELECT GET_LOCK(?, 10) AS got', [lockName]);
+    lockHeld = Number(lockRow?.got) === 1;
+
+    // Duplicate check 1: same checkout attempt (idempotency key)
+    if (idempotencyKey) {
+      const [dupRows] = await conn.query(
+        'SELECT id FROM orders WHERE restaurant_id = ? AND idempotency_key = ? LIMIT 1',
+        [restaurant.id, idempotencyKey]
+      );
+      if (dupRows.length > 0) {
+        return await buildOrderResult(dupRows[0].id, restaurant, { duplicate: true });
+      }
+    } else {
+      // Duplicate check 2 (older checkout pages without a key): identical recent order
+      const [recent] = await conn.query(
+        `SELECT id, total_amount FROM orders
+         WHERE restaurant_id = ? AND customer_phone = ? AND payment_method = ?
+           AND order_status NOT IN ('CANCELLED', 'REJECTED')
+           AND created_at >= (NOW() - INTERVAL ? SECOND)
+         ORDER BY id DESC LIMIT 3`,
+        [restaurant.id, customerPhone, paymentMethod, DUPLICATE_WINDOW_SECONDS]
+      );
+      for (const r of recent) {
+        if (Math.abs(parseFloat(r.total_amount) - totalAmount) > 0.009) continue;
+        const [lines] = await conn.query('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ?', [r.id]);
+        if (itemsSignature(lines) === signature) {
+          return await buildOrderResult(r.id, restaurant, { duplicate: true });
+        }
+      }
+    }
+
     await conn.beginTransaction();
+
+    // Take tracked stock atomically; fails if another order took the last portions meanwhile
+    for (const [menuItemId, qty] of Object.entries(qtyPerItem)) {
+      const [upd] = await conn.query(
+        `UPDATE menu_items SET stock_quantity = stock_quantity - ?
+         WHERE id = ? AND stock_quantity IS NOT NULL AND stock_quantity >= ?`,
+        [qty, menuItemId, qty]
+      );
+      if (upd.affectedRows === 0 && menuItemMap[menuItemId].stock_quantity != null) {
+        throw new Error(`"${menuItemMap[menuItemId].name}" just sold out. Please update your cart.`);
+      }
+    }
 
     const safeDeliveryArea = (deliveryArea && String(deliveryArea).trim())
       || (deliveryAddress ? String(deliveryAddress).trim().slice(0, 50) : '')
@@ -184,15 +331,15 @@ async function createOrder(orderPayload) {
         delivery_address, delivery_area, delivery_landmark, delivery_instructions,
         customer_latitude, customer_longitude, distance_km,
         subtotal, tax_amount, delivery_fee, discount_amount, total_amount,
-        payment_method, payment_status, order_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING')`,
+        payment_method, payment_status, order_status, idempotency_key, payment_hold
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?, ?)`,
       [
         orderNumber, restaurant.id, customerIdentityId || null, actualCustomerId || null,
         customerName, customerPhone,
         deliveryAddress, safeDeliveryArea, deliveryLandmark || null, deliveryInstructions || null,
         customerLatitude || null, customerLongitude || null, radiusValidation?.distanceKm || null,
         subtotal, taxAmount, deliveryFee, discountAmount, totalAmount,
-        paymentMethod
+        paymentMethod, idempotencyKey, holdForPayment ? 1 : 0
       ]
     );
 
@@ -209,8 +356,8 @@ async function createOrder(orderPayload) {
 
     // Initial status history
     await conn.query(
-      `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id) VALUES (?, 'PENDING', 'Order placed by customer', NULL)`,
-      [orderId]
+      `INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id) VALUES (?, 'PENDING', ?, NULL)`,
+      [orderId, holdForPayment ? 'Order placed by customer. Waiting for online payment.' : 'Order placed by customer']
     );
 
     await conn.commit();
@@ -226,7 +373,8 @@ async function createOrder(orderPayload) {
 
       // 2. Calculate and create PENDING cashback (Slide 05: unlocks only upon delivery)
       const earned = await walletService.calculateCashback(restaurant.id, subtotal, actualCustomerId);
-      if (earned.eligible && earned.cashbackAmount > 0) {
+      // Cashback needs a customer account (wallet_accounts.customer_id is required)
+      if (actualCustomerId && earned.eligible && earned.cashbackAmount > 0) {
         await walletService.createPendingCredit(
           restaurant.id,
           actualCustomerId || null,
@@ -243,56 +391,10 @@ async function createOrder(orderPayload) {
       await updateGuestInfo(customerIdentityId, customerName, customerPhone);
     }
 
-    // Notify restaurant admin
-    await sendNotification({
-      restaurantId: restaurant.id,
-      orderId: orderId,
-      title: `New Order! #${orderNumber}`,
-      message: `New order from ${customerName} - ₹${totalAmount}`,
-      type: 'NEW_ORDER'
-    });
-
-    // Notify customer
-    await sendNotification({
-      orderId: orderId,
-      customerIdentityId,
-      title: 'Order Placed Successfully!',
-      message: `Your order #${orderNumber} for ₹${totalAmount} has been placed.`
-    });
-
-    // Automatically dispatch online order KOT to Kitchen KDS station
-    try {
-      await notifyKitchen({
-        id: orderId,
-        order_number: orderNumber,
-        restaurant_id: restaurant.id,
-        items: processedItems,
-        order_type: 'ONLINE'
-      });
-    } catch (kErr) {
-      console.warn('[ORDER SERVICE] Kitchen auto-dispatch warning:', kErr.message);
-    }
-
-    // Broadcast new available order to active delivery drivers fleet
-    try {
-      const io = getSocketIO();
-      if (io) {
-        const driverOrderPayload = {
-          orderId,
-          orderNumber,
-          restaurantId: restaurant.id,
-          restaurantName: restaurant.name,
-          customerName,
-          totalAmount,
-          deliveryAddress,
-          createdAt: new Date()
-        };
-        // Only this restaurant's drivers/admins — a global emit made every driver's
-        // app chime for orders at restaurants they don't deliver for.
-        io.to([`restaurant_drivers_${restaurant.id}`, `restaurant_${restaurant.id}`]).emit('available_orders_updated', driverOrderPayload);
-      }
-    } catch (dErr) {
-      console.warn('[ORDER SERVICE] Driver dispatch notification warning:', dErr.message);
+    // COD orders go to the restaurant, kitchen and drivers now; online-payment orders only
+    // after the payment is verified (PaymentService -> OrderLifecycle.releasePaidOrder).
+    if (!holdForPayment) {
+      await OrderLifecycle.releaseOrderToRestaurant(orderId);
     }
 
     return {
@@ -302,16 +404,26 @@ async function createOrder(orderPayload) {
       restaurantName: restaurant.name,
       restaurantSlug: restaurant.slug,
       distanceKm: radiusValidation?.distanceKm || null,
-      subtotal, taxAmount, deliveryFee, totalAmount,
+      subtotal, taxAmount, deliveryFee, discountAmount, totalAmount,
       paymentMethod,
+      paymentStatus: 'PENDING',
+      awaitingPayment: holdForPayment,
       orderStatus: 'PENDING',
       items: processedItems
     };
 
   } catch (err) {
-    await conn.rollback();
+    try { await conn.rollback(); } catch (rbErr) { /* no open transaction */ }
+    if (err && err.code === 'ER_DUP_ENTRY' && idempotencyKey) {
+      // Same checkout key raced in from another request: return that order
+      const [dup] = await query('SELECT id FROM orders WHERE restaurant_id = ? AND idempotency_key = ? LIMIT 1', [restaurant.id, idempotencyKey]);
+      if (dup) return buildOrderResult(dup.id, restaurant, { duplicate: true });
+    }
     throw err;
   } finally {
+    if (lockHeld) {
+      try { await conn.query('SELECT RELEASE_LOCK(?)', [lockName]); } catch (e) { /* ignore */ }
+    }
     conn.release();
   }
 }
@@ -337,11 +449,33 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
     }
   }
 
-  await query('UPDATE orders SET order_status = ? WHERE id = ?', [newStatus, orderId]);
+  // An online-payment order that has not been paid yet must not be accepted, cooked or
+  // dispatched (REQ-024). It can only be cancelled/rejected until the payment is verified.
+  if (Number(order.payment_hold) === 1 && prevStatus !== newStatus && !['CANCELLED', 'REJECTED'].includes(newStatus)) {
+    throw new Error('This order is still waiting for the customer\'s online payment. It can only be cancelled until the payment is completed.');
+  }
+
+  // Conditional update: if someone else changed the status in the meantime, stop here so
+  // cancellation side effects (refund, stock) can never run twice.
+  const upd = await query('UPDATE orders SET order_status = ? WHERE id = ? AND order_status = ?', [newStatus, orderId, prevStatus]);
+  if (!upd.affectedRows) {
+    throw new Error('This order was just updated by someone else. Please refresh and try again.');
+  }
   await query(
     'INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id) VALUES (?, ?, ?, ?)',
     [orderId, newStatus, notes || `Status changed to ${newStatus}`, userId]
   );
+
+  // Cancellation / rejection: give stock back, refund a paid order, keep the reason (REQ-006)
+  let closedRefunds = [];
+  if ((newStatus === 'CANCELLED' || newStatus === 'REJECTED') && prevStatus !== newStatus) {
+    try {
+      const closed = await require('./OrderLifecycleService').onOrderClosed(order, { status: newStatus, reason: notes, userId });
+      closedRefunds = closed.refunds || [];
+    } catch (closeErr) {
+      console.error(`[OrderService] cancellation follow-up failed for order ${orderId}:`, closeErr.message);
+    }
+  }
 
   // Kitchen integration
   if (newStatus === 'SENT_TO_KITCHEN' || newStatus === 'ACCEPTED' || newStatus === 'PREPARING') {
@@ -428,6 +562,14 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
     }
   }
 
+  if (closedRefunds.length > 0) {
+    const refundTotal = closedRefunds.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const done = closedRefunds.every((r) => r.status === 'PROCESSED');
+    notifMsg += done
+      ? ` Your refund of ₹${refundTotal.toFixed(2)} has been issued to your original payment method.`
+      : ` A refund of ₹${refundTotal.toFixed(2)} has been started and will reach your original payment method.`;
+  }
+
   await sendNotification({
     userId: order.customer_id,
     restaurantId: order.restaurant_id,
@@ -437,7 +579,7 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
     message: notifMsg
   });
 
-  return { success: true, orderId, prevStatus, newStatus };
+  return { success: true, orderId, prevStatus, newStatus, refunds: closedRefunds };
 }
 
 /**
@@ -452,6 +594,9 @@ async function assignDriver(orderId, driverId, userId = null) {
 
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [orderId]);
   if (!order) throw new Error('Order not found.');
+  if (Number(order.payment_hold) === 1) {
+    throw new Error('This order is still waiting for the customer\'s online payment and cannot be dispatched yet.');
+  }
 
   // Verify driver has an ACTIVE assignment to this order's restaurant
   const [assignment] = await query(
@@ -526,12 +671,9 @@ async function recoverFailedDelivery(orderId, action, newDriverId = null, userId
     );
     return { success: true, orderId, status: 'READY_FOR_PICKUP' };
   } else if (action === 'CANCEL') {
-    await query('UPDATE orders SET order_status = "CANCELLED" WHERE id = ?', [orderId]);
-    await query(
-      'INSERT INTO order_status_history (order_id, status, notes, changed_by_user_id) VALUES (?, "CANCELLED", ?, ?)',
-      [orderId, `Order cancelled after delivery failure: ${notes || 'Operational cancellation'}`, userId]
-    );
-    return { success: true, orderId, status: 'CANCELLED' };
+    // Through the normal path so stock, refunds and the customer notification are handled
+    const result = await updateOrderStatus(orderId, 'CANCELLED', userId, `Order cancelled after delivery failure: ${notes || 'Operational cancellation'}`);
+    return { success: true, orderId, status: 'CANCELLED', refunds: result.refunds };
   } else {
     throw new Error('Invalid recovery action. Must be REASSIGN, RETRY, or CANCEL.');
   }

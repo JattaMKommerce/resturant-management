@@ -930,8 +930,9 @@ async function deliverOrder(req, res) {
       return res.status(400).json({ success: false, message: 'This order is not assigned to you.' });
     }
 
-    // Process COD payment collection if applicable
-    if (order.payment_method === 'COD' && isCodCollected) {
+    // Process COD payment collection if applicable (only once — a repeated tap must not
+    // record the same cash twice)
+    if (order.payment_method === 'COD' && isCodCollected && order.payment_status !== 'COMPLETED') {
       await query(
         `UPDATE orders SET
           payment_status = 'COMPLETED',
@@ -942,8 +943,8 @@ async function deliverOrder(req, res) {
       );
 
       await query(
-        `INSERT INTO payments (order_id, payment_method, amount, status, collected_by, collected_at, transaction_id)
-         VALUES (?, 'COD', ?, 'SUCCESS', ?, NOW(), ?)`,
+        `INSERT INTO payments (order_id, order_source, payment_method, amount, status, collected_by, collected_at, transaction_id)
+         VALUES (?, 'ONLINE', 'COD', ?, 'SUCCESS', ?, NOW(), ?)`,
         [id, order.total_amount, driver.id, `COD_COLLECTED_DRIVER_${driver.id}_${Date.now()}`]
       );
     }
@@ -2001,6 +2002,7 @@ async function applyToRestaurant(req, res) {
        JOIN restaurants r ON o.restaurant_id = r.id
        WHERE o.restaurant_id = ?
          AND (o.assigned_driver_id IS NULL OR o.assigned_driver_id = ?)
+         AND COALESCE(o.payment_hold, 0) = 0
          AND o.order_status NOT IN ('DELIVERED', 'CANCELLED', 'REJECTED')
          AND NOT (o.assigned_driver_id IS NULL AND o.order_status IN ('PICKED_UP', 'OUT_FOR_DELIVERY'))
          AND o.created_at >= NOW() - INTERVAL 48 HOUR

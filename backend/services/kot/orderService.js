@@ -68,8 +68,8 @@ async function createOrder(orderData, idempotencyKey = null) {
 
     for (const rawItem of items) {
       const [dbItems] = await connection.query(
-        `SELECT id, name, price, tax_percentage, is_available, is_active, kitchen_department_id, prep_time_minutes, batch_capacity 
-         FROM menu_items 
+        `SELECT id, name, price, tax_percentage, is_available, is_active, kitchen_department_id, prep_time_minutes, batch_capacity, stock_quantity
+         FROM menu_items
          WHERE id = ?`,
         [rawItem.menu_item_id]
       );
@@ -83,7 +83,24 @@ async function createOrder(orderData, idempotencyKey = null) {
         throw new Error(`Menu item "${dbItem.name}" is currently unavailable`);
       }
 
-      const qty = Math.max(1, parseInt(rawItem.quantity) || 1);
+      const qty = parseInt(rawItem.quantity, 10);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 100) {
+        throw new Error(`Quantity for "${dbItem.name}" must be a whole number between 1 and 100`);
+      }
+
+      // Item-wise stock (REQ-003): take tracked stock atomically inside this transaction
+      if (dbItem.stock_quantity !== null && dbItem.stock_quantity !== undefined) {
+        const [stockUpd] = await connection.query(
+          `UPDATE menu_items SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity IS NOT NULL AND stock_quantity >= ?`,
+          [qty, dbItem.id, qty]
+        );
+        if (stockUpd.affectedRows === 0) {
+          const left = Math.max(0, Number(dbItem.stock_quantity));
+          throw new Error(left === 0
+            ? `"${dbItem.name}" is sold out`
+            : `Only ${left} portion(s) of "${dbItem.name}" are left`);
+        }
+      }
       const unitPrice = parseFloat(dbItem.price);
       let modifierTotalPrice = 0;
       const validatedModifiers = [];

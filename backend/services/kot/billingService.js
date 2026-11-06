@@ -67,9 +67,9 @@ async function recordPayment(billId, paymentMethod = 'CASH', amountPaid = null, 
 
     // 1. Insert Payment Record
     await connection.query(
-      `INSERT INTO payments (order_id, payment_method, amount, transaction_id, status)
-       VALUES (?, ?, ?, ?, 'SUCCESS')`,
-      [bill.order_id, paymentMethod, amount, transactionRef || `TXN-${Date.now()}`]
+      `INSERT INTO payments (order_id, order_source, payment_method, amount, transaction_id, status, bill_id)
+       VALUES (?, 'OFFLINE', ?, ?, ?, 'SUCCESS', ?)`,
+      [bill.order_id, paymentMethod, amount, transactionRef || `TXN-${Date.now()}`, bill.id]
     );
 
     // 2. Handle ROOM_CHARGE integration

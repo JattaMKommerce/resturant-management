@@ -118,13 +118,15 @@ router.get('/driver/wallet/history', ...driverAuth, driverPayoutController.getDr
 router.post('/orders/checkout', resolveGuestIdentity, orderController.placeOrder);
 router.get('/orders/my-orders', authenticateToken, orderController.getUserOrders);
 router.get('/orders/:id', resolveGuestIdentity, orderController.getOrderById);
+router.post('/orders/:id/cancel', resolveGuestIdentity, orderController.cancelOrderByCustomer);
 
 // ═══════════════════════════════════════════════
 // 7. PAYMENT ROUTES (Guest or Auth)
 // ═══════════════════════════════════════════════
 router.post('/payments/initiate', resolveGuestIdentity, paymentController.initiatePayment);
 router.post('/payments/verify', resolveGuestIdentity, paymentController.verifyPayment);
-router.post('/payments/mark-cod-collected', authenticateToken, paymentController.markCodCollected);
+router.post('/payments/failed', resolveGuestIdentity, paymentController.reportPaymentFailure);
+router.post('/payments/mark-cod-collected', authenticateToken, authorizeRoles('ADMIN', 'RESTAURANT_ADMIN', 'MANAGER', 'CASHIER', 'DRIVER'), paymentController.markCodCollected);
 
 // ═══════════════════════════════════════════════
 // 8. SUPER ADMIN ROUTES
@@ -216,6 +218,8 @@ router.get('/admin/orders/unclaimed', ...adminAuth, orderController.getUnclaimed
 router.post('/admin/orders/:id/self-deliver', ...adminAuth, orderController.adminSelfDeliverOrder);
 router.get('/admin/history', ...adminAuth, orderController.getUnifiedHistory);
 router.patch('/admin/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
+router.get('/admin/refunds', ...adminAuth, orderController.listRefunds);
+router.post('/admin/refunds/:id/complete', ...adminAuth, orderController.completeRefund);
 router.post('/admin/orders/:id/assign-driver', ...adminAuth, orderController.adminAssignDriverToOrder);
 router.post('/admin/orders/:id/recover-delivery', ...adminAuth, async (req, res) => {
   try {

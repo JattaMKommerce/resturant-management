@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import {
   CheckCircle2, Clock, ChefHat, PackageCheck, AlertCircle, MapPin, Phone,
   ShoppingBag, ArrowLeft, RefreshCw, Bike, Navigation, AlertTriangle, Sparkles, Volume2
@@ -8,6 +8,7 @@ import api from '../../api/axios';
 import { useSocket } from '../../context/SocketContext';
 import { registerWebPushSubscription } from '../../utils/pushSubscriber';
 import OrderMap from '../../components/OrderMap';
+import { openRazorpayCheckout } from '../../utils/razorpayCheckout';
 
 export default function OrderTrackingPage({ overrideSlug }) {
   const params = useParams();
@@ -20,6 +21,9 @@ export default function OrderTrackingPage({ overrideSlug }) {
   const [driverCoords, setDriverCoords] = useState(null);
   const [pushStatus, setPushStatus] = useState('default');
   const [remainingMinutes, setRemainingMinutes] = useState(45);
+  const location = useLocation();
+  const [notice, setNotice] = useState(location.state?.paymentMessage || '');
+  const [busyAction, setBusyAction] = useState(null);
 
   const fetchOrderDetails = async () => {
     try {
@@ -177,6 +181,50 @@ export default function OrderTrackingPage({ overrideSlug }) {
   const currentStep = statusOrderIndex[order.order_status] !== undefined ? statusOrderIndex[order.order_status] : 0;
   const isCancelled = order.order_status === 'REJECTED' || order.order_status === 'CANCELLED';
   const isFailed = order.order_status === 'DELIVERY_FAILED';
+  // Online-payment orders stay on hold (not sent to the restaurant) until the payment is verified
+  const awaitingPayment = !isCancelled && order.payment_method === 'ONLINE' && Number(order.payment_hold) === 1;
+  const canCancel = order.order_status === 'PENDING';
+  const isPaid = order.payment_status === 'COMPLETED';
+
+  const handlePayNow = async () => {
+    setBusyAction('pay');
+    setNotice('');
+    try {
+      const payRes = await api.post('/payments/initiate', { order_id: order.id });
+      const result = await openRazorpayCheckout({
+        post: (url, body) => api.post(url, body).then(r => r.data),
+        payment: payRes.data.payment,
+        orderId: order.id,
+        name: order.restaurant_name || 'Restaurant',
+        description: `Order #${order.order_number}`,
+        prefill: { name: order.customer_name, contact: order.customer_phone },
+        themeColor: '#f97316'
+      });
+      setNotice(result.status === 'paid'
+        ? 'Payment received. Your order has been sent to the restaurant.'
+        : result.status === 'failed' ? `Payment failed: ${result.message}` : 'Payment was not completed.');
+    } catch (err) {
+      setNotice(err.response?.data?.message || 'Could not start the payment. Please try again.');
+    } finally {
+      setBusyAction(null);
+      fetchOrderDetails();
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!window.confirm('Cancel this order?')) return;
+    setBusyAction('cancel');
+    setNotice('');
+    try {
+      const res = await api.post(`/orders/${order.id}/cancel`, { reason: 'Cancelled from order tracking page' });
+      setNotice(res.data?.message || 'Your order has been cancelled.');
+    } catch (err) {
+      setNotice(err.response?.data?.message || 'Could not cancel the order. Please call the restaurant.');
+    } finally {
+      setBusyAction(null);
+      fetchOrderDetails();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-12">
@@ -200,13 +248,60 @@ export default function OrderTrackingPage({ overrideSlug }) {
       {/* Main Content */}
       <main className="max-w-3xl w-full mx-auto p-4 sm:p-6 space-y-6 flex-1">
 
+        {notice && (
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-slate-800 text-xs font-semibold" role="status">
+            {notice}
+          </div>
+        )}
+
+        {canCancel && !awaitingPayment && (
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 text-xs flex items-center justify-between gap-3">
+            <span className="text-slate-600">
+              The restaurant has not accepted this order yet.{isPaid && order.payment_method === 'ONLINE' ? ' If you cancel, your payment is refunded.' : ''}
+            </span>
+            <button type="button" onClick={handleCancel} disabled={busyAction !== null}
+              className="shrink-0 px-3 py-1.5 rounded-xl border border-red-200 text-red-700 font-bold hover:bg-red-50 disabled:opacity-50">
+              {busyAction === 'cancel' ? 'Cancelling…' : 'Cancel order'}
+            </button>
+          </div>
+        )}
+
+        {awaitingPayment && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <p className="font-extrabold text-sm">Payment not completed</p>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  {order.payment_status === 'FAILED' ? 'Your last payment attempt failed. ' : ''}
+                  Your order has not been sent to the restaurant yet. Pay now to confirm it. Unpaid orders are cancelled automatically after 30 minutes.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={handlePayNow} disabled={busyAction !== null}
+                className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold disabled:opacity-50">
+                {busyAction === 'pay' ? 'Opening payment…' : `Pay ₹${parseFloat(order.total_amount).toFixed(2)} now`}
+              </button>
+              <button type="button" onClick={handleCancel} disabled={busyAction !== null}
+                className="px-4 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100 disabled:opacity-50">
+                {busyAction === 'cancel' ? 'Cancelling…' : 'Cancel order'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Status Notification Banner */}
         {isCancelled ? (
           <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 text-xs font-bold flex items-center gap-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600" />
             <div>
-              <p className="font-extrabold text-sm">Order {order.order_status}</p>
-              <p className="text-[11px] text-red-600">This order was cancelled or rejected by the restaurant.</p>
+              <p className="font-extrabold text-sm">Order {order.order_status === 'REJECTED' ? 'rejected' : 'cancelled'}</p>
+              <p className="text-[11px] text-red-600">
+                {order.cancelled_reason || 'This order was cancelled or rejected.'}
+                {order.payment_status === 'REFUNDED' && ' Your payment has been refunded.'}
+                {order.payment_method === 'ONLINE' && order.payment_status === 'COMPLETED' && ' Your refund is being processed to your original payment method.'}
+              </p>
             </div>
           </div>
         ) : isFailed ? (
@@ -377,7 +472,7 @@ export default function OrderTrackingPage({ overrideSlug }) {
             <div className="flex justify-between"><span>Taxes & Charges</span><span>₹{order.tax_amount}</span></div>
             <div className="flex justify-between"><span>Delivery Fee</span><span>₹{order.delivery_fee}</span></div>
             <div className="flex justify-between pt-2 border-t border-slate-100 text-slate-900 font-extrabold text-sm">
-              <span>Total Paid ({order.payment_method})</span>
+              <span>{isPaid ? 'Total Paid' : 'Total (payment pending)'} ({order.payment_method})</span>
               <span className="text-emerald-600">₹{order.total_amount}</span>
             </div>
           </div>

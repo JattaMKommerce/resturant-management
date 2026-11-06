@@ -577,6 +577,18 @@ async function startServer() {
       } catch (authErr) {
         console.warn('Auth schema/password cleanup warning:', authErr.message);
       }
+      // Order/payment integrity columns (idempotency, payment hold, stock, refunds) and a
+      // periodic clean-up of online checkouts that were never paid.
+      try {
+        const OrderLifecycle = require('./services/OrderLifecycleService');
+        await OrderLifecycle.ensureOrderSchema();
+        const sweep = () => OrderLifecycle.cancelAbandonedOnlineOrders(30)
+          .catch((e) => console.warn('Abandoned checkout sweep warning:', e.message));
+        sweep();
+        setInterval(sweep, 5 * 60 * 1000).unref();
+      } catch (orderSchemaErr) {
+        console.warn('Order schema warning:', orderSchemaErr.message);
+      }
       console.log(`✅ System database initialized and ready for production requests.`);
     })
     .catch((err) => {

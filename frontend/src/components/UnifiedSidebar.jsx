@@ -34,7 +34,8 @@ import {
   Store,
   AlertTriangle,
   Gift,
-  IndianRupee
+  IndianRupee,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -113,6 +114,7 @@ export default function UnifiedSidebar({
       featureKey: 'online_ordering'
     },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
+    { name: 'Refunds', path: `/admin/${activeSlug}/refunds`, icon: RotateCcw, featureKey: 'online_ordering' },
     { name: '✨ Setup Wizard', path: `/admin/${activeSlug}/onboarding`, icon: Sparkles },
     { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users, featureKey: 'delivery_fleet' },

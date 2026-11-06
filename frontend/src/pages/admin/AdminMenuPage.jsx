@@ -29,6 +29,8 @@ export default function AdminMenuPage() {
   const [isBestseller, setIsBestseller] = useState(false);
   const [isRecommended, setIsRecommended] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
+  // Item-wise stock (REQ-003): empty = unlimited
+  const [stockQuantity, setStockQuantity] = useState('');
   const [imageFile, setImageFile] = useState(null);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
@@ -89,6 +91,7 @@ export default function AdminMenuPage() {
     setIsBestseller(false);
     setIsRecommended(false);
     setIsAvailable(true);
+    setStockQuantity('');
     setImageFile(null);
     setShowModal(true);
   };
@@ -108,6 +111,7 @@ export default function AdminMenuPage() {
     setIsBestseller(item.is_bestseller === 1);
     setIsRecommended(item.is_recommended === 1);
     setIsAvailable(item.is_available === 1);
+    setStockQuantity(item.stock_quantity === null || item.stock_quantity === undefined ? '' : String(item.stock_quantity));
     setImageFile(null);
     setShowModal(true);
   };
@@ -165,6 +169,7 @@ export default function AdminMenuPage() {
       formData.append('is_bestseller', isBestseller ? '1' : '0');
       formData.append('is_recommended', isRecommended ? '1' : '0');
       formData.append('is_available', isAvailable ? '1' : '0');
+      formData.append('stock_quantity', stockQuantity === '' ? '' : String(stockQuantity));
       if (selectedRestaurantId) {
         formData.append('restaurant_id', selectedRestaurantId);
       }
@@ -321,6 +326,11 @@ export default function AdminMenuPage() {
                   >
                     {item.is_available === 1 ? '✓ Available (ON)' : '❌ Out of Stock (OFF)'}
                   </button>
+                  {item.stock_quantity !== null && item.stock_quantity !== undefined && (
+                    <span className={`ml-2 text-[11px] font-bold ${Number(item.stock_quantity) === 0 ? 'text-rose-700' : 'text-[#64748B]'}`}>
+                      {Number(item.stock_quantity) === 0 ? 'Sold out' : `${item.stock_quantity} left`}
+                    </span>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <button
@@ -573,6 +583,21 @@ export default function AdminMenuPage() {
                     className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="menu-stock" className="block font-bold text-[#1F2937] mb-1">Portions in stock</label>
+                <input
+                  id="menu-stock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Leave empty for unlimited"
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
+                />
+                <p className="text-[11px] text-[#64748B] mt-1">Each order takes portions from this count. At 0 the dish shows as sold out and customers cannot order it. Leave empty to not track stock.</p>
               </div>
 
               <div>

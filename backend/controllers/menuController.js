@@ -1,6 +1,26 @@
 const { query } = require('../config/db');
 const { validateRestaurantAccess } = require('../middleware/auth');
 
+// Form uploads (multipart) send booleans as text: "false" must mean false.
+function toBool(v) {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  const s = String(v).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(s)) return true;
+  if (['0', 'false', 'no', 'off', ''].includes(s)) return false;
+  return Boolean(s);
+}
+
+// Item-wise stock (REQ-003): empty = not tracked (unlimited), otherwise a whole number >= 0.
+function parseStock(v) {
+  if (v === undefined) return { provided: false };
+  if (v === null || String(v).trim() === '' || String(v).toLowerCase() === 'unlimited') return { provided: true, value: null };
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 0 || n > 100000) return { provided: true, error: 'Stock must be a whole number (0 or more), or empty for unlimited.' };
+  return { provided: true, value: n };
+}
+
 async function getMenuBySlug(req, res) {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
@@ -30,6 +50,8 @@ async function getMenuBySlug(req, res) {
       WHERE (mi.restaurant_id = ? OR (mi.restaurant_id = 1 AND ? = 1))
         AND (mi.is_available = 1 OR mi.is_available IS NULL)
         AND (mi.is_available_online IS NULL OR mi.is_available_online = 1)
+        AND (mi.is_active IS NULL OR mi.is_active = 1)
+        AND (mi.stock_quantity IS NULL OR mi.stock_quantity > 0)
     `;
     const params = [restId, restId];
 
@@ -120,6 +142,9 @@ async function createMenuItem(req, res) {
       return res.status(400).json({ success: false, message: 'Category does not belong to this restaurant.' });
     }
 
+    const stock = parseStock(req.body.stock_quantity);
+    if (stock.error) return res.status(400).json({ success: false, message: stock.error });
+
     let imageUrl = null;
     if (req.file) imageUrl = `/uploads/${req.file.filename}`;
 
@@ -127,18 +152,19 @@ async function createMenuItem(req, res) {
       `INSERT INTO menu_items (
         restaurant_id, category_id, name, description, price, discounted_price,
         image_url, is_veg, prep_time_minutes, batch_capacity, ingredients, tags, is_bestseller,
-        is_recommended, is_available, display_order
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        is_recommended, is_available, display_order, stock_quantity
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         restId, category_id, name, description || null,
         parseFloat(price), discounted_price ? parseFloat(discounted_price) : null,
-        imageUrl, is_veg !== undefined ? (is_veg ? 1 : 0) : 1,
+        imageUrl, toBool(is_veg) === false ? 0 : 1,
         prepTime,
         batchCap,
         ingredients || null, tags || null,
-        is_bestseller ? 1 : 0, is_recommended ? 1 : 0,
-        is_available !== undefined ? (is_available ? 1 : 0) : 1,
-        display_order ? parseInt(display_order) : 0
+        toBool(is_bestseller) ? 1 : 0, toBool(is_recommended) ? 1 : 0,
+        toBool(is_available) === false ? 0 : 1,
+        display_order ? parseInt(display_order) : 0,
+        stock.provided ? stock.value : null
       ]
     );
 
@@ -186,6 +212,9 @@ async function updateMenuItem(req, res) {
       validatedBatchCap = bc;
     }
 
+    const stock = parseStock(req.body.stock_quantity);
+    if (stock.error) return res.status(400).json({ success: false, message: stock.error });
+
     let imageUrl = null;
     if (req.file) imageUrl = `/uploads/${req.file.filename}`;
 
@@ -211,17 +240,18 @@ async function updateMenuItem(req, res) {
       category_id || null, name || null, description !== undefined ? description : null,
       price ? parseFloat(price) : null,
       discounted_price !== undefined ? (discounted_price ? parseFloat(discounted_price) : null) : null,
-      is_veg !== undefined ? (is_veg ? 1 : 0) : null,
+      toBool(is_veg) === undefined ? null : (toBool(is_veg) ? 1 : 0),
       validatedPrepTime,
       validatedBatchCap,
       ingredients || null, tags || null,
-      is_bestseller !== undefined ? (is_bestseller ? 1 : 0) : null,
-      is_recommended !== undefined ? (is_recommended ? 1 : 0) : null,
-      is_available !== undefined ? (is_available ? 1 : 0) : null,
+      toBool(is_bestseller) === undefined ? null : (toBool(is_bestseller) ? 1 : 0),
+      toBool(is_recommended) === undefined ? null : (toBool(is_recommended) ? 1 : 0),
+      toBool(is_available) === undefined ? null : (toBool(is_available) ? 1 : 0),
       display_order !== undefined ? parseInt(display_order) : null
     ];
 
     if (imageUrl) { sql += `, image_url = ?`; params.push(imageUrl); }
+    if (stock.provided) { sql += `, stock_quantity = ?`; params.push(stock.value); }
     sql += ` WHERE id = ?`;
     params.push(id);
 
