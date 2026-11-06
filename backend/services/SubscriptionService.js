@@ -166,6 +166,13 @@ async function getHotelActiveSubscription(restaurantId) {
 
   const isTrial = sub.subscription_type === 'TRIAL' || sub.plan_slug === 'free-trial';
 
+  // Submitting an offline renewal/upgrade flips the existing row to PENDING_APPROVAL
+  // but keeps its current expires_at. The hotel has already paid for that period, so a
+  // renewal that is awaiting review (or gets rejected) must not cut it short.
+  const currentPeriodRunning = !!sub.expires_at && new Date(sub.expires_at).getTime() > serverTime.getTime();
+  const hasAccess = status === 'ACTIVE' ||
+    ((status === 'PENDING_APPROVAL' || status === 'REJECTED') && currentPeriodRunning);
+
   return {
     has_subscription: true,
     subscription_id: sub.id,
@@ -179,6 +186,7 @@ async function getHotelActiveSubscription(restaurantId) {
     subscription_type: sub.subscription_type || (isTrial ? 'TRIAL' : 'PAID'),
     is_trial: isTrial,
     status,
+    has_access: hasAccess,
     starts_at: sub.starts_at,
     expires_at: sub.expires_at,
     server_time: serverTime.toISOString(),

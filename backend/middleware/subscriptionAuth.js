@@ -43,6 +43,12 @@ async function enforceSubscriptionAccess(req, res, next) {
       });
     }
 
+    // A renewal awaiting review (or rejected) keeps the period the hotel already paid for.
+    if (subInfo.status !== 'ACTIVE' && subInfo.has_access) {
+      req.subscription = subInfo;
+      return next();
+    }
+
     // 4. Strict Super Admin Approval Enforcement (Rule 5 & 7)
     if (subInfo.status === 'PENDING_APPROVAL') {
       return res.status(403).json({

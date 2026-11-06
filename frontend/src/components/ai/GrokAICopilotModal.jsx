@@ -131,7 +131,8 @@ export default function GrokAICopilotModal({ isOpen, onClose, restaurant, initia
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered a temporary connection issue. Please check back in a moment.',
+          // Show the server's reason (e.g. subscription blocked, session expired) when there is one.
+          content: err.response?.data?.message || 'Sorry, I encountered a temporary connection issue. Please check back in a moment.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isError: true
         }
