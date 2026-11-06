@@ -589,6 +589,7 @@ async function startServer() {
         await require('./services/StockAlertService').ensureSchema();
         await require('./utils/audit').ensureAuditSchema();
         await require('./services/WhatsAppOrderService').ensureSchema();
+        await require('./controllers/kot/hotelOpsController').ensureHotelSchema();
         const sweep = () => OrderLifecycle.cancelAbandonedOnlineOrders(30)
           .catch((e) => console.warn('Abandoned checkout sweep warning:', e.message));
         sweep();

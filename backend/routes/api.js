@@ -123,6 +123,10 @@ router.get('/orders/my-orders', authenticateToken, orderController.getUserOrders
 router.get('/orders/:id', resolveGuestIdentity, orderController.getOrderById);
 router.post('/orders/:id/cancel', resolveGuestIdentity, orderController.cancelOrderByCustomer);
 router.get('/orders/:id/invoice', resolveGuestIdentity, orderController.getOrderInvoice);
+// Hotel guest's private stay link: room service requests (REQ-047)
+const stayLimiter = createRateLimiter(10 * 60 * 1000, 40, 'guest-stay');
+router.get('/stay/:token', stayLimiter, require('../controllers/kot/hotelOpsController').getGuestStay);
+router.post('/stay/:token/requests', stayLimiter, require('../controllers/kot/hotelOpsController').createGuestRequest);
 router.post('/coupons/validate', couponController.validateCoupon);
 
 // ═══════════════════════════════════════════════

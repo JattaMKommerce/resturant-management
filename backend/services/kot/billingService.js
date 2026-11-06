@@ -92,6 +92,13 @@ async function recordPayment(billId, paymentMethod = 'CASH', amountPaid = null, 
         `UPDATE room_folios SET balance = balance + ? WHERE id = ?`,
         [amount, folio.id]
       );
+      // Itemised on the folio (REQ-047 / REQ-049); food GST is already inside the bill amount
+      await require('../../controllers/kot/hotelOpsController').ensureHotelSchema();
+      await connection.query(
+        `INSERT INTO folio_charges (folio_id, charge_type, description, quantity, unit_amount, amount, tax_rate, tax_amount, charge_date)
+         VALUES (?, 'FOOD', ?, 1, ?, ?, 0, 0, CURDATE())`,
+        [folio.id, `Restaurant bill ${bill.bill_number || '#' + billId}`, amount, amount]
+      );
 
       await connection.query(
         `UPDATE restaurant_orders SET payment_status = 'ROOM_CHARGED' WHERE id = ?`,

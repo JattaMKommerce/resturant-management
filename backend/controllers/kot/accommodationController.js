@@ -29,7 +29,19 @@ const DEFAULT_AMENITIES = [
 
 let schemaVerified = false;
 
+/**
+ * Hotel data belongs to one restaurant/hotel (REQ-009). Every list is filtered by the signed-in
+ * user's restaurant and single-room actions are checked in routes (router.param). Super Admin
+ * sees everything. Returns null when no filter applies.
+ */
+function hotelScope(req) {
+  if (String(req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') return null;
+  return req.user?.restaurant_id || null;
+}
+
 async function ensureRoomSchema() {
+  // restaurant_id on rooms/folios and the hotel operations tables (reservations, rates, folio lines…)
+  await require('./hotelOpsController').ensureHotelSchema();
   if (schemaVerified) return;
   try {
     await ensureHotelsSchema();
@@ -271,6 +283,7 @@ async function getRooms(req, res, next) {
       WHERE 1=1
     `;
     const params = [];
+    if (hotelScope(req)) { query += ` AND r.restaurant_id = ?`; params.push(hotelScope(req)); }
 
     if (floor && floor !== 'ALL') {
       query += ` AND r.floor = ?`;
@@ -306,14 +319,15 @@ async function getRooms(req, res, next) {
         COALESCE(SUM(f.balance), 0.00) as total_outstanding_balance
       FROM rooms r
       LEFT JOIN room_folios f ON r.id = f.room_id AND f.folio_status = 'OPEN'
-    `);
+      ${hotelScope(req) ? 'WHERE r.restaurant_id = ?' : ''}
+    `, hotelScope(req) ? [hotelScope(req)] : []);
 
     // Get distinct floors for filtering
-    const [floorRows] = await pool.query(`SELECT DISTINCT floor FROM rooms WHERE floor IS NOT NULL ORDER BY floor ASC`);
+    const [floorRows] = await pool.query(`SELECT DISTINCT floor FROM rooms WHERE floor IS NOT NULL AND (? IS NULL OR restaurant_id = ?) ORDER BY floor ASC`, [hotelScope(req), hotelScope(req)]);
     const floors = floorRows.map(f => f.floor).filter(Boolean);
 
     // Get distinct room types for filtering
-    const [typeRows] = await pool.query(`SELECT DISTINCT room_type FROM rooms WHERE room_type IS NOT NULL ORDER BY room_type ASC`);
+    const [typeRows] = await pool.query(`SELECT DISTINCT room_type FROM rooms WHERE room_type IS NOT NULL AND (? IS NULL OR restaurant_id = ?) ORDER BY room_type ASC`, [hotelScope(req), hotelScope(req)]);
     const roomTypes = typeRows.map(t => t.room_type).filter(Boolean);
 
     const stats = {
@@ -438,7 +452,8 @@ async function createRoom(req, res, next) {
 
     const cleanRoomNumber = String(room_number).trim();
 
-    const [existing] = await connection.query(`SELECT id FROM rooms WHERE room_number = ?`, [cleanRoomNumber]);
+    const ownerRestaurantId = req.user?.restaurant_id || 1;
+    const [existing] = await connection.query(`SELECT id FROM rooms WHERE room_number = ? AND restaurant_id = ?`, [cleanRoomNumber, ownerRestaurantId]);
     if (existing.length > 0) {
       return sendError(res, `Room number "${cleanRoomNumber}" already exists.`, 400);
     }
@@ -452,9 +467,10 @@ async function createRoom(req, res, next) {
     const imagesJson = Array.isArray(images) ? JSON.stringify(images) : (typeof images === 'string' && images ? images : JSON.stringify([finalImage]));
 
     const [result] = await connection.query(
-      `INSERT INTO rooms (room_number, floor, room_type, status, rate_per_night, capacity, bed_type, room_size, amenities, description, image_url, images)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO rooms (restaurant_id, room_number, floor, room_type, status, rate_per_night, capacity, bed_type, room_size, amenities, description, image_url, images)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        ownerRestaurantId,
         cleanRoomNumber,
         floor,
         room_type,
@@ -519,7 +535,7 @@ async function updateRoom(req, res, next) {
 
     if (room_number) {
       const cleanNum = String(room_number).trim();
-      const [dup] = await pool.query(`SELECT id FROM rooms WHERE room_number = ? AND id != ?`, [cleanNum, id]);
+      const [dup] = await pool.query(`SELECT id FROM rooms WHERE room_number = ? AND id != ? AND restaurant_id = ?`, [cleanNum, id, existing[0].restaurant_id]);
       if (dup.length > 0) {
         return sendError(res, `Room number "${cleanNum}" is already in use by another room.`, 400);
       }
@@ -697,12 +713,15 @@ async function checkInGuest(req, res, next) {
       guest_email,
       breakfast_included = false,
       expected_check_out,
-      notes
+      notes,
+      id_proof_type, id_proof_number, guest_address, adults, children, company_gstin
     } = req.body;
 
     if (!guest_name || String(guest_name).trim() === '') {
       return sendError(res, 'Guest name is required for check-in.', 400);
     }
+    const hotelOps = require('./hotelOpsController');
+    await hotelOps.ensureHotelSchema();
 
     const [rooms] = await connection.query(`SELECT * FROM rooms WHERE id = ?`, [id]);
     if (rooms.length === 0) {
@@ -727,19 +746,40 @@ async function checkInGuest(req, res, next) {
     }
 
     const expectedDate = expected_check_out ? new Date(expected_check_out) : null;
+    // REQ-041/042: a walk-in cannot take a room that is reserved or blocked for these nights
+    {
+      const { businessDate } = require('../../utils/businessTime');
+      const fromDay = businessDate();
+      let toDay = expected_check_out ? String(expected_check_out).slice(0, 10) : null;
+      if (!toDay || toDay <= fromDay) { const t = new Date(fromDay + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + 1); toDay = t.toISOString().slice(0, 10); }
+      const clash = await hotelOps.conflictFor(room.id, fromDay, toDay);
+      if (clash && clash.type !== 'OCCUPIED') {
+        await connection.rollback();
+        return sendError(res, clash.type === 'RESERVED'
+          ? `Room ${room.room_number} is reserved for ${clash.detail.guest_name} from ${String(clash.detail.check_in_date).slice(0, 10)}. Check that guest in from Reservations or choose another room.`
+          : `Room ${room.room_number} is blocked for those dates${clash.detail.reason ? ' (' + clash.detail.reason + ')' : ''}.`, 409);
+      }
+    }
     const breakfastVal = breakfast_included === true || breakfast_included === 1 || breakfast_included === 'true' ? 1 : 0;
 
     const [folioRes] = await connection.query(
-      `INSERT INTO room_folios (room_id, guest_name, guest_phone, guest_email, folio_status, balance, breakfast_included, notes, check_in_date, expected_check_out)
-       VALUES (?, ?, ?, ?, 'OPEN', 0.00, ?, ?, NOW(), ?)`,
+      `INSERT INTO room_folios (restaurant_id, room_id, guest_name, guest_phone, guest_email, folio_status, balance, breakfast_included, notes, check_in_date, expected_check_out,
+         id_proof_type, id_proof_number, guest_address, adults, children, company_gstin, guest_token)
+       VALUES (?, ?, ?, ?, ?, 'OPEN', 0.00, ?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        rooms[0].restaurant_id || req.user?.restaurant_id || 1,
         id,
         String(guest_name).trim(),
         guest_phone ? String(guest_phone).trim() : null,
         guest_email ? String(guest_email).trim() : null,
         breakfastVal,
         notes || null,
-        expectedDate
+        expectedDate,
+        id_proof_type || null, id_proof_number ? String(id_proof_number).trim().slice(0, 50) : null,
+        guest_address ? String(guest_address).trim().slice(0, 255) : null,
+        Math.max(1, parseInt(adults, 10) || 1), Math.max(0, parseInt(children, 10) || 0),
+        company_gstin ? String(company_gstin).trim().toUpperCase().slice(0, 20) : null,
+        require('crypto').randomBytes(16).toString('hex')
       ]
     );
 
@@ -811,7 +851,14 @@ async function checkOutGuest(req, res, next) {
     }
 
     const folio = folios[0];
-    const finalBalance = parseFloat(folio.balance || 0);
+    // REQ-044 / REQ-049: charge the room nights (agreed or seasonal rate + GST) before closing
+    const hotelOps = require('./hotelOpsController');
+    const roomCharged = await hotelOps.postRoomCharges(connection, folio, room, req.user?.id);
+    const [[afterCharges]] = await connection.query('SELECT balance FROM room_folios WHERE id = ?', [folio.id]);
+    const finalBalance = parseFloat(afterCharges.balance || 0);
+    if (folio.reservation_id) {
+      await connection.query(`UPDATE room_bookings SET status = 'CHECKED_OUT', updated_at = NOW() WHERE id = ?`, [folio.reservation_id]);
+    }
 
     // Close folio
     await connection.query(
@@ -1062,6 +1109,7 @@ async function getGuests(req, res, next) {
       WHERE 1=1
     `;
     const params = [];
+    if (hotelScope(req)) { query += ` AND r.restaurant_id = ?`; params.push(hotelScope(req)); }
 
     if (status === 'IN_HOUSE') {
       query += ` AND f.folio_status = 'OPEN'`;
@@ -1128,6 +1176,7 @@ async function getAllFolios(req, res, next) {
       WHERE 1=1
     `;
     const params = [];
+    if (hotelScope(req)) { query += ` AND r.restaurant_id = ?`; params.push(hotelScope(req)); }
 
     if (status && status !== 'ALL') {
       query += ` AND f.folio_status = ?`;
@@ -1181,7 +1230,16 @@ async function addFolioCharge(req, res, next) {
       return sendError(res, 'Cannot add charges to a closed folio', 400);
     }
 
-    await connection.query(`UPDATE room_folios SET balance = balance + ? WHERE id = ?`, [numAmount, folioId]);
+    // Itemised folio line (REQ-049); optional GST rate on the charge
+    await require('./hotelOpsController').ensureHotelSchema();
+    const chargeTaxRate = Math.max(0, Math.min(40, parseFloat(req.body.tax_rate) || 0));
+    const chargeTax = Math.round(numAmount * chargeTaxRate) / 100;
+    await connection.query(
+      `INSERT INTO folio_charges (folio_id, restaurant_id, charge_type, description, quantity, unit_amount, amount, tax_rate, tax_amount, charge_date, created_by)
+       VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, CURDATE(), ?)`,
+      [folioId, folio.restaurant_id || null, String(req.body.charge_type || 'EXTRA').toUpperCase().slice(0, 20), String(description).slice(0, 255), numAmount, numAmount, chargeTaxRate, chargeTax, req.user?.id || null]
+    );
+    await connection.query(`UPDATE room_folios SET balance = balance + ? WHERE id = ?`, [numAmount + chargeTax, folioId]);
 
     const timestamp = new Date().toLocaleString();
     const noteEntry = `[${timestamp}] Added charge: ${description} (₹${numAmount.toFixed(2)})`;
@@ -1229,6 +1287,11 @@ async function settleFolio(req, res, next) {
     await connection.query(
       `UPDATE room_folios SET balance = ?, notes = ? WHERE id = ?`,
       [newBalance, newNotes, folioId]
+    );
+    await require('./hotelOpsController').ensureHotelSchema();
+    await connection.query(
+      `INSERT INTO folio_payments (folio_id, amount, method, reference, created_by) VALUES (?, ?, ?, ?, ?)`,
+      [folioId, numAmount, String(payment_method).toUpperCase().slice(0, 30), req.body.reference ? String(req.body.reference).slice(0, 150) : null, req.user?.id || null]
     );
 
     await connection.commit();
@@ -1310,7 +1373,8 @@ async function getRoomStats(req, res, next) {
         COALESCE(SUM(f.balance), 0.00) as total_outstanding_balance
       FROM rooms r
       LEFT JOIN room_folios f ON r.id = f.room_id AND f.folio_status = 'OPEN'
-    `);
+      ${hotelScope(req) ? 'WHERE r.restaurant_id = ?' : ''}
+    `, hotelScope(req) ? [hotelScope(req)] : []);
 
     const stats = {
       total: allRooms[0]?.total_rooms || 0,
@@ -1362,7 +1426,9 @@ async function getRoomInquiries(req, res, next) {
       `SELECT rb.*, r.room_number as live_room_number, r.room_type as live_room_type, r.rate_per_night as base_price, r.image_url
        FROM room_bookings rb
        LEFT JOIN rooms r ON rb.room_id = r.id
-       ORDER BY rb.id DESC`
+       ${hotelScope(req) ? 'WHERE rb.restaurant_id = ?' : ''}
+       ORDER BY rb.id DESC`,
+      hotelScope(req) ? [hotelScope(req)] : []
     );
 
     return sendSuccess(res, { inquiries: rows }, 'Room inquiries retrieved');
@@ -1396,6 +1462,7 @@ module.exports = {
   getRooms,
   getRoomById,
   createRoom,
+  hotelScope,
   updateRoom,
   updateRoomStatus,
   deleteRoom,
