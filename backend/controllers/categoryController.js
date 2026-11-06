@@ -20,7 +20,8 @@ async function getCategoriesBySlug(req, res) {
 
     const restId = restaurants[0].id;
     const categories = await query(
-      'SELECT * FROM categories WHERE restaurant_id = ? ORDER BY display_order ASC, name ASC',
+      // REQ-019: only categories the restaurant has switched on appear to customers
+      'SELECT * FROM categories WHERE restaurant_id = ? AND (is_active IS NULL OR is_active = 1) ORDER BY display_order ASC, name ASC',
       [restId]
     );
 
@@ -60,9 +61,18 @@ async function getAdminCategories(req, res) {
   }
 }
 
+// Form uploads send booleans as text: "false"/"0" must mean false
+function toFlag(v) {
+  if (v === undefined || v === null) return undefined;
+  return ['1', 'true', 'yes', 'on'].includes(String(v).trim().toLowerCase()) || v === true || v === 1;
+}
+
 async function createCategory(req, res) {
   try {
     const { restaurant_id, name, description, display_order, is_active } = req.body;
+    await require('../services/OrderLifecycleService').ensureOrderSchema();
+    const meals = require('../utils/mealPeriods');
+    const mealColumn = meals.periodsToColumn(meals.normalizePeriods(req.body.meal_periods) || []);
     let restId = restaurant_id || req.adminRestaurantId || req.query?.restaurant_id;
     if (!restId) {
       const [firstRest] = await query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
@@ -83,8 +93,8 @@ async function createCategory(req, res) {
     }
 
     const result = await query(
-      `INSERT INTO categories (restaurant_id, name, description, image_url, display_order, is_active) VALUES (?, ?, ?, ?, ?, ?)`,
-      [restId, name, description || null, imageUrl, display_order || 0, is_active !== undefined ? (is_active ? 1 : 0) : 1]
+      `INSERT INTO categories (restaurant_id, name, description, image_url, display_order, is_active, meal_periods) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [restId, name, description || null, imageUrl, display_order || 0, toFlag(is_active) === false ? 0 : 1, mealColumn]
     );
 
     // Sync to menu_categories for Offline KOT POS compatibility
@@ -140,12 +150,19 @@ async function updateCategory(req, res) {
       name || null,
       description !== undefined ? description : null,
       display_order !== undefined ? parseInt(display_order) : null,
-      is_active !== undefined ? (is_active ? 1 : 0) : null
+      toFlag(is_active) === undefined ? null : (toFlag(is_active) ? 1 : 0)
     ];
 
     if (imageUrl) {
       sql += `, image_url = ?`;
       params.push(imageUrl);
+    }
+    // REQ-001: dishes in this category are served at these periods (empty = all day)
+    const mealList = require('../utils/mealPeriods').normalizePeriods(req.body.meal_periods);
+    if (mealList !== undefined) {
+      await require('../services/OrderLifecycleService').ensureOrderSchema();
+      sql += `, meal_periods = ?`;
+      params.push(require('../utils/mealPeriods').periodsToColumn(mealList));
     }
 
     sql += ` WHERE id = ?`;

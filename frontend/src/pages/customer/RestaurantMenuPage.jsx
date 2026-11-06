@@ -44,6 +44,9 @@ export default function RestaurantMenuPage({ overrideSlug }) {
 
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // REQ-001: breakfast / lunch / dinner menus
+  const [meal, setMeal] = useState(null);
+  const [mealPeriod, setMealPeriod] = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -88,7 +91,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
 
         const [catRes, menuRes, offeringsRes] = await Promise.all([
           api.get(`/restaurants/${targetSlug}/categories`).catch(() => ({ data: { categories: [] } })),
-          api.get(`/restaurants/${targetSlug}/menu`).catch(() => ({ data: { items: [] } })),
+          api.get(`/restaurants/${targetSlug}/menu?period=ALL`).catch(() => ({ data: { items: [] } })),
           api.get(`/restaurants/${targetSlug}/offerings`).catch(() => ({ data: { offerings: [] } }))
         ]);
 
@@ -100,6 +103,14 @@ export default function RestaurantMenuPage({ overrideSlug }) {
 
         if (menuRes.data && menuRes.data.items) {
           setMenuItems(menuRes.data.items);
+        }
+        const mealInfo = menuRes.data?.meal;
+        if (mealInfo?.enabled) {
+          setMeal(mealInfo);
+          setMealPeriod(mealInfo.current || mealInfo.periods?.[0]?.key || null);
+        } else {
+          setMeal(null);
+          setMealPeriod(null);
         }
       } else {
         setError('Restaurant not found.');
@@ -122,13 +133,17 @@ export default function RestaurantMenuPage({ overrideSlug }) {
 
   const filteredItems = useMemo(() => {
     let items = menuItems;
+    // Only the dishes served in the chosen meal period (untagged dishes are served all day)
+    if (meal?.enabled && mealPeriod) {
+      items = items.filter(i => !i.meal_periods || i.meal_periods.length === 0 || i.meal_periods.includes(mealPeriod));
+    }
     if (activeCategory) items = items.filter(i => i.category_id === activeCategory);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       items = items.filter(i => i.name?.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q) || i.tags?.toLowerCase().includes(q));
     }
     return items;
-  }, [menuItems, activeCategory, searchQuery]);
+  }, [menuItems, activeCategory, searchQuery, meal, mealPeriod]);
 
   const groupedItems = useMemo(() => {
     const groups = {};
@@ -385,7 +400,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
                   const matched = menuItems.find(
                     m => m.name?.toLowerCase().trim() === offering.title?.toLowerCase().trim()
                   );
-                  if (matched && matched.is_available && canOrder) {
+                  if (matched && matched.is_available && matched.available_now !== false && canOrder) {
                     handleAddToCart(matched);
                   } else {
                     setSearchQuery(offering.title);
@@ -405,6 +420,27 @@ export default function RestaurantMenuPage({ overrideSlug }) {
                 className={`w-full pl-12 pr-4 py-3 ${template.cardClass} rounded-2xl text-sm focus:outline-none focus:border-amber-400 shadow-xs transition-all`}
               />
             </div>
+
+            {/* Meal period tabs (REQ-001) */}
+            {meal?.enabled && (
+              <div className="mb-4 space-y-2">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label="Menu">
+                  {meal.periods.map(p => (
+                    <button key={p.key} type="button" role="tab" aria-selected={mealPeriod === p.key} onClick={() => setMealPeriod(p.key)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${mealPeriod === p.key ? template.buttonStyle : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-white/10'}`}>
+                      {p.label} <span className="font-medium opacity-80">· {p.display}</span>{meal.current === p.key ? ' · Now' : ''}
+                    </button>
+                  ))}
+                </div>
+                {mealPeriod && meal.current !== mealPeriod && (
+                  <p className="text-xs text-slate-300">
+                    {meal.current
+                      ? `You are viewing the ${meal.periods.find(p => p.key === mealPeriod)?.label} menu. These dishes can be ordered during ${meal.periods.find(p => p.key === mealPeriod)?.display}.`
+                      : 'The kitchen is between services right now. Only all-day dishes can be ordered.'}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Category Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
@@ -459,6 +495,9 @@ export default function RestaurantMenuPage({ overrideSlug }) {
                           {item.description && <p className="text-xs text-slate-300 mt-1.5 line-clamp-2">{item.description}</p>}
                         </div>
                         {!item.is_available && <p className="text-[11px] text-rose-400 font-bold mt-2">Currently unavailable</p>}
+                        {item.is_available && item.available_now === false && (
+                          <p className="text-[11px] text-amber-300 font-bold mt-2">Served at {item.served_when}</p>
+                        )}
                       </div>
                       
                       {/* Right: Image + Add */}
@@ -470,7 +509,7 @@ export default function RestaurantMenuPage({ overrideSlug }) {
                             <span className="text-3xl">🍽️</span>
                           </div>
                         )}
-                        {item.is_available && canOrder ? (
+                        {item.is_available && item.available_now !== false && canOrder ? (
                           <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
                             {qty === 0 ? (
                               <button onClick={() => handleAddToCart(item)} className={`px-5 py-1.5 rounded-xl text-xs font-bold transition-all ${template.buttonStyle}`}>

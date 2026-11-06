@@ -115,6 +115,7 @@ export default function UnifiedSidebar({
       featureKey: 'online_ordering'
     },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
+    { name: 'Sales Analytics', path: `/admin/${activeSlug}/sales`, icon: BarChart3 },
     { name: 'Refunds', path: `/admin/${activeSlug}/refunds`, icon: RotateCcw, featureKey: 'online_ordering' },
     { name: 'Coupons', path: `/admin/${activeSlug}/coupons`, icon: Tag, featureKey: 'online_ordering' },
     { name: '✨ Setup Wizard', path: `/admin/${activeSlug}/onboarding`, icon: Sparkles },

@@ -205,9 +205,16 @@ async function createOrder(orderPayload) {
   const itemIds = [...new Set(cartLines.map((l) => l.id))];
   const placeholders = itemIds.map(() => '?').join(',');
   const menuItems = await query(
-    `SELECT * FROM menu_items WHERE id IN (${placeholders}) AND (restaurant_id = ? OR restaurant_id IS NULL)`,
+    `SELECT mi.*, c.meal_periods AS category_meal_periods
+     FROM menu_items mi LEFT JOIN categories c ON c.id = mi.category_id
+     WHERE mi.id IN (${placeholders}) AND (mi.restaurant_id = ? OR mi.restaurant_id IS NULL)`,
     [...itemIds, restaurant.id]
   );
+
+  // REQ-001: only dishes served in the current meal period can be ordered
+  const meals = require('../utils/mealPeriods');
+  const mealConfig = meals.configFor(restaurant);
+  const servingNow = meals.currentPeriod(mealConfig);
 
   const menuItemMap = {};
   menuItems.forEach(mi => { menuItemMap[mi.id] = mi; });
@@ -223,6 +230,12 @@ async function createOrder(orderPayload) {
       (dbItem.is_active != null && Number(dbItem.is_active) === 0) ||
       (dbItem.is_available_online != null && Number(dbItem.is_available_online) === 0);
     if (disabled) throw new Error(`"${dbItem.name}" is currently unavailable. Please remove it from your cart.`);
+    if (mealConfig.enabled) {
+      const periods = meals.effectivePeriods(dbItem.meal_periods, dbItem.category_meal_periods);
+      if (!meals.servedIn(periods, servingNow)) {
+        throw new Error(`"${dbItem.name}" is only served at ${meals.servedWhenText(periods, mealConfig)}. Please remove it from your cart.`);
+      }
+    }
 
     qtyPerItem[dbItem.id] = (qtyPerItem[dbItem.id] || 0) + line.quantity;
     if (dbItem.stock_quantity != null && qtyPerItem[dbItem.id] > Number(dbItem.stock_quantity)) {

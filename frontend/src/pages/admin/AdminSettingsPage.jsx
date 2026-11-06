@@ -37,6 +37,13 @@ export default function AdminSettingsPage() {
   const [gstin, setGstin] = useState('');
   const [fssaiNumber, setFssaiNumber] = useState('');
   const [razorpaySecretSaved, setRazorpaySecretSaved] = useState(false);
+  // REQ-001: breakfast / lunch / dinner menus
+  const [mealEnabled, setMealEnabled] = useState(false);
+  const [mealWindows, setMealWindows] = useState({
+    BREAKFAST: { start: '07:00', end: '11:00' },
+    LUNCH: { start: '12:00', end: '16:00' },
+    DINNER: { start: '19:00', end: '23:00' }
+  });
 
   // Branding Images
   const [logoFile, setLogoFile] = useState(null);
@@ -104,6 +111,13 @@ export default function AdminSettingsPage() {
         setIsTakeawayEnabled(Number(r.is_takeaway_enabled ?? 1) !== 0);
         setGstin(r.gstin || '');
         setFssaiNumber(r.fssai_number || '');
+        setMealEnabled(Number(r.meal_schedule_enabled) === 1);
+        if (r.meal_periods_json) {
+          try {
+            const w = typeof r.meal_periods_json === 'string' ? JSON.parse(r.meal_periods_json) : r.meal_periods_json;
+            setMealWindows((prev) => ({ ...prev, ...w }));
+          } catch (e) { /* keep defaults */ }
+        }
         setIsOnlineOrderingEnabled(r.is_online_ordering_enabled === 1 || r.is_online_ordering_enabled === true);
         setIsCodEnabled(r.is_cod_enabled === 1 || r.is_cod_enabled === true);
         setIsOnlinePaymentEnabled(r.is_online_payment_enabled === 1 || r.is_online_payment_enabled === true);
@@ -281,6 +295,8 @@ export default function AdminSettingsPage() {
       formData.append('is_takeaway_enabled', isTakeawayEnabled ? '1' : '0');
       formData.append('gstin', gstin.trim().toUpperCase());
       formData.append('fssai_number', fssaiNumber.trim());
+      formData.append('meal_schedule_enabled', mealEnabled ? '1' : '0');
+      formData.append('meal_periods_json', JSON.stringify(mealWindows));
       formData.append('is_online_payment_enabled', isOnlinePaymentEnabled ? '1' : '0');
 
       // Branding Images
@@ -737,6 +753,37 @@ export default function AdminSettingsPage() {
               />
               Enable Takeaway (customer pickup) orders
             </label>
+          </div>
+
+          {/* Breakfast / lunch / dinner menus (REQ-001) */}
+          <div className="pt-4 border-t border-[#D7E5E8] space-y-3 text-xs">
+            <label className="flex items-center gap-2 font-bold text-[#1F2937] cursor-pointer">
+              <input type="checkbox" checked={mealEnabled} onChange={(e) => setMealEnabled(e.target.checked)} className="accent-[#3A7D7C] rounded" />
+              Separate breakfast, lunch and dinner menus
+            </label>
+            <p className="text-[11px] text-[#64748B]">
+              When on, customers see the menu for the meal being served now and can only order those dishes. Tag dishes or categories with their meal times in the menu. Untagged dishes are served all day.
+            </p>
+            {mealEnabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[['BREAKFAST', 'Breakfast'], ['LUNCH', 'Lunch'], ['DINNER', 'Dinner']].map(([key, label]) => (
+                  <fieldset key={key} className="p-3 rounded-xl border border-[#D7E5E8] bg-slate-50">
+                    <legend className="px-1 font-bold text-[#1F2937]">{label}</legend>
+                    <div className="flex items-center gap-2">
+                      <label className="sr-only" htmlFor={`meal-${key}-start`}>{label} starts</label>
+                      <input id={`meal-${key}-start`} type="time" value={mealWindows[key].start}
+                        onChange={(e) => setMealWindows((w) => ({ ...w, [key]: { ...w[key], start: e.target.value } }))}
+                        className="flex-1 min-w-0 p-2 bg-white border border-[#D7E5E8] rounded-lg" />
+                      <span className="text-[#64748B]">to</span>
+                      <label className="sr-only" htmlFor={`meal-${key}-end`}>{label} ends</label>
+                      <input id={`meal-${key}-end`} type="time" value={mealWindows[key].end}
+                        onChange={(e) => setMealWindows((w) => ({ ...w, [key]: { ...w[key], end: e.target.value } }))}
+                        className="flex-1 min-w-0 p-2 bg-white border border-[#D7E5E8] rounded-lg" />
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Dedicated Razorpay Merchant Account Settings */}

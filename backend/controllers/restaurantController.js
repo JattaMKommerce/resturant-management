@@ -483,6 +483,19 @@ async function updateRestaurantSettings(req, res) {
     ];
     if (cleanGstin !== undefined) { sql += `, gstin = ?`; params.push(cleanGstin || null); }
     if (cleanFssai !== undefined) { sql += `, fssai_number = ?`; params.push(cleanFssai || null); }
+    // REQ-001: breakfast / lunch / dinner scheduling
+    const mealOn = parseBool(req.body.meal_schedule_enabled);
+    if (mealOn !== undefined) { sql += `, meal_schedule_enabled = ?`; params.push(mealOn ? 1 : 0); }
+    if (req.body.meal_periods_json !== undefined && req.body.meal_periods_json !== '') {
+      let windows;
+      try {
+        windows = require('../utils/mealPeriods').cleanWindows(req.body.meal_periods_json);
+      } catch (mealErr) {
+        return res.status(400).json({ success: false, message: mealErr.message });
+      }
+      sql += `, meal_periods_json = ?`;
+      params.push(JSON.stringify(windows));
+    }
 
     if (req.body.remove_logo === '1' || req.body.remove_logo === 'true' || req.body.remove_logo === true) {
       sql += `, logo_url = NULL`;

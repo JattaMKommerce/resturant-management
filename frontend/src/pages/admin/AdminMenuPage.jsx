@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import MealPeriodPicker, { parseMealPeriods } from '../../components/MealPeriodPicker';
 import { Plus, Edit2, Trash2, Search, Leaf, Flame, Clock, ToggleLeft, ToggleRight, X, Image as ImageIcon, UtensilsCrossed } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -31,6 +32,7 @@ export default function AdminMenuPage() {
   const [isAvailable, setIsAvailable] = useState(true);
   // Item-wise stock (REQ-003): empty = unlimited
   const [stockQuantity, setStockQuantity] = useState('');
+  const [mealPeriods, setMealPeriods] = useState([]);
   const [imageFile, setImageFile] = useState(null);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState('');
@@ -92,6 +94,7 @@ export default function AdminMenuPage() {
     setIsRecommended(false);
     setIsAvailable(true);
     setStockQuantity('');
+    setMealPeriods([]);
     setImageFile(null);
     setShowModal(true);
   };
@@ -112,6 +115,7 @@ export default function AdminMenuPage() {
     setIsRecommended(item.is_recommended === 1);
     setIsAvailable(item.is_available === 1);
     setStockQuantity(item.stock_quantity === null || item.stock_quantity === undefined ? '' : String(item.stock_quantity));
+    setMealPeriods(parseMealPeriods(item.meal_periods));
     setImageFile(null);
     setShowModal(true);
   };
@@ -170,6 +174,7 @@ export default function AdminMenuPage() {
       formData.append('is_recommended', isRecommended ? '1' : '0');
       formData.append('is_available', isAvailable ? '1' : '0');
       formData.append('stock_quantity', stockQuantity === '' ? '' : String(stockQuantity));
+      formData.append('meal_periods', mealPeriods.join(','));
       if (selectedRestaurantId) {
         formData.append('restaurant_id', selectedRestaurantId);
       }
@@ -586,6 +591,7 @@ export default function AdminMenuPage() {
               </div>
 
               <div>
+                <div className="mb-3"><MealPeriodPicker value={mealPeriods} onChange={setMealPeriods} /></div>
                 <label htmlFor="menu-stock" className="block font-bold text-[#1F2937] mb-1">Portions in stock</label>
                 <input
                   id="menu-stock"

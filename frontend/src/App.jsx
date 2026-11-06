@@ -40,6 +40,7 @@ import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminUnclaimedOrdersPage from './pages/admin/AdminUnclaimedOrdersPage';
 import AdminRefundsPage from './pages/admin/AdminRefundsPage';
 import AdminCouponsPage from './pages/admin/AdminCouponsPage';
+import AdminSalesAnalyticsPage from './pages/admin/AdminSalesAnalyticsPage';
 import AdminHistoryPage from './pages/admin/AdminHistoryPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminWebsitePage from './pages/admin/AdminWebsitePage';
@@ -347,6 +348,11 @@ export default function App() {
         <Route path="/admin/:slug/orders" element={
           <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
             <AdminOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/:slug/sales" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'RESTAURANT_ADMIN']}>
+            <AdminSalesAnalyticsPage />
           </ProtectedRoute>
         } />
         <Route path="/admin/:slug/coupons" element={

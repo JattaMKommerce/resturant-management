@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import MealPeriodPicker, { parseMealPeriods } from '../../components/MealPeriodPicker';
 import { Plus, Edit2, Trash2, Layers, X, FolderTree } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
@@ -13,6 +14,7 @@ export default function AdminCategoriesPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [displayOrder, setDisplayOrder] = useState('0');
+  const [mealPeriods, setMealPeriods] = useState([]);
   const [imageFile, setImageFile] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
@@ -59,6 +61,7 @@ export default function AdminCategoriesPage() {
     setName('');
     setDescription('');
     setDisplayOrder('0');
+    setMealPeriods([]);
     setImageFile(null);
     setShowModal(true);
   };
@@ -68,6 +71,7 @@ export default function AdminCategoriesPage() {
     setName(cat.name);
     setDescription(cat.description || '');
     setDisplayOrder(cat.display_order ? cat.display_order.toString() : '0');
+    setMealPeriods(parseMealPeriods(cat.meal_periods));
     setImageFile(null);
     setShowModal(true);
   };
@@ -91,6 +95,7 @@ export default function AdminCategoriesPage() {
       formData.append('name', name);
       formData.append('description', description);
       formData.append('display_order', displayOrder);
+      formData.append('meal_periods', mealPeriods.join(','));
       if (selectedRestaurantId) {
         formData.append('restaurant_id', selectedRestaurantId);
       }
@@ -248,6 +253,8 @@ export default function AdminCategoriesPage() {
                   className="w-full p-2.5 bg-slate-50 border border-[#D7E5E8] rounded-xl font-medium text-[#1F2937] focus:outline-none focus:border-[#3A7D7C]"
                 />
               </div>
+
+              <MealPeriodPicker value={mealPeriods} onChange={setMealPeriods} label="Dishes in this category are served at" hint={mealPeriods.length === 0 ? 'None ticked: served all day. A dish can still have its own meal times.' : undefined} />
 
               <div>
                 <label className="block font-bold text-[#1F2937] mb-1">Category Image</label>

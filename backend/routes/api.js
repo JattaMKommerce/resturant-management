@@ -14,6 +14,7 @@ const menuController = require('../controllers/menuController');
 const orderController = require('../controllers/orderController');
 const paymentController = require('../controllers/paymentController');
 const couponController = require('../controllers/couponController');
+const salesReportController = require('../controllers/salesReportController');
 const driverController = require('../controllers/driverController');
 const riderAppController = require('../controllers/riderApplicationController');
 const notificationController = require('../controllers/notificationController');
@@ -222,6 +223,9 @@ router.post('/admin/orders/:id/self-deliver', ...adminAuth, orderController.admi
 router.get('/admin/history', ...adminAuth, orderController.getUnifiedHistory);
 router.patch('/admin/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
 router.get('/admin/refunds', ...adminAuth, orderController.listRefunds);
+router.get('/admin/reports/sales', ...adminAuth, salesReportController.getSalesReport);
+router.get('/admin/reports/orders', ...adminAuth, salesReportController.getOrdersExport);
+router.post('/admin/reports/bestsellers/apply', ...adminAuth, salesReportController.applyBestsellers);
 router.get('/admin/coupons', ...adminAuth, couponController.listCoupons);
 router.post('/admin/coupons', ...adminAuth, couponController.createCoupon);
 router.put('/admin/coupons/:id', ...adminAuth, couponController.updateCoupon);

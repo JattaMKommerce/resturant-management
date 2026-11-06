@@ -26,14 +26,15 @@ async function getMenuBySlug(req, res) {
     const slug = String(req.params.slug || '').toLowerCase();
     const { category_id, is_veg, search } = req.query;
 
+    await require('../services/OrderLifecycleService').ensureOrderSchema();
     let restaurants = await query(
-      `SELECT id FROM restaurants
+      `SELECT id, meal_schedule_enabled, meal_periods_json FROM restaurants
        WHERE LOWER(random_slug) = ? OR LOWER(slug) = ? OR LOWER(custom_subdomain_slug) = ?`,
       [slug, slug, slug]
     );
 
     if (restaurants.length === 0) {
-      restaurants = await query('SELECT id FROM restaurants ORDER BY (website_status = "PUBLISHED") DESC, id ASC LIMIT 1');
+      restaurants = await query('SELECT id, meal_schedule_enabled, meal_periods_json FROM restaurants ORDER BY (website_status = "PUBLISHED") DESC, id ASC LIMIT 1');
     }
 
     if (restaurants.length === 0) {
@@ -43,7 +44,8 @@ async function getMenuBySlug(req, res) {
     const restId = restaurants[0].id;
 
     let sql = `
-      SELECT mi.*, COALESCE(c.name, mc.name, 'Chef Specials') as category_name
+      SELECT mi.*, COALESCE(c.name, mc.name, 'Chef Specials') as category_name,
+             c.meal_periods AS category_meal_periods
       FROM menu_items mi
       LEFT JOIN categories c ON mi.category_id = c.id
       LEFT JOIN menu_categories mc ON mi.category_id = mc.id
@@ -52,6 +54,7 @@ async function getMenuBySlug(req, res) {
         AND (mi.is_available_online IS NULL OR mi.is_available_online = 1)
         AND (mi.is_active IS NULL OR mi.is_active = 1)
         AND (mi.stock_quantity IS NULL OR mi.stock_quantity > 0)
+        AND (c.id IS NULL OR c.is_active IS NULL OR c.is_active = 1)
     `;
     const params = [restId, restId];
 
@@ -67,9 +70,36 @@ async function getMenuBySlug(req, res) {
     }
 
     sql += ` ORDER BY COALESCE(c.display_order, mc.display_order, 0) ASC, mi.display_order ASC, mi.name ASC`;
-    const items = await query(sql, params);
+    let items = await query(sql, params);
 
-    res.json({ success: true, count: items.length, items });
+    // Breakfast / lunch / dinner (REQ-001). Without ?period the menu is what is being served
+    // now (plus all-day dishes); ?period=ALL returns everything, each dish marked with its
+    // periods and whether it can be ordered right now; ?period=LUNCH shows that menu.
+    const meals = require('../utils/mealPeriods');
+    const config = meals.configFor(restaurants[0]);
+    const current = meals.currentPeriod(config);
+    const requested = String(req.query.period || '').toUpperCase();
+    const selected = requested === 'ALL' ? 'ALL' : (meals.PERIODS.includes(requested) ? requested : current);
+
+    items = items.map((it) => {
+      const periods = meals.effectivePeriods(it.meal_periods, it.category_meal_periods);
+      return {
+        ...it,
+        meal_periods: periods,
+        available_now: !config.enabled || meals.servedIn(periods, current),
+        served_when: config.enabled && periods.length ? meals.servedWhenText(periods, config) : null
+      };
+    });
+    if (config.enabled && selected !== 'ALL') {
+      items = items.filter((it) => meals.servedIn(it.meal_periods, selected));
+    }
+
+    res.json({
+      success: true,
+      count: items.length,
+      items,
+      meal: { enabled: config.enabled, current, selected: config.enabled ? selected : null, periods: meals.describe(config) }
+    });
   } catch (err) {
     console.error('getMenuBySlug Error:', err);
     res.status(500).json({ success: false, message: 'Server error retrieving menu items.' });
@@ -152,8 +182,8 @@ async function createMenuItem(req, res) {
       `INSERT INTO menu_items (
         restaurant_id, category_id, name, description, price, discounted_price,
         image_url, is_veg, prep_time_minutes, batch_capacity, ingredients, tags, is_bestseller,
-        is_recommended, is_available, display_order, stock_quantity
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        is_recommended, is_available, display_order, stock_quantity, meal_periods
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         restId, category_id, name, description || null,
         parseFloat(price), discounted_price ? parseFloat(discounted_price) : null,
@@ -164,7 +194,8 @@ async function createMenuItem(req, res) {
         toBool(is_bestseller) ? 1 : 0, toBool(is_recommended) ? 1 : 0,
         toBool(is_available) === false ? 0 : 1,
         display_order ? parseInt(display_order) : 0,
-        stock.provided ? stock.value : null
+        stock.provided ? stock.value : null,
+        require('../utils/mealPeriods').periodsToColumn(require('../utils/mealPeriods').normalizePeriods(req.body.meal_periods) || [])
       ]
     );
 
@@ -252,6 +283,9 @@ async function updateMenuItem(req, res) {
 
     if (imageUrl) { sql += `, image_url = ?`; params.push(imageUrl); }
     if (stock.provided) { sql += `, stock_quantity = ?`; params.push(stock.value); }
+    // REQ-001: served at breakfast / lunch / dinner (empty = all day)
+    const mealList = require('../utils/mealPeriods').normalizePeriods(req.body.meal_periods);
+    if (mealList !== undefined) { sql += `, meal_periods = ?`; params.push(require('../utils/mealPeriods').periodsToColumn(mealList)); }
     sql += ` WHERE id = ?`;
     params.push(id);
 

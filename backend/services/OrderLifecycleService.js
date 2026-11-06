@@ -55,6 +55,11 @@ function ensureOrderSchema() {
       // REQ-033: how an online/COD payment was actually made (UPI, CARD, CASH, NETBANKING…)
       await addColumn('payments', 'method_detail', 'VARCHAR(30) NULL DEFAULT NULL');
       await require('./CouponService').ensureCouponSchema();
+      // REQ-001: breakfast / lunch / dinner menus
+      await addColumn('restaurants', 'meal_schedule_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
+      await addColumn('restaurants', 'meal_periods_json', 'TEXT NULL');
+      await addColumn('menu_items', 'meal_periods', 'VARCHAR(40) NULL DEFAULT NULL');
+      await addColumn('categories', 'meal_periods', 'VARCHAR(40) NULL DEFAULT NULL');
 
       // Online orders (orders) and dine-in orders (restaurant_orders) both keep their lines in
       // order_items keyed only by order_id, and their ids overlapped (online #5 and dine-in #5
