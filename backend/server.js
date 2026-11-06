@@ -156,7 +156,7 @@ async function getSocketRestaurantIds(socket, { refresh = false } = {}) {
   if (!socket.data.restaurantIdsPromise) {
     socket.data.restaurantIdsAt = Date.now();
     socket.data.restaurantIdsPromise = (async () => {
-      if (socket.user.email === 'admin@hotel.com') {
+      if (String(socket.user.role || '').toUpperCase() === 'SUPER_ADMIN') {
         const rows = await dbQuery('SELECT id AS restaurant_id FROM restaurants');
         return rows.map((r) => parseInt(r.restaurant_id, 10));
       }

@@ -37,6 +37,10 @@ export default function LoginPage() {
         const r = res.user?.role;
         // replace: the Back button should not return to this login form
         const go = (path) => navigate(path, { replace: true });
+        if (res.password_change_required) {
+          go('/change-password');
+          return;
+        }
         if (r === 'DELIVERY_DRIVER' || r === 'DRIVER') {
           go('/driver/dashboard');
           return;

@@ -1,5 +1,5 @@
 const { query } = require('../config/db');
-const { extractToken, verifyToken, checkSession, STAFF_ROLES } = require('../utils/authSession');
+const { extractToken, verifyToken, checkSession, STAFF_ROLES, passwordChangeBlocks } = require('../utils/authSession');
 
 /**
  * Middleware to verify JWT token and attach user to req.user.
@@ -22,6 +22,9 @@ async function authenticateToken(req, res, next) {
   const rejection = await checkSession(decoded, token);
   if (rejection) {
     return res.status(401).json({ success: false, code: 'SESSION_ENDED', message: rejection });
+  }
+  if (passwordChangeBlocks(decoded, req)) {
+    return res.status(403).json({ success: false, code: 'PASSWORD_CHANGE_REQUIRED', message: 'Please set a new password before continuing.' });
   }
 
   req.user = decoded;
@@ -114,7 +117,7 @@ async function resolveRestaurantAccess(req, res, next) {
     }
 
     // Super Admin & Master Admin can access everything
-    if (userRole === 'SUPER_ADMIN' || req.user.email === 'admin@hotel.com') {
+    if (userRole === 'SUPER_ADMIN') {
       req.adminRestaurantIds = null; // null = all
       req.adminRestaurantId = targetRestId || 1;
       req.isSuperAdmin = true;

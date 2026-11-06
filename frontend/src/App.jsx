@@ -17,6 +17,7 @@ import CustomerOrderTrackingPage from './pages/public/CustomerOrderTrackingPage'
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 import RegisterRestaurantPage from './pages/auth/RegisterRestaurantPage';
 
 // Driver Pages (Phase 2)
@@ -313,6 +314,7 @@ export default function App() {
         <Route path="/admin/login" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/admin/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/register-restaurant" element={<RegisterRestaurantPage />} />
 

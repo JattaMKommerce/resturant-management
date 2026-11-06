@@ -67,10 +67,15 @@ async function login(req, res, next) {
 
     require('../../utils/audit').logAudit(req, { action: 'LOGIN', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role || user.role_name, restaurantId: restaurant ? restaurant.id : null });
 
-    const token = generateToken({
-      ...user,
-      restaurant_id: restaurant ? restaurant.id : 1
-    });
+    // Admin-level accounts still on a demo password must set a new one first
+    const { mustChangePassword, signToken } = require('../../utils/authSession');
+    const passwordChangeRequired = mustChangePassword(user.role || user.role_name, password);
+    const token = passwordChangeRequired
+      ? signToken({ id: user.id, email: user.email, name: user.name, role: user.role_name || user.role, pwd_change_required: true }, '30m')
+      : generateToken({
+        ...user,
+        restaurant_id: restaurant ? restaurant.id : 1
+      });
 
     const userObj = {
       id: user.id,
@@ -90,7 +95,8 @@ async function login(req, res, next) {
     // Return both top-level and nested data structure for 100% universal frontend compatibility
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: passwordChangeRequired ? 'Please set a new password to continue.' : 'Login successful',
+      password_change_required: passwordChangeRequired,
       token,
       user: userObj,
       restaurant,

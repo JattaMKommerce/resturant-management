@@ -161,6 +161,10 @@ export default function SuperAdminPage() {
     try {
       const res = await login(authEmail, authPassword);
       if (res.success) {
+        if (res.password_change_required) {
+          navigate('/change-password', { replace: true });
+          return;
+        }
         if (res.user.role !== 'SUPER_ADMIN') {
           await logout();
           setAuthError('Access Denied: Account does not have Super Admin privileges.');

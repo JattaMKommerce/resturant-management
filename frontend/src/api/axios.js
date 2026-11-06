@@ -82,6 +82,10 @@ api.interceptors.response.use(
             window.dispatchEvent(new CustomEvent('hms_session_ended', { detail: { message: error.response.data?.message } }));
           }
         }
+      } else if (error.response.status === 403 && error.response.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/change-password')) {
+          window.location.assign('/change-password');
+        }
       } else if (
         error.response.status === 403 &&
         (error.response.data?.code === 'SUBSCRIPTION_EXPIRED' || error.response.data?.code === 'SUBSCRIPTION_REQUIRED')

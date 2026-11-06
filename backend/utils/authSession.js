@@ -46,6 +46,33 @@ const STAFF_ROLES = ['WAITER', 'KITCHEN', 'CHEF', 'CASHIER', 'INVENTORY_MANAGER'
 
 const COOKIE_NAMES = ['hotel_token', 'token', 'jwt'];
 
+// Passwords that ship with the demo data and appear in this repository. An admin-level account
+// still using one of them must choose a new password before it can do anything else.
+const DEFAULT_PASSWORDS = new Set([
+  'admin@123', 'admin123', 'admin', '123456789', '12345678', '123456', 'password',
+  'chef123', 'waiter123', 'driver123', 'customer123', 'manager123', 'cashier123'
+]);
+const PRIVILEGED_ROLES = ['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN', 'MANAGER'];
+// Requests a "change your password first" session may still make
+const PASSWORD_CHANGE_ALLOWED = [/\/auth\/change-password$/, /\/auth\/logout$/, /\/auth\/me$/];
+
+function isDefaultPassword(password) {
+  return DEFAULT_PASSWORDS.has(String(password || '').trim().toLowerCase());
+}
+
+/** True when this login must be forced through a password change (production, or when enabled). */
+function mustChangePassword(role, password) {
+  const enforce = process.env.NODE_ENV === 'production' || process.env.ENFORCE_DEFAULT_PASSWORD_CHANGE === 'true';
+  return enforce && PRIVILEGED_ROLES.includes(String(role || '').toUpperCase()) && isDefaultPassword(password);
+}
+
+/** For a session limited to changing the password: is this request allowed? */
+function passwordChangeBlocks(decoded, req) {
+  if (!decoded || !decoded.pwd_change_required) return false;
+  const path = (req.originalUrl || req.url || '').split('?')[0];
+  return !PASSWORD_CHANGE_ALLOWED.some((re) => re.test(path));
+}
+
 function tokenExpiryFor(role) {
   const r = String(role || '').toUpperCase();
   if (ADMIN_ROLES.includes(r)) return process.env.ADMIN_JWT_EXPIRES_IN || '12h';
@@ -240,5 +267,8 @@ module.exports = {
   revokeToken,
   revokeAllSessionsForUser,
   clearAuthCookies,
-  scrubPlainPasswords
+  scrubPlainPasswords,
+  isDefaultPassword,
+  mustChangePassword,
+  passwordChangeBlocks
 };

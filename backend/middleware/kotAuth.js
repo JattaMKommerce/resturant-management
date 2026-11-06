@@ -1,6 +1,6 @@
 const { sendError } = require('../utils/response');
 const { query } = require('../config/db');
-const { extractToken, verifyToken, checkSession, STAFF_ROLES } = require('../utils/authSession');
+const { extractToken, verifyToken, checkSession, STAFF_ROLES, passwordChangeBlocks } = require('../utils/authSession');
 
 /**
  * Uniform Authentication Middleware for KOT and Table/Operations routes
@@ -22,6 +22,9 @@ async function authenticateToken(req, res, next) {
   const rejection = await checkSession(decoded, token);
   if (rejection) {
     return sendError(res, rejection, 401);
+  }
+  if (passwordChangeBlocks(decoded, req)) {
+    return res.status(403).json({ success: false, code: 'PASSWORD_CHANGE_REQUIRED', message: 'Please set a new password before continuing.' });
   }
 
   try {

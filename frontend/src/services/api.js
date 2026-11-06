@@ -67,6 +67,10 @@ api.interceptors.response.use(
         window.dispatchEvent(new CustomEvent('hms_session_ended', { detail: { message } }));
       }
     }
+    if (error.response?.status === 403 && error.response.data?.code === 'PASSWORD_CHANGE_REQUIRED'
+        && typeof window !== 'undefined' && !window.location.pathname.startsWith('/change-password')) {
+      window.location.assign('/change-password');
+    }
     const wrapped = new Error(message);
     wrapped.response = error.response;
     return Promise.reject(wrapped);

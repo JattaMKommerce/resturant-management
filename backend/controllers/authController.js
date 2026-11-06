@@ -909,6 +909,9 @@ async function resetPassword(req, res) {
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
       return res.status(400).json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
     }
+    if (require('../utils/authSession').isDefaultPassword(newPassword)) {
+      return res.status(400).json({ success: false, message: 'That password is too common. Please choose a different one.' });
+    }
 
     const invalidMsg = 'That reset code is invalid or has expired. Please request a new one.';
     const user = await findPasswordAccount(identifier);
@@ -957,6 +960,12 @@ async function changePassword(req, res) {
     if (next.length < MIN_PASSWORD_LENGTH) {
       return res.status(400).json({ success: false, message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
     }
+    if (require('../utils/authSession').isDefaultPassword(next)) {
+      return res.status(400).json({ success: false, message: 'That password is too common. Please choose a different one.' });
+    }
+    if (next === current) {
+      return res.status(400).json({ success: false, message: 'The new password must be different from the current one.' });
+    }
     const [user] = await query('SELECT id, name, email, role, password_hash FROM users WHERE id = ?', [req.user.id]);
     if (!user || !user.password_hash || !(await bcrypt.compare(current, user.password_hash))) {
       return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
@@ -965,7 +974,8 @@ async function changePassword(req, res) {
     await revokeAllSessionsForUser(user.id);
     require('../utils/audit').logAudit(req, { action: 'PASSWORD_CHANGED', entity: 'auth', entityId: user.id });
     // Fresh iat_ms (>= the cut-off just written, and the check is strict), so this token stays valid.
-    const token = signToken(req.user);
+    const { pwd_change_required, ...claims } = req.user; // the new session is unrestricted
+    const token = signToken(claims);
     return res.json({ success: true, message: 'Password changed. Other devices have been logged out.', token });
   } catch (err) {
     console.error('changePassword error:', err);
