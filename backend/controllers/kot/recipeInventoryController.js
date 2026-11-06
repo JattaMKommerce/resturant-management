@@ -287,6 +287,7 @@ async function createInventoryBatch(req, res, next) {
     );
 
     await connection.commit();
+    require('../../services/StockAlertService').checkInventoryItems([inventory_item_id], req.user?.restaurant_id || 1);
 
     const [newBatch] = await pool.query(
       `SELECT b.*, ii.item_name, ii.unit 
@@ -350,6 +351,7 @@ async function updateInventoryBatch(req, res, next) {
     );
 
     await connection.commit();
+    require('../../services/StockAlertService').checkInventoryItems([oldBatch.inventory_item_id], req.user?.restaurant_id || 1);
     return sendSuccess(res, { id, current_quantity: newCurrQty }, 'Batch updated successfully');
   } catch (err) {
     await connection.rollback();
@@ -387,6 +389,7 @@ async function deleteInventoryBatch(req, res, next) {
     );
 
     await connection.commit();
+    require('../../services/StockAlertService').checkInventoryItems([batch.inventory_item_id], req.user?.restaurant_id || 1);
     return sendSuccess(res, { id }, 'Batch deleted successfully');
   } catch (err) {
     await connection.rollback();

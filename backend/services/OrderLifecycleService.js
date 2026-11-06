@@ -213,6 +213,7 @@ async function restoreStock(orderId) {
       [it.quantity, it.menu_item_id]
     );
   }
+  await require('./StockAlertService').checkMenuItems(items.map((it) => it.menu_item_id), null);
 }
 
 /**

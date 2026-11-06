@@ -290,6 +290,17 @@ async function updateMenuItem(req, res) {
     params.push(id);
 
     await query(sql, params);
+    // REQ-039: alert level for this dish (empty = default 5 portions)
+    if (req.body.low_stock_threshold !== undefined) {
+      await require('../services/StockAlertService').ensureSchema();
+      const raw = String(req.body.low_stock_threshold).trim();
+      const lvl = raw === '' ? null : Number(raw);
+      if (lvl !== null && (!Number.isInteger(lvl) || lvl < 0)) {
+        return res.status(400).json({ success: false, message: 'Low-stock alert level must be a whole number.' });
+      }
+      await query('UPDATE menu_items SET low_stock_threshold = ? WHERE id = ?', [lvl, id]);
+    }
+    if (stock.provided || req.body.low_stock_threshold !== undefined) await require('../services/StockAlertService').checkMenuItems([id], item.restaurant_id);
     const updated = await query('SELECT * FROM menu_items WHERE id = ?', [id]);
     res.json({ success: true, message: 'Menu item updated.', item: updated[0] });
   } catch (err) {

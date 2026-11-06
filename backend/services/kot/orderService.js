@@ -314,6 +314,9 @@ async function createOrder(orderData, idempotencyKey = null) {
 
     await connection.commit();
 
+    // REQ-039: alert when a dish runs low / sells out
+    require('../StockAlertService').checkMenuItems(validatedItems.map((v) => v.menu_item_id), orderRestaurantId);
+
     // Fetch full KOT objects with items
     const fullCreatedKOTs = [];
     for (const k of createdKOTs) {

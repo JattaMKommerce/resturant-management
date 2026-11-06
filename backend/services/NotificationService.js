@@ -18,15 +18,17 @@ async function sendNotification({ userId, restaurantId, orderId, customerIdentit
   try {
     const upperType = String(type || '').toUpperCase();
     const isNewOrder = upperType.includes('NEW_ORDER') || upperType.includes('ORDER_CREATED') || upperType === 'NEW_TABLE_ORDER';
+    // Restaurant alerts that must stay in the notification bell, not only pop up live (REQ-039)
+    const isRestaurantAlert = ['LOW_STOCK', 'SOLD_OUT'].includes(upperType);
 
-    // Only insert into DB for new orders or direct user targeted alerts.
+    // Only insert into DB for new orders, restaurant alerts or direct user targeted alerts.
     // A failed save must never stop the live pop-up below from being sent.
     let insertRes = null;
-    if (isNewOrder || userId) {
+    if (isNewOrder || isRestaurantAlert || userId) {
       try {
         insertRes = await query(
           `INSERT INTO notifications (user_id, restaurant_id, order_id, customer_identity_id, title, message, type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [userId || null, isNewOrder ? restaurantId || null : null, orderId || null, customerIdentityId || null, title, message, type]
+          [userId || null, (isNewOrder || isRestaurantAlert) ? restaurantId || null : null, orderId || null, customerIdentityId || null, title, message, type]
         );
       } catch (dbErr) {
         console.warn('[Notification] Could not save notification row (live alert still sent):', dbErr.message);

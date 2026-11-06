@@ -805,7 +805,13 @@ async function customerVerifyOtp(req, res) {
 async function logout(req, res) {
   try {
     const token = extractToken(req);
-    if (token) await revokeToken(token);
+    if (token) {
+      try {
+        const who = require('../utils/authSession').verifyToken(token);
+        require('../utils/audit').logAudit(req, { action: 'LOGOUT', entity: 'auth', entityId: who.id, userId: who.id, userRole: who.role, restaurantId: who.restaurant_id || null });
+      } catch (e) { /* expired token: nothing to record */ }
+      await revokeToken(token);
+    }
   } catch (err) {
     console.warn('logout revoke warning:', err.message);
   }
@@ -928,6 +934,7 @@ async function resetPassword(req, res) {
     await query(`UPDATE users SET password_hash = ?, plain_password = NULL WHERE id = ?`, [hash, user.id]);
     await query(`UPDATE password_resets SET used = 1 WHERE user_id = ?`, [user.id]);
     await revokeAllSessionsForUser(user.id);
+    require('../utils/audit').logAudit(req, { action: 'PASSWORD_RESET', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role, restaurantId: null, details: { via: 'WhatsApp code' } });
 
     return res.json({ success: true, message: 'Password updated. Please log in with your new password.' });
   } catch (err) {
@@ -956,6 +963,7 @@ async function changePassword(req, res) {
     }
     await query(`UPDATE users SET password_hash = ?, plain_password = NULL WHERE id = ?`, [await bcrypt.hash(next, 10), user.id]);
     await revokeAllSessionsForUser(user.id);
+    require('../utils/audit').logAudit(req, { action: 'PASSWORD_CHANGED', entity: 'auth', entityId: user.id });
     // Fresh iat_ms (>= the cut-off just written, and the check is strict), so this token stays valid.
     const token = signToken(req.user);
     return res.json({ success: true, message: 'Password changed. Other devices have been logged out.', token });

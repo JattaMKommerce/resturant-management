@@ -9,13 +9,14 @@ const { emitToRoom, broadcastEvent } = require('../../config/socket');
 async function deductStockForKOTItem(kotItemId, existingConnection = null) {
   const connection = existingConnection || (await pool.getConnection());
   const manageTx = !existingConnection;
+  const touchedIngredients = [];
 
   try {
     if (manageTx) await connection.beginTransaction();
 
     // 1. Fetch KOT item details
     const [kotItems] = await connection.query(
-      `SELECT ki.*, k.kot_number, oi.menu_item_id
+      `SELECT ki.*, k.kot_number, k.restaurant_id AS kot_restaurant_id, oi.menu_item_id
        FROM kot_items ki
        JOIN kots k ON ki.kot_id = k.id
        JOIN order_items oi ON ki.order_item_id = oi.id
@@ -129,6 +130,7 @@ async function deductStockForKOTItem(kotItemId, existingConnection = null) {
           [ing.inventory_item_id]
         );
 
+        touchedIngredients.push(ing.inventory_item_id);
         if (batchCountRow[0].count > 0) {
           await connection.query(
             `UPDATE inventory_items SET current_stock = ? WHERE id = ?`,
@@ -153,6 +155,12 @@ async function deductStockForKOTItem(kotItemId, existingConnection = null) {
     );
 
     if (manageTx) await connection.commit();
+
+    // REQ-039: low-stock alerts (after commit; a caller-owned transaction commits shortly after)
+    if (touchedIngredients.length) {
+      const restId = kotItems[0].kot_restaurant_id || 1;
+      setTimeout(() => require('../StockAlertService').checkInventoryItems(touchedIngredients, restId), manageTx ? 0 : 1500);
+    }
 
     // Broadcast live realtime inventory update to Kitchen and Admin
     emitToRoom('kitchen', 'inventory_updated', { kot_item_id: kotItemId, itemsDeducted });

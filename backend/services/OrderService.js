@@ -446,6 +446,9 @@ async function createOrder(orderPayload) {
       await updateGuestInfo(customerIdentityId, customerName, customerPhone);
     }
 
+    // REQ-039: alert when a dish runs low / sells out
+    require('./StockAlertService').checkMenuItems(Object.keys(qtyPerItem), restaurant.id);
+
     // COD orders go to the restaurant, kitchen and drivers now; online-payment orders only
     // after the payment is verified (PaymentService -> OrderLifecycle.releasePaidOrder).
     if (!holdForPayment) {

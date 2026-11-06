@@ -87,6 +87,8 @@ app.use(cookieParser());
 app.use(require('./middleware/redactSecrets').redactSecrets);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Audit trail of every change made by a signed-in staff/admin user (REQ-035)
+app.use(require('./utils/audit').auditMiddleware);
 
 // Static asset uploads folder
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -584,6 +586,8 @@ async function startServer() {
       try {
         const OrderLifecycle = require('./services/OrderLifecycleService');
         await OrderLifecycle.ensureOrderSchema();
+        await require('./services/StockAlertService').ensureSchema();
+        await require('./utils/audit').ensureAuditSchema();
         const sweep = () => OrderLifecycle.cancelAbandonedOnlineOrders(30)
           .catch((e) => console.warn('Abandoned checkout sweep warning:', e.message));
         sweep();

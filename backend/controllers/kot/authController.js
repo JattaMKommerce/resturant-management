@@ -35,12 +35,14 @@ async function login(req, res, next) {
     }
 
     if (rows.length === 0) {
+      require('../../utils/audit').logAudit(req, { action: 'LOGIN_FAILED', entity: 'auth', userId: null, userRole: null, restaurantId: null, details: { login: inputStr } });
       return sendError(res, 'Invalid credentials or inactive user account', 401);
     }
 
     const user = rows[0];
     const isMatch = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!isMatch) {
+      require('../../utils/audit').logAudit(req, { action: 'LOGIN_FAILED', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role, restaurantId: null, details: { login: inputStr, reason: 'wrong password' } });
       return sendError(res, 'Invalid email/mobile or password.', 401);
     }
 
@@ -62,6 +64,8 @@ async function login(req, res, next) {
       [user.id, user.id, user.id, user.id]
     );
     const restaurant = restRows[0] || null;
+
+    require('../../utils/audit').logAudit(req, { action: 'LOGIN', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role || user.role_name, restaurantId: restaurant ? restaurant.id : null });
 
     const token = generateToken({
       ...user,
