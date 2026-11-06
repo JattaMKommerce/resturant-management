@@ -483,6 +483,12 @@ async function updateRestaurantSettings(req, res) {
     ];
     if (cleanGstin !== undefined) { sql += `, gstin = ?`; params.push(cleanGstin || null); }
     if (cleanFssai !== undefined) { sql += `, fssai_number = ?`; params.push(cleanFssai || null); }
+    // REQ-010: WhatsApp order updates for this restaurant
+    const waOn = parseBool(req.body.whatsapp_updates_enabled);
+    if (waOn !== undefined) {
+      await require('../services/WhatsAppOrderService').ensureSchema();
+      sql += `, whatsapp_updates_enabled = ?`; params.push(waOn ? 1 : 0);
+    }
     // REQ-001: breakfast / lunch / dinner scheduling
     const mealOn = parseBool(req.body.meal_schedule_enabled);
     if (mealOn !== undefined) { sql += `, meal_schedule_enabled = ?`; params.push(mealOn ? 1 : 0); }

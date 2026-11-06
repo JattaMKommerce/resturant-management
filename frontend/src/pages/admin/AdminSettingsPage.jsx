@@ -34,6 +34,7 @@ export default function AdminSettingsPage() {
   const [isOnlinePaymentEnabled, setIsOnlinePaymentEnabled] = useState(true);
   // REQ-008 / REQ-027: takeaway orders, GST details printed on invoices
   const [isTakeawayEnabled, setIsTakeawayEnabled] = useState(true);
+  const [waUpdates, setWaUpdates] = useState(true);
   const [gstin, setGstin] = useState('');
   const [fssaiNumber, setFssaiNumber] = useState('');
   const [razorpaySecretSaved, setRazorpaySecretSaved] = useState(false);
@@ -109,6 +110,7 @@ export default function AdminSettingsPage() {
         setDeliveryFee(r.delivery_fee ?? '40');
         setTaxPercentage(r.tax_percentage ?? '5');
         setIsTakeawayEnabled(Number(r.is_takeaway_enabled ?? 1) !== 0);
+        setWaUpdates(Number(r.whatsapp_updates_enabled ?? 1) !== 0);
         setGstin(r.gstin || '');
         setFssaiNumber(r.fssai_number || '');
         setMealEnabled(Number(r.meal_schedule_enabled) === 1);
@@ -293,6 +295,7 @@ export default function AdminSettingsPage() {
       formData.append('is_online_ordering_enabled', isOnlineOrderingEnabled ? '1' : '0');
       formData.append('is_cod_enabled', isCodEnabled ? '1' : '0');
       formData.append('is_takeaway_enabled', isTakeawayEnabled ? '1' : '0');
+      formData.append('whatsapp_updates_enabled', waUpdates ? '1' : '0');
       formData.append('gstin', gstin.trim().toUpperCase());
       formData.append('fssai_number', fssaiNumber.trim());
       formData.append('meal_schedule_enabled', mealEnabled ? '1' : '0');
@@ -752,6 +755,16 @@ export default function AdminSettingsPage() {
                 className="accent-[#3A7D7C] rounded"
               />
               Enable Takeaway (customer pickup) orders
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={waUpdates}
+                onChange={(e) => setWaUpdates(e.target.checked)}
+                className="accent-[#3A7D7C] rounded"
+              />
+              Send order updates to customers on WhatsApp
             </label>
           </div>
 

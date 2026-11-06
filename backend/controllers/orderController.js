@@ -1429,6 +1429,7 @@ async function completeRefund(req, res) {
       );
       if (Number(open.n) === 0) {
         await query(`UPDATE orders SET payment_status = 'REFUNDED' WHERE id = ?`, [refund.order_id]);
+        require('../services/WhatsAppOrderService').sendOrderUpdate(refund.order_id, 'REFUNDED', { amount: refund.amount });
       }
     }
     res.json({ success: true, message: `Refund of ₹${parseFloat(refund.amount).toFixed(2)} recorded.` });

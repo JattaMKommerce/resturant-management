@@ -154,6 +154,8 @@ async function releaseOrderToRestaurant(orderId) {
     title: 'Order Placed Successfully!',
     message: `Your order #${order.order_number} for ₹${total} has been placed.`
   });
+  // REQ-010 / REQ-026: confirmation on WhatsApp (in the background)
+  require('./WhatsAppOrderService').sendOrderUpdate(orderId, 'PLACED');
 
   try {
     await notifyKitchen({
@@ -268,6 +270,7 @@ async function refundOnlineOrder(order, { reason = 'Order cancelled', userId = n
   const allDone = results.length > 0 && results.every((r) => r.status === 'PROCESSED');
   if (allDone) {
     await query(`UPDATE orders SET payment_status = 'REFUNDED' WHERE id = ?`, [order.id]);
+    require('./WhatsAppOrderService').sendOrderUpdate(order.id, 'REFUNDED', { amount: results.reduce((s, r) => s + Number(r.amount || 0), 0) });
   }
   return results;
 }

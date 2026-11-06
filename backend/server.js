@@ -588,6 +588,7 @@ async function startServer() {
         await OrderLifecycle.ensureOrderSchema();
         await require('./services/StockAlertService').ensureSchema();
         await require('./utils/audit').ensureAuditSchema();
+        await require('./services/WhatsAppOrderService').ensureSchema();
         const sweep = () => OrderLifecycle.cancelAbandonedOnlineOrders(30)
           .catch((e) => console.warn('Abandoned checkout sweep warning:', e.message));
         sweep();

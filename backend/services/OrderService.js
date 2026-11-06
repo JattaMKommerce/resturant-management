@@ -640,6 +640,12 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
     message: notifMsg
   });
 
+  // REQ-010 / REQ-026: WhatsApp update for the customer (not for checkouts that were never paid)
+  const waEvent = require('./WhatsAppOrderService').eventForStatus(newStatus, order);
+  if (waEvent && prevStatus !== newStatus && Number(order.payment_hold) !== 1) {
+    require('./WhatsAppOrderService').sendOrderUpdate(orderId, waEvent, { byRestaurant: newStatus === 'REJECTED' });
+  }
+
   return { success: true, orderId, prevStatus, newStatus, refunds: closedRefunds };
 }
 
