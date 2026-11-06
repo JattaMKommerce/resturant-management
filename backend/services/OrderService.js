@@ -65,7 +65,7 @@ function itemsSignature(lines) {
 async function buildOrderResult(orderId, restaurant, extra = {}) {
   const [o] = await query('SELECT * FROM orders WHERE id = ?', [orderId]);
   const items = await query(
-    'SELECT menu_item_id, item_name, unit_price, quantity, item_total, special_instructions FROM order_items WHERE order_id = ?',
+    'SELECT menu_item_id, item_name, unit_price, quantity, item_total, special_instructions FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"',
     [orderId]
   );
   return {
@@ -329,7 +329,7 @@ async function createOrder(orderPayload) {
       );
       for (const r of recent) {
         if (Math.abs(parseFloat(r.total_amount) - totalAmount) > 0.009) continue;
-        const [lines] = await conn.query('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ?', [r.id]);
+        const [lines] = await conn.query('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [r.id]);
         if (itemsSignature(lines) === signature) {
           return await buildOrderResult(r.id, restaurant, { duplicate: true });
         }
@@ -390,8 +390,8 @@ async function createOrder(orderPayload) {
     // Insert order items (price snapshots)
     for (const pItem of processedItems) {
       await conn.query(
-        `INSERT INTO order_items (order_id, menu_item_id, item_name, unit_price, quantity, item_total, special_instructions)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO order_items (order_id, menu_item_id, item_name, unit_price, quantity, item_total, special_instructions, order_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'ONLINE')`,
         [orderId, pItem.menu_item_id, pItem.item_name, pItem.unit_price, pItem.quantity, pItem.item_total, pItem.special_instructions]
       );
     }
@@ -524,7 +524,7 @@ async function updateOrderStatus(orderId, newStatus, userId = null, notes = '') 
 
   // Kitchen integration
   if (newStatus === 'SENT_TO_KITCHEN' || newStatus === 'ACCEPTED' || newStatus === 'PREPARING') {
-    const items = await query('SELECT * FROM order_items WHERE order_id = ?', [orderId]);
+    const items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [orderId]);
     await notifyKitchen({ ...order, items });
   }
 

@@ -122,7 +122,7 @@ async function getBillById(req, res, next) {
       const [items] = await pool.query(
         `SELECT oi.item_name, oi.unit_price, oi.quantity, oi.tax_amount,
                 COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0.00) as total_price
-         FROM order_items oi WHERE oi.order_id = ?`,
+         FROM order_items oi WHERE oi.order_id = ? AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'`,
         [bill.order_id]
       );
       bill.items = items;
@@ -156,7 +156,7 @@ async function getBillById(req, res, next) {
     const [items] = await pool.query(
       `SELECT oi.item_name, oi.unit_price, oi.quantity, oi.tax_amount, 
               COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0.00) as total_price 
-       FROM order_items oi WHERE oi.order_id = ?`,
+       FROM order_items oi WHERE oi.order_id = ? AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'`,
       [bill.order_id]
     );
     bill.items = items;

@@ -499,7 +499,7 @@ async function getOperationsOverview(restaurantId = 1) {
        FROM (
          SELECT oi.item_name, SUM(oi.quantity) as total_qty, SUM(COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0)) as total_rev
          FROM order_items oi
-         JOIN orders o ON oi.order_id = o.id
+         JOIN orders o ON oi.order_id = o.id AND COALESCE(oi.order_source, 'ONLINE') = 'ONLINE'
          WHERE o.created_at >= ? AND o.order_status != 'CANCELLED'
          GROUP BY oi.item_name
 
@@ -507,7 +507,7 @@ async function getOperationsOverview(restaurantId = 1) {
 
          SELECT oi.item_name, SUM(oi.quantity) as total_qty, SUM(COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0)) as total_rev
          FROM order_items oi
-         JOIN restaurant_orders ro ON oi.order_id = ro.id
+         JOIN restaurant_orders ro ON oi.order_id = ro.id AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'
          WHERE ro.created_at >= ? AND ro.order_status != 'CANCELLED'
          GROUP BY oi.item_name
        ) combined_dishes

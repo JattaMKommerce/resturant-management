@@ -56,6 +56,32 @@ function ensureOrderSchema() {
       await addColumn('payments', 'method_detail', 'VARCHAR(30) NULL DEFAULT NULL');
       await require('./CouponService').ensureCouponSchema();
 
+      // Online orders (orders) and dine-in orders (restaurant_orders) both keep their lines in
+      // order_items keyed only by order_id, and their ids overlapped (online #5 and dine-in #5
+      // shared item rows). Label every row with its source and keep new dine-in ids far apart.
+      await addColumn('order_items', 'order_source', 'VARCHAR(10) NULL DEFAULT NULL');
+      if (!(await indexExists('order_items', 'idx_order_items_source'))) {
+        await query('ALTER TABLE order_items ADD INDEX idx_order_items_source (order_id, order_source)');
+      }
+      // Existing rows: an item is written in the same request as its order, so its created_at
+      // sits next to its parent's. Where both tables have that id, the closer timestamp wins.
+      await query(`
+        UPDATE order_items oi
+        LEFT JOIN orders o ON o.id = oi.order_id
+        LEFT JOIN restaurant_orders ro ON ro.id = oi.order_id
+        SET oi.order_source = CASE
+          WHEN ro.id IS NULL THEN 'ONLINE'
+          WHEN o.id IS NULL THEN 'OFFLINE'
+          WHEN ABS(TIMESTAMPDIFF(SECOND, oi.created_at, o.created_at))
+               <= ABS(TIMESTAMPDIFF(SECOND, oi.created_at, ro.created_at)) THEN 'ONLINE'
+          ELSE 'OFFLINE' END
+        WHERE oi.order_source IS NULL`);
+      // (MAX(id), not information_schema.AUTO_INCREMENT: MySQL 8 caches that figure for a day)
+      const [maxRow] = await query('SELECT COALESCE(MAX(id), 0) AS max_id FROM restaurant_orders');
+      if (Number(maxRow?.max_id) < 10000000) {
+        await query('ALTER TABLE restaurant_orders AUTO_INCREMENT = 10000000');
+      }
+
       // Item-wise stock: NULL = not tracked (unlimited)
       await addColumn('menu_items', 'stock_quantity', 'INT NULL DEFAULT NULL');
 
@@ -105,7 +131,7 @@ async function releaseOrderToRestaurant(orderId) {
     [orderId]
   );
   if (!order) return false;
-  const items = await query('SELECT * FROM order_items WHERE order_id = ?', [orderId]);
+  const items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [orderId]);
   const total = parseFloat(order.total_amount);
   const paidNote = order.payment_method === 'ONLINE' ? ' (paid online)' : '';
 
@@ -174,7 +200,7 @@ async function releasePaidOrder(orderId) {
 
 /** Put back the stock an order took (only for items whose stock is tracked). */
 async function restoreStock(orderId) {
-  const items = await query('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
+  const items = await query('SELECT menu_item_id, quantity FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [orderId]);
   for (const it of items) {
     if (!it.menu_item_id) continue;
     await query(

@@ -58,7 +58,7 @@ async function getOrderById(req, res) {
     const order = orders[0];
 
     // Public order tracking (supports both registered customers and guest checkout)
-    const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+    const items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
     const history = await query(
       `SELECT h.*, u.name as changed_by_name
        FROM order_status_history h
@@ -95,7 +95,7 @@ async function getUserOrders(req, res) {
     );
 
     for (let order of orders) {
-      order.items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+      order.items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
     }
 
     res.json({ success: true, count: orders.length, orders });
@@ -159,7 +159,7 @@ async function getAllOrders(req, res) {
 
     const orders = await query(sql, params);
     for (let order of orders) {
-      order.items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+      order.items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
     }
 
     res.json({ success: true, count: orders.length, orders });
@@ -1026,9 +1026,9 @@ async function getUnifiedHistory(req, res) {
     for (let order of combined.slice(0, 100)) {
       try {
         if (order.source_type === 'ONLINE') {
-          order.items = await query('SELECT item_name, quantity, unit_price, item_total FROM order_items WHERE order_id = ?', [order.id]);
+          order.items = await query('SELECT item_name, quantity, unit_price, item_total FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
         } else {
-          order.items = await query('SELECT item_name, quantity, unit_price, item_total FROM order_items WHERE order_id = ?', [order.id]);
+          order.items = await query('SELECT item_name, quantity, unit_price, item_total FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
         }
       } catch (e) {
         order.items = [];
@@ -1121,7 +1121,7 @@ async function getUnclaimedOrders(req, res) {
     );
 
     for (let order of orders) {
-      order.items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+      order.items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
     }
 
     res.json({
@@ -1259,7 +1259,7 @@ async function getOrderInvoice(req, res) {
     }
 
     const items = await query(
-      'SELECT item_name, unit_price, quantity, item_total FROM order_items WHERE order_id = ? ORDER BY id ASC',
+      'SELECT item_name, unit_price, quantity, item_total FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE" ORDER BY id ASC',
       [order.id]
     );
     const money = (v) => Math.round(Number(v || 0) * 100) / 100;

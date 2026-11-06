@@ -26,7 +26,7 @@ async function notifyKitchen(orderData) {
     }
 
     // Query actual inserted order items for this order to ensure valid order_item_id references
-    const [dbItems] = await pool.query(`SELECT * FROM order_items WHERE order_id = ?`, [orderId]);
+    const [dbItems] = await pool.query(`SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, 'ONLINE') = 'ONLINE'`, [orderId]);
     const itemsToProcess = dbItems.length > 0 ? dbItems : (orderData.items || []);
 
     // Resolve default kitchen department

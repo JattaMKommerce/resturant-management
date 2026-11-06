@@ -55,7 +55,7 @@ async function getCustomerPortalData(req, res) {
     let itemsByOrder = {};
     if (orderIds.length > 0) {
       const allItems = await query(
-        `SELECT * FROM order_items WHERE order_id IN (${orderIds.map(() => '?').join(',')})`,
+        `SELECT * FROM order_items WHERE order_id IN (${orderIds.map(() => '?').join(',')}) AND COALESCE(order_source, 'ONLINE') = 'ONLINE'`,
         orderIds
       );
       allItems.forEach(it => {

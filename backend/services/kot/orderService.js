@@ -191,8 +191,8 @@ async function createOrder(orderData, idempotencyKey = null) {
     for (const vItem of validatedItems) {
       const [orderItemResult] = await connection.query(
         `INSERT INTO order_items 
-          (order_id, menu_item_id, item_name, unit_price, quantity, tax_amount, item_total, special_instructions, kitchen_department_id, prep_time_minutes, batch_capacity, number_of_batches, estimated_prep_time_minutes, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+          (order_id, menu_item_id, item_name, unit_price, quantity, tax_amount, item_total, special_instructions, kitchen_department_id, prep_time_minutes, batch_capacity, number_of_batches, estimated_prep_time_minutes, status, order_source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', 'OFFLINE')`,
         [
           orderId,
           vItem.menu_item_id,

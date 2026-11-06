@@ -722,7 +722,7 @@ async function getDriverOrders(req, res) {
     );
 
     for (let order of assignedOrders) {
-      order.items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+      order.items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
     }
 
     const activeDelivery = assignedOrders.find(o =>
@@ -1604,7 +1604,7 @@ async function getAdminDriverById(req, res) {
         [driver.id]
       );
       if (ao) {
-        ao.items = await query('SELECT * FROM order_items WHERE order_id = ?', [ao.id]);
+        ao.items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [ao.id]);
         activeOrder = ao;
       }
     } catch (aoErr) {
@@ -1623,7 +1623,7 @@ async function getAdminDriverById(req, res) {
         [driver.id]
       );
       for (let ord of recentDeliveries) {
-        ord.items = await query('SELECT item_name, quantity, COALESCE(unit_price, 0) as price, COALESCE(unit_price, 0) as unit_price FROM order_items WHERE order_id = ?', [ord.id]);
+        ord.items = await query('SELECT item_name, quantity, COALESCE(unit_price, 0) as price, COALESCE(unit_price, 0) as unit_price FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [ord.id]);
       }
     } catch (rdErr) {
       console.warn('Recent deliveries fetch warning:', rdErr.message);
@@ -2012,7 +2012,7 @@ async function applyToRestaurant(req, res) {
         );
 
         for (let order of orders) {
-          order.items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+          order.items = await query('SELECT * FROM order_items WHERE order_id = ? AND COALESCE(order_source, "ONLINE") = "ONLINE"', [order.id]);
         }
 
         res.json({

@@ -24,7 +24,7 @@ async function getOrders(req, res, next) {
     const { status, table_id, order_type, search } = req.query;
     let query = `
       SELECT o.*, t.table_number, t.table_name, r.room_number,
-        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as total_items_count
+        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE') as total_items_count
       FROM restaurant_orders o
       LEFT JOIN restaurant_tables t ON o.table_id = t.id
       LEFT JOIN rooms r ON o.room_id = r.id
@@ -81,7 +81,7 @@ async function getOrderById(req, res, next) {
       `SELECT oi.*, k.name as kitchen_department_name
        FROM order_items oi
        JOIN kitchen_departments k ON oi.kitchen_department_id = k.id
-       WHERE oi.order_id = ?`,
+       WHERE oi.order_id = ? AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'`,
       [order.id]
     );
 
@@ -167,7 +167,7 @@ async function getCustomerOrderTracking(req, res, next) {
               COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0.00) as total_price, 
               oi.status
        FROM order_items oi
-       WHERE oi.order_id = ?`,
+       WHERE oi.order_id = ? AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'`,
       [order.id]
     );
     order.items = items;

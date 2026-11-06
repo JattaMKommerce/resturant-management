@@ -74,7 +74,7 @@ async function getKOTs(req, res, next) {
                   oi.special_instructions, COALESCE(oi.prep_time_minutes, 15) as prep_time_minutes,
                   'PENDING' as status, '[]' as modifiers_json
            FROM order_items oi
-           WHERE oi.order_id = ?`,
+           WHERE oi.order_id = ? AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'`,
           [kot.order_id]
         );
         items = fallbackItems;
@@ -147,7 +147,7 @@ async function getKOTById(req, res, next) {
                 oi.special_instructions, COALESCE(oi.prep_time_minutes, 15) as prep_time_minutes,
                 'PENDING' as status, '[]' as modifiers_json
          FROM order_items oi
-         WHERE oi.order_id = ?`,
+         WHERE oi.order_id = ? AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'`,
         [kot.order_id]
       );
       items = fallbackItems;

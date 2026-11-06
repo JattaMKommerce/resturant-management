@@ -68,7 +68,7 @@ async function getDashboardKPIs(req, res, next) {
        FROM (
          SELECT oi.item_name, SUM(oi.quantity) as qty_sold, SUM(COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0)) as total_revenue
          FROM order_items oi
-         JOIN restaurant_orders o ON oi.order_id = o.id
+         JOIN restaurant_orders o ON oi.order_id = o.id AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'
          WHERE (DATE(o.created_at) = ? OR DATE(o.created_at) = CURDATE()) AND o.order_status != 'CANCELLED'
          GROUP BY oi.item_name
 
@@ -76,7 +76,7 @@ async function getDashboardKPIs(req, res, next) {
 
          SELECT oi.item_name, SUM(oi.quantity) as qty_sold, SUM(COALESCE(oi.item_total, oi.unit_price * oi.quantity, 0)) as total_revenue
          FROM order_items oi
-         JOIN orders ord ON oi.order_id = ord.id
+         JOIN orders ord ON oi.order_id = ord.id AND COALESCE(oi.order_source, 'ONLINE') = 'ONLINE'
          WHERE (DATE(ord.created_at) = ? OR DATE(ord.created_at) = CURDATE()) AND ord.order_status != 'CANCELLED'
          GROUP BY oi.item_name
        ) combined_items
@@ -193,7 +193,7 @@ async function getMenuReport(req, res, next) {
          LEFT JOIN menu_items m ON oi.menu_item_id = m.id
          LEFT JOIN categories c ON m.category_id = c.id
          LEFT JOIN menu_categories mc ON m.category_id = mc.id
-         JOIN restaurant_orders o ON oi.order_id = o.id
+         JOIN restaurant_orders o ON oi.order_id = o.id AND COALESCE(oi.order_source, 'OFFLINE') = 'OFFLINE'
          WHERE o.order_status != 'CANCELLED'
          GROUP BY oi.item_name, c.name, mc.name
 
@@ -206,7 +206,7 @@ async function getMenuReport(req, res, next) {
          LEFT JOIN menu_items m ON oi.menu_item_id = m.id
          LEFT JOIN categories c ON m.category_id = c.id
          LEFT JOIN menu_categories mc ON m.category_id = mc.id
-         JOIN orders ord ON oi.order_id = ord.id
+         JOIN orders ord ON oi.order_id = ord.id AND COALESCE(oi.order_source, 'ONLINE') = 'ONLINE'
          WHERE ord.order_status != 'CANCELLED'
          GROUP BY oi.item_name, c.name, mc.name
        ) combined_menu
