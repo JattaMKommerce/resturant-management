@@ -37,7 +37,8 @@ import {
   IndianRupee,
   RotateCcw,
   Tag,
-  CalendarClock
+  CalendarClock,
+  UsersRound
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -103,7 +104,7 @@ export default function UnifiedSidebar({
   const { access } = useAuth();
   const PAGE_PERMISSIONS = {
     '': 'orders.manage', unclaimed: 'orders.manage', orders: 'orders.manage', sales: 'reports.view',
-    refunds: 'refunds.manage', coupons: 'coupons.manage', onboarding: 'settings.manage', staff: 'staff.manage',
+    refunds: 'refunds.manage', coupons: 'coupons.manage', customers: 'customers.view', onboarding: 'settings.manage', staff: 'staff.manage',
     drivers: 'drivers.manage', 'driver-payouts': 'drivers.manage', menu: 'menu.manage', categories: 'menu.manage',
     settings: 'settings.manage', wallet: 'settings.manage'
   };
@@ -138,6 +139,7 @@ export default function UnifiedSidebar({
     { name: 'Sales Analytics', path: `/admin/${activeSlug}/sales`, icon: BarChart3 },
     { name: 'Refunds', path: `/admin/${activeSlug}/refunds`, icon: RotateCcw, featureKey: 'online_ordering' },
     { name: 'Coupons', path: `/admin/${activeSlug}/coupons`, icon: Tag, featureKey: 'online_ordering' },
+    { name: 'Customers', path: `/admin/${activeSlug}/customers`, icon: UsersRound },
     { name: '✨ Setup Wizard', path: `/admin/${activeSlug}/onboarding`, icon: Sparkles },
     { name: 'Staff Management & Team', path: `/admin/${activeSlug}/staff`, icon: UserCheck },
     { name: 'Delivery Drivers Fleet', path: `/admin/${activeSlug}/drivers`, icon: Users, featureKey: 'delivery_fleet' },

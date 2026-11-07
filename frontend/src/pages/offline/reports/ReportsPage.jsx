@@ -374,8 +374,8 @@ export default function ReportsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Period selector */}
-            <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border border-[#D7E5E8] text-xs font-bold">
+            {/* Period selector (wraps on phones instead of running off the screen) */}
+            <div className="flex flex-wrap gap-1 bg-slate-50 p-1 rounded-xl border border-[#D7E5E8] text-xs font-bold max-w-full">
               {[
                 { key: 'today', label: 'Today' },
                 { key: '7d', label: '7 Days' },

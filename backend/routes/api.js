@@ -152,6 +152,15 @@ router.post('/payments/mark-cod-collected', authenticateToken, authorizeRoles('A
 const superAuth = [authenticateToken, authorizeRoles('SUPER_ADMIN')];
 
 router.get('/superadmin/kpis', ...superAuth, superAdminController.getSuperAdminKPIs);
+// Database backup & recovery (REQ-034)
+const backupController = require('../controllers/backupController');
+const backupUpload = require('multer')({ storage: require('multer').memoryStorage(), limits: { fileSize: 200 * 1024 * 1024, files: 1 } });
+router.get('/superadmin/backups', ...superAuth, backupController.listBackups);
+router.post('/superadmin/backups', ...superAuth, backupController.createBackup);
+router.post('/superadmin/backups/upload', ...superAuth, backupUpload.single('backup'), backupController.uploadBackup);
+router.get('/superadmin/backups/:name/download', ...superAuth, backupController.downloadBackup);
+router.post('/superadmin/backups/:name/restore', ...superAuth, backupController.restoreBackup);
+router.delete('/superadmin/backups/:name', ...superAuth, backupController.deleteBackup);
 router.get('/superadmin/restaurants', ...superAuth, superAdminController.getAllRestaurants);
 router.get('/superadmin/restaurants/:id', ...superAuth, superAdminController.getRestaurantById);
 router.post('/superadmin/restaurants', ...superAuth, superAdminController.createRestaurant);
@@ -250,6 +259,11 @@ router.get('/admin/reports/sales', ...adminAuth, salesReportController.getSalesR
 router.get('/admin/reports/orders', ...adminAuth, salesReportController.getOrdersExport);
 router.post('/admin/reports/bestsellers/apply', ...adminAuth, salesReportController.applyBestsellers);
 router.get('/admin/coupons', ...adminAuth, couponController.listCoupons);
+// Customer management (REQ-038)
+const customerManagement = require('../controllers/customerManagementController');
+router.get('/admin/customers', ...adminAuth, customerManagement.listCustomers);
+router.get('/admin/customers/:phone', ...adminAuth, customerManagement.getCustomer);
+router.put('/admin/customers/:phone', ...adminAuth, customerManagement.saveCustomerNotes);
 router.post('/admin/coupons', ...adminAuth, couponController.createCoupon);
 router.put('/admin/coupons/:id', ...adminAuth, couponController.updateCoupon);
 router.delete('/admin/coupons/:id', ...adminAuth, couponController.deleteCoupon);

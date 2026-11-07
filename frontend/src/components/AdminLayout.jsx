@@ -12,7 +12,7 @@ import IdleSessionGuard from './IdleSessionGuard';
 import { useSocket } from '../context/SocketContext';
 
 export default function AdminLayout({ children }) {
-  const { user, restaurant, restaurants, updateRestaurant } = useAuth();
+  const { user, restaurant, restaurants, updateRestaurant, switchBranch } = useAuth();
   const { socket, joinRoom, leaveRoom } = useSocket();
   const location = useLocation();
   // Restaurant this admin page is showing (/admin/:slug/...). Orders on screen are loaded
@@ -220,7 +220,19 @@ export default function AdminLayout({ children }) {
                 {getPageTitle()}
               </h2>
               <p className="text-[10px] sm:text-xs text-[#64748B] font-semibold truncate mt-0.5 flex items-center gap-1.5">
-                <span className="text-[#3A7D7C] font-bold">{restaurant?.name || 'Restaurant Admin'}</span>
+                {/* Branch switcher (REQ-009): owners of several branches pick the one to work on */}
+                {Array.isArray(restaurants) && restaurants.length > 1 ? (
+                  <select
+                    aria-label="Branch"
+                    value={restaurant?.id || ''}
+                    onChange={(e) => switchBranch(restaurants.find((r) => String(r.id) === e.target.value))}
+                    className="max-w-[160px] sm:max-w-[220px] truncate bg-transparent text-[#3A7D7C] font-bold border border-[#D7E5E8] rounded-lg px-1.5 py-0.5 cursor-pointer"
+                  >
+                    {restaurants.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                ) : (
+                  <span className="text-[#3A7D7C] font-bold">{restaurant?.name || 'Restaurant Admin'}</span>
+                )}
                 <span className="hidden sm:inline">• Unified Operational Control</span>
               </p>
             </div>
@@ -232,14 +244,16 @@ export default function AdminLayout({ children }) {
             {/* Notification Bell with Unread Count */}
             <NotificationBellDropdown />
 
-            {/* SaaS Subscription Live Countdown Pill */}
+            {/* SaaS Subscription Live Countdown Pill (phones: own row below the header) */}
             {subscription && (
-              <SubscriptionCountdownBadge
-                subscription={subscription}
-                compact={true}
-                onExpire={() => fetchSubscription()}
-                onOpenRenew={() => setShowPlanModal(true)}
-              />
+              <div className="hidden sm:block">
+                <SubscriptionCountdownBadge
+                  subscription={subscription}
+                  compact={true}
+                  onExpire={() => fetchSubscription()}
+                  onOpenRenew={() => setShowPlanModal(true)}
+                />
+              </div>
             )}
 
             {/* ONLINE ORDERING TOGGLE BUTTON */}
@@ -279,6 +293,7 @@ export default function AdminLayout({ children }) {
                         : 'bg-rose-600 hover:bg-rose-700'
                     }`}
                     title={!isPublished ? "Master toggle is ON, but website is in DRAFT state. Publish website in Website Controls." : "Toggle Online Store Order Acceptances"}
+                    aria-label={`Online ordering is ${isOrderingOn ? 'on' : 'off'}. Turn it ${isOrderingOn ? 'off' : 'on'}`}
                   >
                     <Power className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden md:inline">
@@ -289,8 +304,8 @@ export default function AdminLayout({ children }) {
               );
             })()}
 
-            {/* Admin Profile Avatar */}
-            <div className="flex items-center gap-2 sm:gap-3 border-l border-[#D7E5E8] pl-2 sm:pl-4">
+            {/* Admin Profile Avatar (hidden on phones to keep room for the page name) */}
+            <div className="hidden sm:flex items-center gap-2 sm:gap-3 border-l border-[#D7E5E8] pl-2 sm:pl-4">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#3A7D7C] text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-2xs shrink-0">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
               </div>
@@ -302,6 +317,16 @@ export default function AdminLayout({ children }) {
 
           </div>
         </header>
+        {subscription && (
+          <div className="sm:hidden px-4 pt-3 flex">
+            <SubscriptionCountdownBadge
+              subscription={subscription}
+              compact={true}
+              onExpire={() => fetchSubscription()}
+              onOpenRenew={() => setShowPlanModal(true)}
+            />
+          </div>
+        )}
 
         {/* Dynamic Responsive Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">

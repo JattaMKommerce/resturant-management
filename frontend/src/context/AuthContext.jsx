@@ -54,7 +54,16 @@ export const AuthProvider = ({ children }) => {
             loadAccess();
           }
         })
-        .catch(() => {
+        .catch((err) => {
+          // Sign out only when the server rejects the session. A busy server, "too many
+          // requests" or a dropped connection must not throw the user back to the login page.
+          const status = err?.response?.status;
+          const code = err?.response?.data?.code;
+          const rejected = status === 401 || (status === 403 && code !== 'PASSWORD_CHANGE_REQUIRED');
+          if (!rejected) {
+            loadAccess();
+            return;
+          }
           setUser(null);
           setRestaurant(null);
           localStorage.removeItem('hotel_token');
@@ -149,6 +158,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('hotel_cart');
     localStorage.removeItem('hotel_cart_slug');
     localStorage.removeItem('hotel_last_activity');
+    localStorage.removeItem('hotel_active_branch');
     if (reason) {
       try { sessionStorage.setItem('hotel_logout_reason', reason); } catch (e) {}
     }
@@ -157,6 +167,18 @@ export const AuthProvider = ({ children }) => {
     setRestaurants([]);
     setAccess({ owner: false, permissions: [], loaded: false });
     window.dispatchEvent(new Event('cart_cleared'));
+  };
+
+  // Branch switcher (REQ-009): work on another branch; online admin pages carry the branch in the URL.
+  const switchBranch = (branch) => {
+    if (!branch) return;
+    try { localStorage.setItem('hotel_active_branch', String(branch.id)); } catch (e) { /* storage blocked */ }
+    localStorage.setItem('hotel_admin_restaurant', JSON.stringify(branch));
+    const p = window.location.pathname;
+    const m = p.match(/^\/admin\/([a-zA-Z0-9_-]+)(\/.*)?$/);
+    const fixed = ['offline', 'history', 'wallet', 'subscription', 'accommodation', 'unclaimed', 'login', 'setup-wizard', 'driver-payouts', 'forgot-password'];
+    if (m && !fixed.includes(m[1]) && branch.slug) window.location.assign(`/admin/${branch.slug}${m[2] || ''}`);
+    else window.location.reload();
   };
 
   // Log out: end the session on the server (so the token and its cookie copy stop working
@@ -198,7 +220,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user, setUser, restaurant, setRestaurant, restaurants, setRestaurants, guestInfo, setGuestInfo,
       updateRestaurant, updateSuiteMode, loading, access, can, loadAccess,
-      login, register, registerRestaurant, logout
+      login, register, registerRestaurant, logout, switchBranch
     }}>
       {children}
     </AuthContext.Provider>

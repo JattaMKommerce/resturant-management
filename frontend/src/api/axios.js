@@ -51,6 +51,12 @@ api.interceptors.request.use(
       delete config.headers['Content-Type'];
     }
 
+    // Branch switcher (REQ-009): the branch an owner chose to work on.
+    try {
+      const branch = localStorage.getItem('hotel_active_branch');
+      if (branch) config.headers['x-branch-id'] = branch;
+    } catch (e) { /* storage blocked */ }
+
     // Attach active restaurant slug if on an admin route
     if (typeof window !== 'undefined' && window.location) {
       const match = window.location.pathname.match(/\/admin\/([a-zA-Z0-9_-]+)/);

@@ -7,11 +7,12 @@ import {
   CreditCard, ShieldCheck, Tag, CheckCircle2, UserCheck, AlertCircle, FileText,
   Sliders, Utensils, ChefHat, Grid2X2, Boxes, BarChart3, BedDouble, Gift, Globe, Receipt,
   Phone, Mail, TrendingUp, ArrowUpRight, PieChart, Filter, ArrowUpDown, Info, X, ChevronDown,
-  Wallet
+  Wallet, DatabaseBackup
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import IdleSessionGuard from '../../components/IdleSessionGuard';
+import BackupsPanel from '../../components/superadmin/BackupsPanel';
 
 export default function SuperAdminPage() {
   const { user, login, logout, loading: authLoading } = useAuth();
@@ -814,6 +815,16 @@ export default function SuperAdminPage() {
                 }`}
             >
               <Sliders className="w-4 h-4" /> Controls ({restaurantsWithFeatures.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('backups')}
+              className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'backups'
+                  ? 'bg-purple-700 text-white shadow-2xs'
+                  : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
+                }`}
+            >
+              <DatabaseBackup className="w-4 h-4" /> Backups
             </button>
           </div>
 
@@ -2519,6 +2530,9 @@ export default function SuperAdminPage() {
       )}
 
       {/* 9. RESTAURANT FEATURE CONTROLS TAB */}
+      {/* Database backup & recovery (REQ-034) */}
+      {activeTab === 'backups' && <BackupsPanel />}
+
       {activeTab === 'controls' && (
         <div className="space-y-6">
           {/* Header Banner */}

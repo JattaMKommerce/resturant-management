@@ -57,9 +57,9 @@ async function login(req, res, next) {
 
     // Fetch primary restaurant and all assigned restaurants
     const [restRows] = await pool.query(
-      `SELECT r.* FROM restaurants r 
-       LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id 
-       WHERE ra.user_id = ? OR r.admin_user_id = ? OR r.id = 1 
+      `SELECT r.* FROM restaurants r
+       LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id
+       WHERE ra.user_id = ? OR r.admin_user_id = ? OR r.id = 1
        ORDER BY (r.admin_user_id = ? OR ra.user_id = ?) DESC LIMIT 5`,
       [user.id, user.id, user.id, user.id]
     );
@@ -122,12 +122,13 @@ async function getMe(req, res, next) {
     }
 
     const user = rows[0];
+    // The user's own restaurants (branches); the active one (branch switcher) first.
+    const activeId = Number(req.user.restaurant_id) || 0;
     const [restRows] = await pool.query(
-      `SELECT r.* FROM restaurants r 
-       LEFT JOIN restaurant_admins ra ON ra.restaurant_id = r.id 
-       WHERE ra.user_id = ? OR r.admin_user_id = ? OR r.id = 1 
-       ORDER BY (r.admin_user_id = ? OR ra.user_id = ?) DESC LIMIT 5`,
-      [user.id, user.id, user.id, user.id]
+      `SELECT r.* FROM restaurants r
+       WHERE r.id IN (SELECT restaurant_id FROM restaurant_admins WHERE user_id = ?) OR r.admin_user_id = ? OR r.id = ?
+       ORDER BY (r.id = ?) DESC, r.name ASC LIMIT 50`,
+      [user.id, user.id, activeId, activeId]
     );
     const restaurant = restRows[0] || null;
 

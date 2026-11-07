@@ -106,7 +106,7 @@ async function resolveRestaurantAccess(req, res, next) {
     const userRole = req.user.role;
 
     const targetSlug = req.query?.slug || req.body?.slug || req.headers['x-restaurant-slug'] || req.params?.slug;
-    const targetIdParam = req.query?.restaurant_id || req.body?.restaurant_id || req.headers['x-restaurant-id'] || req.params?.restaurantId;
+    const targetIdParam = req.query?.restaurant_id || req.body?.restaurant_id || req.headers['x-restaurant-id'] || req.params?.restaurantId || req.headers['x-branch-id'];
 
     let targetRestId = null;
     if (targetSlug) {
@@ -134,8 +134,12 @@ async function resolveRestaurantAccess(req, res, next) {
       );
 
       if (assignments.length === 0) {
-        const fallbackRestId = targetRestId || req.user.restaurant_id || 1;
-        // Auto-link user to restaurant for persistence
+        // Only the restaurant on the account itself. Never the one named in the request: that let
+        // an unlinked admin or manager link themselves to any restaurant by sending its slug.
+        const fallbackRestId = req.user.restaurant_id || null;
+        if (!fallbackRestId) {
+          return res.status(403).json({ success: false, message: 'Your account is not linked to a restaurant.' });
+        }
         try {
           await query(
             'INSERT IGNORE INTO restaurant_admins (user_id, restaurant_id, is_primary) VALUES (?, ?, 1)',

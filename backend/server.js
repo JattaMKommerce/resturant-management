@@ -414,10 +414,15 @@ const kotHotelRoutes = require('./routes/kot/hotelRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 // Apply stricter rate limiting to auth routes (explicit separate mounts for /api/v1 and /api)
-app.use('/api/v1/auth', authRateLimiter, kotAuthRoutes);
-app.use('/api/auth', authRateLimiter, kotAuthRoutes);
-app.use('/api/v1/restaurant/auth', authRateLimiter, kotAuthRoutes);
-app.use('/api/restaurant/auth', authRateLimiter, kotAuthRoutes);
+// Only sign-in attempts count towards the auth limit. Session checks (GET /auth/me,
+// /auth/permissions) run on every page load and every device in a restaurant usually shares one
+// internet address, so counting them locked whole teams out after a few dozen page loads.
+const signInRateLimiter = (req, res, next) =>
+  (req.method === 'GET' || req.method === 'OPTIONS' || req.path === '/logout' ? next() : authRateLimiter(req, res, next));
+app.use('/api/v1/auth', signInRateLimiter, kotAuthRoutes);
+app.use('/api/auth', signInRateLimiter, kotAuthRoutes);
+app.use('/api/v1/restaurant/auth', signInRateLimiter, kotAuthRoutes);
+app.use('/api/restaurant/auth', signInRateLimiter, kotAuthRoutes);
 
 // Mount SaaS Subscription & Platform Governance Routes (Unblocked for expired renewals)
 app.use('/api/v1', subscriptionRoutes);
@@ -593,6 +598,8 @@ async function startServer() {
         await require('./utils/audit').ensureAuditSchema();
         await require('./services/WhatsAppOrderService').ensureSchema();
         await require('./controllers/kot/hotelOpsController').ensureHotelSchema();
+        // Daily database backup (REQ-034); AUTO_BACKUP=false turns it off.
+        require('./services/BackupService').startBackupSchedule();
         // Inventory belongs to one restaurant; purchase bills and supplier payments.
         await require('./controllers/kot/purchaseController').ensureInventorySchema();
         // Table bookings: show tables as RESERVED shortly before a booking and free them afterwards.

@@ -62,6 +62,14 @@ async function authenticateToken(req, res, next) {
             req.user.restaurant_id = adminCheck[0].restaurant_id;
           }
         }
+        // Branch switcher (REQ-009): work on another branch this user is linked to.
+        const wantedBranch = parseInt(req.headers['x-branch-id'], 10) || null;
+        if (wantedBranch && wantedBranch !== Number(req.user.restaurant_id)) {
+          const isSuper = String(req.user.role || '').toUpperCase() === 'SUPER_ADMIN';
+          if (isSuper || (adminCheck || []).some((a) => Number(a.restaurant_id) === wantedBranch)) {
+            req.user.restaurant_id = wantedBranch;
+          }
+        }
       } catch (dbErr) {
         console.warn('kotAuth authenticateToken DB check warning:', dbErr.message);
       }

@@ -11,6 +11,7 @@ const PERMISSIONS = [
   { key: 'orders.manage', label: 'Online orders', description: 'See and update online orders, assign riders, unclaimed orders' },
   { key: 'menu.manage', label: 'Menu', description: 'Dishes, categories, prices, stock and specials' },
   { key: 'coupons.manage', label: 'Coupons', description: 'Create and edit coupon codes' },
+  { key: 'customers.view', label: 'Customers', description: 'Customer list, order history, bookings and notes' },
   { key: 'refunds.manage', label: 'Refunds', description: 'Record refunds to customers' },
   { key: 'reports.view', label: 'Reports', description: 'Dashboard, sales analytics, exports, order history' },
   { key: 'drivers.manage', label: 'Delivery riders', description: 'Riders, rider applications and payouts' },
@@ -23,7 +24,7 @@ const ALL_KEYS = PERMISSIONS.map((p) => p.key);
 const OWNER_ROLES = ['SUPER_ADMIN', 'ADMIN', 'RESTAURANT_ADMIN'];
 const ROLE_DEFAULTS = {
   MANAGER: ALL_KEYS.filter((k) => !['staff.manage', 'settings.manage'].includes(k)),
-  CASHIER: ['orders.manage', 'refunds.manage', 'reports.view'],
+  CASHIER: ['orders.manage', 'refunds.manage', 'reports.view', 'customers.view'],
   WAITER: [],
   KITCHEN: [],
   CHEF: [],
@@ -36,6 +37,7 @@ const ROUTE_PERMISSIONS = {
   orders: 'orders.manage',
   menu: 'menu.manage', categories: 'menu.manage', offerings: 'menu.manage', 'upload-images': 'menu.manage',
   coupons: 'coupons.manage',
+  customers: 'customers.view',
   refunds: 'refunds.manage',
   reports: 'reports.view', dashboard: 'reports.view', history: 'reports.view', ai: 'reports.view',
   drivers: 'drivers.manage', riders: 'drivers.manage', 'rider-applications': 'drivers.manage', 'driver-payouts': 'drivers.manage',
