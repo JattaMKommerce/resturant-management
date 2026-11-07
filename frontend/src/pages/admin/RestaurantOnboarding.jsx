@@ -41,6 +41,13 @@ export default function RestaurantOnboarding() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [restaurant, setRestaurant] = useState(null);
+  // Why the restaurant could not be loaded (e.g. subscription expired); saving needs it loaded.
+  const [loadProblem, setLoadProblem] = useState(null);
+  const needRestaurant = () => {
+    if (restaurant?.id) return true;
+    setError(loadProblem?.message || 'Your restaurant has not loaded yet. Please press "Try again" or refresh the page.');
+    return false;
+  };
   const [progress, setProgress] = useState(null);
 
   // Form states
@@ -105,6 +112,7 @@ export default function RestaurantOnboarding() {
     try {
       setLoading(true);
       setError('');
+      setLoadProblem(null);
       const [restRes, progRes, catRes, menuRes, offeringsRes] = await Promise.all([
         api.get('/admin/restaurant').catch(err => err.response || { data: { success: false } }),
         api.get('/admin/restaurant/setup-progress').catch(err => err.response || { data: { success: false } }),
@@ -139,6 +147,12 @@ export default function RestaurantOnboarding() {
         localStorage.removeItem('hotel_user');
         setTimeout(() => navigate('/admin/login'), 1500);
         return;
+      } else {
+        // Show the real reason (subscription, access, server) instead of an empty form that can't save.
+        setLoadProblem({
+          message: restRes.data?.message || 'Your restaurant could not be loaded. Check your internet connection and try again.',
+          code: restRes.data?.code || ''
+        });
       }
       if (progRes.data && progRes.data.success) setProgress(progRes.data);
       if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
@@ -240,13 +254,14 @@ export default function RestaurantOnboarding() {
 
   const handleSaveDetails = async (e) => {
     e.preventDefault();
+    if (!needRestaurant()) return;
     setSaving(true); setError('');
     try {
       await api.put('/admin/restaurant/settings', { id: restaurant.id, ...detailsForm });
       await loadData();
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save details.');
+      setError(err.response?.data?.message || (err.response ? 'Failed to save details.' : 'Could not reach the server. Check your internet connection and try again.'));
     } finally {
       setSaving(false);
     }
@@ -319,6 +334,7 @@ export default function RestaurantOnboarding() {
 
   const handleSaveLocation = async (e) => {
     e.preventDefault();
+    if (!needRestaurant()) return;
     setSaving(true);
     setError('');
     try {
@@ -343,6 +359,7 @@ export default function RestaurantOnboarding() {
 
   const handleSaveBranding = async (e) => {
     e.preventDefault();
+    if (!needRestaurant()) return;
     setSaving(true); setError(''); setImageError('');
     try {
       const formData = new FormData();
@@ -381,7 +398,7 @@ export default function RestaurantOnboarding() {
 
   const handleAddCategory = async (e) => {
     e.preventDefault();
-    if (!newCatName) return;
+    if (!newCatName || !needRestaurant()) return;
     try {
       await api.post('/admin/categories', { name: newCatName, restaurant_id: restaurant.id });
       setNewCatName('');
@@ -393,7 +410,7 @@ export default function RestaurantOnboarding() {
 
   const handleAddMenuItem = async (e) => {
     e.preventDefault();
-    if (!newItemForm.name || !newItemForm.price || !newItemForm.category_id) return;
+    if (!newItemForm.name || !newItemForm.price || !newItemForm.category_id || !needRestaurant()) return;
     try {
       await api.post('/admin/menu', { ...newItemForm, restaurant_id: restaurant.id });
       setNewItemForm({ name: '', price: '', category_id: '', is_veg: true, description: '' });
@@ -499,7 +516,19 @@ export default function RestaurantOnboarding() {
         {/* Form Content Area */}
         <div className="md:col-span-8 bg-white border border-[#D7E5E8] rounded-2xl p-6 shadow-xs h-fit">
 
-          {error && (
+          {loadProblem && (
+            <div className="p-3 mb-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-2" role="alert">
+              <p className="font-bold flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /> Your restaurant details could not be loaded</p>
+              <p>{loadProblem.message}</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={loadData} className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 font-bold">Try again</button>
+                {String(loadProblem.code).startsWith('SUBSCRIPTION') && (
+                  <button type="button" onClick={() => navigate(slug ? `/admin/${slug}/subscription` : '/admin/subscription')} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold">Open subscription page</button>
+                )}
+              </div>
+            </div>
+          )}
+          {error && error !== loadProblem?.message && (
             <div className="p-3 mb-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2 font-bold">
               <AlertCircle className="w-4 h-4" /> {error}
             </div>
