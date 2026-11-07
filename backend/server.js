@@ -399,6 +399,7 @@ app.use(tenantResolver);
 // ──────────────────────────────────────────────────────────
 const kotAuthRoutes = require('./routes/kot/authRoutes');
 const kotTableRoutes = require('./routes/kot/tableRoutes');
+const kotTableReservationRoutes = require('./routes/kot/tableReservationRoutes');
 const kotMenuRoutes = require('./routes/kot/menuRoutes');
 const kotOrderRoutes = require('./routes/kot/orderRoutes');
 const kotRoutes = require('./routes/kot/kotRoutes');
@@ -430,6 +431,8 @@ app.post('/api/guest/init', resolveGuestIdentity, initGuestIdentity);
 const kotRouteMap = [
   ['/api/tables', kotTableRoutes],
   ['/api/restaurant/tables', kotTableRoutes],
+  ['/api/table-reservations', kotTableReservationRoutes],
+  ['/api/restaurant/table-reservations', kotTableReservationRoutes],
   ['/api/hotels', kotHotelRoutes],
   ['/api/restaurant/hotels', kotHotelRoutes],
   ['/api/rooms', kotAccommodationRoutes],
@@ -590,6 +593,11 @@ async function startServer() {
         await require('./utils/audit').ensureAuditSchema();
         await require('./services/WhatsAppOrderService').ensureSchema();
         await require('./controllers/kot/hotelOpsController').ensureHotelSchema();
+        // Table bookings: show tables as RESERVED shortly before a booking and free them afterwards.
+        const tableRes = require('./controllers/kot/tableReservationController');
+        await tableRes.ensureTableReservationSchema();
+        tableRes.syncAllTableHolds();
+        setInterval(tableRes.syncAllTableHolds, 2 * 60 * 1000).unref();
         const sweep = () => OrderLifecycle.cancelAbandonedOnlineOrders(30)
           .catch((e) => console.warn('Abandoned checkout sweep warning:', e.message));
         sweep();

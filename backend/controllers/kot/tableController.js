@@ -106,6 +106,8 @@ async function getTables(req, res, next) {
     const { floor, section, status, search } = req.query;
     const restaurantId = req.user?.restaurant_id || 1;
     await autoSeedTablesIfEmpty(restaurantId);
+    const tableRes = require('./tableReservationController');
+    await tableRes.syncTableHolds(restaurantId).catch((e) => console.warn('Table hold sync warning:', e.message));
     let query = `
       SELECT t.*, 
         (SELECT COUNT(*) FROM restaurant_orders o WHERE o.table_id = t.id AND o.order_status NOT IN ('COMPLETED', 'CANCELLED')) as active_orders_count
@@ -123,7 +125,9 @@ async function getTables(req, res, next) {
       params.push(section);
     }
     if (status) {
-      if (status === 'ATTENTION') {
+      if (status === 'IN_USE') {
+        query += ` AND t.status IN ('OCCUPIED', 'ORDERING', 'BILL_REQUESTED', 'BILL_PAID')`;
+      } else if (status === 'ATTENTION') {
         query += ` AND (t.status IN ('BILL_REQUESTED', 'CLEANING') OR t.id IN (SELECT DISTINCT table_id FROM kots WHERE status = 'READY' AND table_id IS NOT NULL))`;
       } else {
         query += ` AND t.status = ?`;
@@ -138,6 +142,8 @@ async function getTables(req, res, next) {
     query += ` ORDER BY CAST(REGEXP_REPLACE(t.table_number, '[^0-9]', '') AS UNSIGNED) ASC, t.table_number ASC`;
 
     const [rows] = await pool.query(query, params);
+    const upcoming = await tableRes.nextReservationsByTable(restaurantId).catch(() => new Map());
+    for (const row of rows) row.next_reservation = upcoming.get(row.id) || null;
     return sendSuccess(res, rows, 'Tables fetched successfully');
   } catch (err) {
     next(err);
@@ -277,7 +283,16 @@ async function updateTableStatus(req, res, next) {
       return sendError(res, 'Table not found', 404);
     }
 
-    await pool.query(`UPDATE restaurant_tables SET status = ? WHERE id = ?`, [status, id]);
+    // A manual change takes the table out of the automatic booking hold.
+    await pool.query(
+      status === 'RESERVED'
+        ? `UPDATE restaurant_tables SET status = ? WHERE id = ?`
+        : `UPDATE restaurant_tables SET status = ?, held_for_reservation_id = NULL WHERE id = ?`,
+      [status, id]
+    ).catch(async (err) => {
+      if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+      await pool.query(`UPDATE restaurant_tables SET status = ? WHERE id = ?`, [status, id]);
+    });
 
     const [updated] = await pool.query(`SELECT * FROM restaurant_tables WHERE id = ?`, [id]);
     

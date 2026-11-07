@@ -60,6 +60,9 @@ import OperationsCenterPage from './pages/offline/operations/OperationsCenterPag
 import AccommodationPage from './pages/offline/accommodation/AccommodationPage';
 import FolioInvoicePage from './pages/offline/accommodation/FolioInvoicePage';
 import GuestStayPage from './pages/public/GuestStayPage';
+import TableBookingPage from './pages/public/TableBookingPage';
+import TableBookingManagePage from './pages/public/TableBookingManagePage';
+import TableReservationsPage from './pages/offline/tables/TableReservationsPage';
 import TableManagementPage from './pages/offline/tables/TableManagementPage';
 import OfflineMenuPage from './pages/offline/menu/MenuManagementPage';
 import ServiceDashboardPage from './pages/offline/waiter/ServiceDashboardPage';
@@ -267,6 +270,7 @@ export default function App() {
             <Route path="/auth" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
             <Route path="/login" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
             <Route path="/signup" element={<CustomerAuthPage overrideSlug={activeSubdomain} />} />
+            <Route path="/book-table" element={<TableBookingPage overrideSlug={activeSubdomain} />} />
           </>
         ) : (
           <Route path="/" element={<ProductSelectionPage />} />
@@ -288,6 +292,8 @@ export default function App() {
         <Route path="/order/table/:token" element={<CustomerQRMenuPage />} />
         {/* Hotel guest's private stay page: room service requests (REQ-047) */}
         <Route path="/stay/:token" element={<GuestStayPage />} />
+        <Route path="/restaurant/:slug/book-table" element={<TableBookingPage />} />
+        <Route path="/table-booking/:token" element={<TableBookingManagePage />} />
         <Route path="/order/:orderId/track" element={<CustomerOrderTrackingPage />} />
 
         {/* Driver Auth & Duty Dashboard (No public registration; drivers provisioned by Restaurant Admin) */}
@@ -562,6 +568,17 @@ export default function App() {
             <FeatureRoute featureKey="hotel_accommodations">
               <AdminLayout>
                 <AccommodationPage />
+              </AdminLayout>
+            </FeatureRoute>
+          </ProtectedRoute>
+        } />
+
+        {/* Table reservations (REQ-051 / REQ-056) */}
+        <Route path="/admin/offline/table-reservations" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <FeatureRoute featureKey="table_dine_in">
+              <AdminLayout>
+                <TableReservationsPage />
               </AdminLayout>
             </FeatureRoute>
           </ProtectedRoute>

@@ -489,6 +489,12 @@ async function updateRestaurantSettings(req, res) {
       await require('../services/WhatsAppOrderService').ensureSchema();
       sql += `, whatsapp_updates_enabled = ?`; params.push(waOn ? 1 : 0);
     }
+    // REQ-051: customers booking tables online from the restaurant page
+    const bookingOn = parseBool(req.body.table_booking_enabled);
+    if (bookingOn !== undefined) {
+      await require('./kot/tableReservationController').ensureTableReservationSchema();
+      sql += `, table_booking_enabled = ?`; params.push(bookingOn ? 1 : 0);
+    }
     // REQ-001: breakfast / lunch / dinner scheduling
     const mealOn = parseBool(req.body.meal_schedule_enabled);
     if (mealOn !== undefined) { sql += `, meal_schedule_enabled = ?`; params.push(mealOn ? 1 : 0); }

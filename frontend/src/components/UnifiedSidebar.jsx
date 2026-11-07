@@ -36,7 +36,8 @@ import {
   Gift,
   IndianRupee,
   RotateCcw,
-  Tag
+  Tag,
+  CalendarClock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -152,6 +153,7 @@ export default function UnifiedSidebar({
   const offlineNavItems = [
     { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity, featureKey: 'pos_billing' },
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2, featureKey: 'table_dine_in' },
+    { name: 'Table Reservations', path: '/admin/offline/table-reservations', icon: CalendarClock, featureKey: 'table_dine_in' },
     { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
     { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat, featureKey: 'pos_billing' },
     { name: 'Kitchen Display System (Active KDS)', path: '/admin/offline/kds', icon: ChefHat, featureKey: 'kds_kot' },

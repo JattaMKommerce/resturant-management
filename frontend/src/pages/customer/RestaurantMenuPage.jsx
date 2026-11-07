@@ -7,7 +7,7 @@ import AccommodationCustomerTab from '../../components/customer/AccommodationCus
 import CustomerAuthModal from '../../components/customer/CustomerAuthModal';
 import OfferingsShowcase from '../../components/offerings/OfferingsShowcase';
 import CustomerAuthPage from './CustomerAuthPage';
-import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel, Gift, User, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Minus, ChevronRight, Clock, MapPin, Phone, Star, Leaf, X, AlertCircle, Eye, Sparkles, Lock, Utensils, BedDouble, Hotel, Gift, User, ShieldCheck, CalendarClock } from 'lucide-react';
 import { getTemplateById } from '../../config/templates';
 
 const API_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '') || (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' ? '' : 'http://localhost:5000');
@@ -247,6 +247,16 @@ export default function RestaurantMenuPage({ overrideSlug }) {
           </div>
 
           <div className="flex items-center gap-2.5">
+            {Number(restaurant.table_booking_enabled ?? 1) !== 0 && (
+              <button
+                type="button"
+                onClick={() => navigate(`/restaurant/${slug}/book-table`)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <CalendarClock className="w-3.5 h-3.5" />
+                <span>Book a table</span>
+              </button>
+            )}
             {user ? (
               <div className="flex items-center gap-2">
                 <button

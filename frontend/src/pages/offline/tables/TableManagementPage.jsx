@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import TableCard from '../../../components/tables/TableCard';
 import TableFormModal from '../../../components/tables/TableFormModal';
 import QRPrintModal from '../../../components/tables/QRPrintModal';
-import { Plus, Search, Filter, RefreshCw, Grid2X2, X } from 'lucide-react';
+import { Plus, Search, Filter, RefreshCw, Grid2X2, X, CalendarClock } from 'lucide-react';
+
+// Floor summary (REQ-052): every count matches what the filter shows when clicked.
+const FLOOR_GROUPS = [
+  { key: 'AVAILABLE', label: 'Available', statuses: ['AVAILABLE'], cls: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
+  { key: 'IN_USE', label: 'Occupied', statuses: ['OCCUPIED', 'ORDERING', 'BILL_REQUESTED', 'BILL_PAID'], cls: 'border-rose-200 bg-rose-50 text-rose-900' },
+  { key: 'RESERVED', label: 'Reserved', statuses: ['RESERVED'], cls: 'border-sky-200 bg-sky-50 text-sky-900' },
+  { key: 'CLEANING', label: 'Cleaning', statuses: ['CLEANING'], cls: 'border-violet-200 bg-violet-50 text-violet-900' }
+];
 
 // Helper function to calculate next available table number and name locally from list (gap-filling)
 export function getNextTableNumberLocally(tablesList = []) {
@@ -188,6 +196,13 @@ export default function TableManagementPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/admin/offline/table-reservations"
+            className="py-2.5 px-3.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-900 font-bold flex items-center gap-1.5 text-xs"
+          >
+            <CalendarClock className="w-4 h-4" />
+            <span>Reservations</span>
+          </Link>
           <button
             onClick={fetchTables}
             className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 hover:text-black transition-colors"
@@ -205,6 +220,26 @@ export default function TableManagementPage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Floor summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {FLOOR_GROUPS.map((g) => {
+          const count = allTables.filter((t) => g.statuses.includes(t.status)).length;
+          const active = selectedStatus === g.key;
+          return (
+            <button
+              key={g.key}
+              type="button"
+              onClick={() => handleStatusFilterChange(active ? '' : g.key)}
+              aria-pressed={active}
+              className={`p-3 rounded-2xl border text-left transition-all ${g.cls} ${active ? 'ring-2 ring-amber-500' : 'hover:shadow-sm'}`}
+            >
+              <span className="block text-2xl font-black tabular-nums">{count}</span>
+              <span className="text-xs font-bold">{g.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filter Bar */}
@@ -253,6 +288,7 @@ export default function TableManagementPage() {
             >
               <option value="">All Statuses</option>
               <option value="AVAILABLE">AVAILABLE</option>
+              <option value="IN_USE">IN USE (all occupied)</option>
               <option value="OCCUPIED">OCCUPIED</option>
               <option value="ORDERING">ORDERING</option>
               <option value="ATTENTION">ATTENTION NEEDED</option>

@@ -1,7 +1,14 @@
 import React from 'react';
 import Badge from '../common/Badge';
 import { useAuth } from '../../context/AuthContext';
-import { Users, QrCode, Edit, Trash2, RotateCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, QrCode, Edit, Trash2, RotateCw, CalendarClock } from 'lucide-react';
+
+const todayIst = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+const fmtTime = (t) => {
+  const [h, m] = String(t || '0:0').split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
 
 export default function TableCard({ table, onEdit, onDelete, onStatusChange, onQRAction, onRegenerateQR }) {
   const { user } = useAuth();
@@ -34,6 +41,20 @@ export default function TableCard({ table, onEdit, onDelete, onStatusChange, onQ
             <span>Type: <strong className="text-slate-900">{table.table_type}</strong></span>
           </div>
         </div>
+
+        {/* Next booking on this table (REQ-052) */}
+        {table.next_reservation && (
+          <Link
+            to="/admin/offline/table-reservations"
+            className="mb-3 flex items-center gap-2 py-2 px-3 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 hover:border-sky-400 transition-colors"
+          >
+            <CalendarClock className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              Booked {table.next_reservation.date !== todayIst() ? 'tomorrow ' : ''}{fmtTime(table.next_reservation.time)} · <strong>{table.next_reservation.customer_name}</strong> · {table.next_reservation.party_size} guests
+              {table.next_reservation.status === 'PENDING' ? ' (to confirm)' : ''}
+            </span>
+          </Link>
+        )}
 
         {/* QR Token Preview Badge */}
         <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">

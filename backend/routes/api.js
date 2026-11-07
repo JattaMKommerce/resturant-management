@@ -128,6 +128,15 @@ const stayLimiter = createRateLimiter(10 * 60 * 1000, 40, 'guest-stay');
 router.get('/stay/:token', stayLimiter, require('../controllers/kot/hotelOpsController').getGuestStay);
 router.post('/stay/:token/requests', stayLimiter, require('../controllers/kot/hotelOpsController').createGuestRequest);
 router.post('/coupons/validate', couponController.validateCoupon);
+// Customers book a restaurant table online and manage it from a private link (REQ-051 / REQ-056)
+const tableBookingLimiter = createRateLimiter(10 * 60 * 1000, 60, 'table-booking');
+const tableBookingCreateLimiter = createRateLimiter(60 * 60 * 1000, 10, 'table-booking-create');
+const tableRes = require('../controllers/kot/tableReservationController');
+router.get('/restaurants/:slug/table-booking', tableBookingLimiter, tableRes.getPublicBookingInfo);
+router.get('/restaurants/:slug/table-slots', tableBookingLimiter, tableRes.getPublicSlots);
+router.post('/restaurants/:slug/table-reservations', tableBookingCreateLimiter, tableRes.createPublicReservation);
+router.get('/table-bookings/:token', tableBookingLimiter, tableRes.getPublicReservation);
+router.post('/table-bookings/:token/cancel', tableBookingLimiter, tableRes.cancelPublicReservation);
 
 // ═══════════════════════════════════════════════
 // 7. PAYMENT ROUTES (Guest or Auth)
