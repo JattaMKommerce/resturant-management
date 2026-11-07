@@ -5,6 +5,19 @@ const { authenticateToken, requireRoles } = require('../../middleware/kotAuth');
 
 router.use(authenticateToken);
 
+// Stock corrections, suppliers, purchase bills and food cost (REQ-053 / 054 / 055)
+const purchases = require('../../controllers/kot/purchaseController');
+const STOCK_EDIT = ['ADMIN', 'MANAGER', 'INVENTORY_MANAGER'];
+router.put('/items/:id', requireRoles(...STOCK_EDIT), purchases.updateInventoryItem);
+router.post('/items/:id/adjust', requireRoles(...STOCK_EDIT, 'KITCHEN'), purchases.adjustStock);
+router.put('/suppliers/:id', requireRoles(...STOCK_EDIT), purchases.updateSupplier);
+router.get('/purchases', requireRoles(...STOCK_EDIT), purchases.listPurchases);
+router.post('/purchases', requireRoles(...STOCK_EDIT), purchases.createPurchase);
+router.get('/purchases/:id', requireRoles(...STOCK_EDIT), purchases.getPurchase);
+router.post('/purchases/:id/payments', requireRoles('ADMIN', 'MANAGER'), purchases.recordPurchasePayment);
+router.post('/purchases/:id/void', requireRoles('ADMIN', 'MANAGER'), purchases.voidPurchase);
+router.get('/food-cost', requireRoles('ADMIN', 'MANAGER'), purchases.getFoodCost);
+
 router.get('/items', requireRoles('ADMIN', 'MANAGER', 'KITCHEN', 'INVENTORY_MANAGER'), recipeInventoryController.getInventoryItems);
 router.post('/items', requireRoles('ADMIN', 'MANAGER', 'INVENTORY_MANAGER'), recipeInventoryController.createInventoryItem);
 router.get('/recipes', requireRoles('ADMIN', 'MANAGER', 'KITCHEN', 'INVENTORY_MANAGER'), recipeInventoryController.getRecipes);

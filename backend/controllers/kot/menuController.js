@@ -170,9 +170,9 @@ async function getMenuItems(req, res, next) {
       LEFT JOIN categories c ON m.category_id = c.id
       LEFT JOIN menu_categories mc ON m.category_id = mc.id
       LEFT JOIN kitchen_departments k ON m.kitchen_department_id = k.id
-      WHERE 1=1
+      WHERE m.restaurant_id = ?
     `;
-    const params = [];
+    const params = [req.user?.restaurant_id || 1];
 
     if (category_id) {
       query += ` AND m.category_id = ?`;
@@ -523,14 +523,23 @@ async function getPublicMenu(req, res, next) {
        ORDER BY cat.display_order ASC, cat.name ASC`
     );
 
+    // The QR page sends its table token: show that restaurant's menu only.
+    let menuRestaurantId = null;
+    if (req.query.token) {
+      const [tables] = await pool.query(`SELECT restaurant_id FROM restaurant_tables WHERE qr_token = ?`, [String(req.query.token)]);
+      if (!tables.length) return sendError(res, 'Invalid table QR code', 404);
+      menuRestaurantId = tables[0].restaurant_id;
+    }
     const [items] = await pool.query(
-      `SELECT m.id, m.category_id, m.name, m.description, m.image_url, m.price, 
-              5.00 as tax_percentage, 
-              m.is_veg, m.prep_time_minutes, m.batch_capacity, m.is_available, m.is_available_online, 
+      `SELECT m.id, m.category_id, m.name, m.description, m.image_url, m.price,
+              COALESCE(m.tax_percentage, 5.00) as tax_percentage,
+              m.is_veg, m.prep_time_minutes, m.batch_capacity, m.is_available, m.is_available_online,
               'Main Kitchen' as kitchen_department_name
        FROM menu_items m
-       WHERE m.is_available = TRUE
-       ORDER BY m.display_order ASC, m.name ASC`
+       WHERE m.is_available = TRUE AND COALESCE(m.is_active, 1) = 1
+         ${menuRestaurantId ? 'AND m.restaurant_id = ?' : ''}
+       ORDER BY m.display_order ASC, m.name ASC`,
+      menuRestaurantId ? [menuRestaurantId] : []
     );
 
     for (let item of items) {

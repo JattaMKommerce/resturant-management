@@ -178,7 +178,7 @@ async function deductStockForKOTItem(kotItemId, existingConnection = null) {
 /**
  * Get read-only ingredient availability & daily usage for Kitchen Ingredient View
  */
-async function getIngredientAvailability() {
+async function getIngredientAvailability(restaurantId) {
   const [items] = await pool.query(
     `SELECT i.*, c.name as category_name,
        COALESCE((
@@ -217,7 +217,9 @@ async function getIngredientAvailability() {
        ) as total_batches
      FROM inventory_items i
      JOIN inventory_categories c ON i.category_id = c.id
-     ORDER BY i.item_name ASC`
+     WHERE i.restaurant_id = ?
+     ORDER BY i.item_name ASC`,
+    [restaurantId]
   );
 
   for (let item of items) {
@@ -297,10 +299,11 @@ async function getIngredientAvailability() {
      FROM inventory_batches b
      JOIN inventory_items ii ON b.inventory_item_id = ii.id
      JOIN inventory_categories c ON ii.category_id = c.id
-     WHERE b.current_quantity > 0 
+     WHERE b.current_quantity > 0 AND ii.restaurant_id = ?
        AND b.expiry_date >= CURRENT_DATE() 
        AND b.expiry_date <= DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
-     ORDER BY b.expiry_date ASC, b.id ASC`
+     ORDER BY b.expiry_date ASC, b.id ASC`,
+    [restaurantId]
   );
 
   // Top-level expired stock items list
@@ -309,9 +312,10 @@ async function getIngredientAvailability() {
      FROM inventory_batches b
      JOIN inventory_items ii ON b.inventory_item_id = ii.id
      JOIN inventory_categories c ON ii.category_id = c.id
-     WHERE b.current_quantity > 0 
+     WHERE b.current_quantity > 0 AND ii.restaurant_id = ?
        AND b.expiry_date < CURRENT_DATE()
-     ORDER BY b.expiry_date ASC, b.id ASC`
+     ORDER BY b.expiry_date ASC, b.id ASC`,
+    [restaurantId]
   );
 
   return {

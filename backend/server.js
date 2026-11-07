@@ -593,6 +593,8 @@ async function startServer() {
         await require('./utils/audit').ensureAuditSchema();
         await require('./services/WhatsAppOrderService').ensureSchema();
         await require('./controllers/kot/hotelOpsController').ensureHotelSchema();
+        // Inventory belongs to one restaurant; purchase bills and supplier payments.
+        await require('./controllers/kot/purchaseController').ensureInventorySchema();
         // Table bookings: show tables as RESERVED shortly before a booking and free them afterwards.
         const tableRes = require('./controllers/kot/tableReservationController');
         await tableRes.ensureTableReservationSchema();

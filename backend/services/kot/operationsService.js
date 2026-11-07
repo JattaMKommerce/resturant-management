@@ -318,7 +318,9 @@ async function getOperationsOverview(restaurantId = 1) {
       `SELECT i.*, c.name as category_name
        FROM inventory_items i
        LEFT JOIN inventory_categories c ON i.category_id = c.id
-       ORDER BY i.item_name ASC`
+       WHERE i.restaurant_id = ?
+       ORDER BY i.item_name ASC`,
+      [restaurantId]
     );
 
     // Sum used today from stock_transactions

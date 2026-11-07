@@ -57,7 +57,7 @@ export default function CustomerQRMenuPage() {
           return;
         }
 
-        const menuRes = await api.get('/public/menu');
+        const menuRes = await api.get('/public/menu', { params: { token } });
         if (menuRes.success) {
           setCategories(menuRes.data.categories || []);
           setItems(menuRes.data.items || []);

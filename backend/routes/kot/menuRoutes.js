@@ -5,6 +5,20 @@ const { authenticateToken, requireRoles } = require('../../middleware/kotAuth');
 
 router.use(authenticateToken);
 
+const { query: dbQuery } = require('../../config/db');
+router.param('id', async (req, res, next, id) => {
+  try {
+    if (!req.path.startsWith('/items/') || String(req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') return next();
+    const rows = await dbQuery(`SELECT restaurant_id FROM menu_items WHERE id = ?`, [id]);
+    if (!rows.length || Number(rows[0].restaurant_id) !== Number(req.user?.restaurant_id || 1)) {
+      return res.status(404).json({ success: false, message: 'Menu item not found' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Categories
 router.get('/categories', menuController.getCategories);
 router.post('/categories', requireRoles('ADMIN', 'MANAGER'), menuController.createCategory);

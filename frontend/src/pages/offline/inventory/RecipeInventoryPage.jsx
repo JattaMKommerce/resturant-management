@@ -18,13 +18,23 @@ import {
   Edit3, 
   Trash2,
   Tag,
-  Building2
+  Building2,
+  Receipt,
+  Percent,
+  SlidersHorizontal
 } from 'lucide-react';
 
 import KitchenInventoryView from '../kitchen/KitchenInventoryView';
+import PurchasesTab from '../../../components/inventory/PurchasesTab';
+import SuppliersTab from '../../../components/inventory/SuppliersTab';
+import FoodCostTab from '../../../components/inventory/FoodCostTab';
+import StockAdjustModal from '../../../components/inventory/StockAdjustModal';
 
 export default function RecipeInventoryPage() {
-  const [activeTab, setActiveTab] = useState('BATCHES'); // 'BATCHES', 'STOCK', 'RECIPES', 'LEDGER', 'EXPIRY_REPORT'
+  const [activeTab, setActiveTab] = useState('BATCHES'); // 'BATCHES', 'STOCK', 'RECIPES', 'LEDGER', 'EXPIRY_REPORT', 'PURCHASES', 'SUPPLIERS', 'FOOD_COST'
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [stockNotice, setStockNotice] = useState('');
+  const [stockViewKey, setStockViewKey] = useState(0);
 
   // Data states
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -491,7 +501,29 @@ export default function RecipeInventoryPage() {
           <FileSpreadsheet className="w-4 h-4" />
           <span>Expiry Report & CSV Export</span>
         </button>
+
+        {[
+          { key: 'PURCHASES', label: 'Purchases', Icon: Receipt },
+          { key: 'SUPPLIERS', label: 'Suppliers', Icon: Building2 },
+          { key: 'FOOD_COST', label: 'Food Cost & Margins', Icon: Percent }
+        ].map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+              activeTab === key ? 'border-[#3A7D7C] text-[#3A7D7C]' : 'border-transparent text-[#64748B] hover:text-[#1F2937]'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            <span>{label}</span>
+          </button>
+        ))}
       </div>
+
+      {/* Purchases, suppliers and food cost (REQ-054 / REQ-055) */}
+      {activeTab === 'PURCHASES' && <PurchasesTab items={inventoryItems} suppliers={suppliers} onChanged={fetchData} />}
+      {activeTab === 'SUPPLIERS' && <SuppliersTab onChanged={fetchData} />}
+      {activeTab === 'FOOD_COST' && <FoodCostTab />}
 
       {/* TAB 1: BATCH INVENTORY & EXPIRY MANAGEMENT TABLE */}
       {activeTab === 'BATCHES' && (
@@ -649,8 +681,25 @@ export default function RecipeInventoryPage() {
       {/* TAB 2: RAW STOCK AVAILABILITY GRID */}
       {activeTab === 'STOCK' && (
         <div className="space-y-6">
-          <KitchenInventoryView />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {stockNotice ? <p className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold" role="status">{stockNotice}</p> : <span />}
+            <button
+              onClick={() => { setStockNotice(''); setIsAdjustOpen(true); }}
+              className="py-2 px-4 rounded-xl bg-white border border-[#D7E5E8] hover:border-[#3A7D7C] text-[#1F2937] font-bold text-xs flex items-center gap-2"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Wastage / stock count</span>
+            </button>
+          </div>
+          <KitchenInventoryView key={stockViewKey} />
         </div>
+      )}
+      {isAdjustOpen && (
+        <StockAdjustModal
+          items={inventoryItems}
+          onClose={() => setIsAdjustOpen(false)}
+          onSaved={(msg) => { setIsAdjustOpen(false); setStockNotice(msg); setStockViewKey((k) => k + 1); fetchData(); }}
+        />
       )}
 
       {/* TAB 3: RECIPES */}
@@ -677,7 +726,7 @@ export default function RecipeInventoryPage() {
                   {rec.ingredients && rec.ingredients.map((ing, idx) => (
                     <div key={idx} className="flex justify-between text-xs text-[#1F2937] bg-slate-50 p-2 rounded-lg border border-[#D7E5E8]">
                       <span>{ing.item_name}</span>
-                      <span className="font-bold text-[#3A7D7C]">{ing.quantity} {ing.unit}</span>
+                      <span className="font-bold text-[#3A7D7C]">{Number(ing.quantity)} {ing.stock_unit || ing.unit}{Number(ing.wastage_percentage) > 0 ? ` (+${Number(ing.wastage_percentage)}% waste)` : ''}</span>
                     </div>
                   ))}
                 </div>
@@ -1089,10 +1138,29 @@ export default function RecipeInventoryPage() {
                     setRecipeIngredients(copy);
                   }}
                   placeholder="Qty"
+                  aria-label="Quantity per portion"
+                  className="w-20 px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
+                />
+                <span className="w-10 text-[11px] font-bold text-[#64748B]">{inventoryItems.find((ii) => String(ii.id) === String(ing.inventory_item_id))?.unit || ''}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="90"
+                  step="1"
+                  value={ing.wastage_percentage ?? ''}
+                  onChange={(e) => {
+                    const copy = [...recipeIngredients];
+                    copy[idx].wastage_percentage = e.target.value === '' ? '' : parseFloat(e.target.value);
+                    setRecipeIngredients(copy);
+                  }}
+                  placeholder="Waste %"
+                  aria-label="Trim or cooking loss percent"
+                  title="Trim / cooking loss %, used for food cost"
                   className="w-20 px-3 py-2 rounded-xl bg-slate-50 border border-[#D7E5E8] text-[#1F2937] text-xs"
                 />
               </div>
             ))}
+            <p className="text-[11px] text-[#64748B]">Enter each quantity in the ingredient's stock unit (shown next to it). Waste % is trim or cooking loss.</p>
 
             <button
               type="button"

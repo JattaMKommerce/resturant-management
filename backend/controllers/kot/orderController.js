@@ -7,6 +7,8 @@ const { emitToRoom, broadcastEvent } = require('../../config/socket');
 async function createOrderHandler(req, res, next) {
   try {
     const idempotencyKey = req.headers['x-idempotency-key'] || req.body.idempotency_key;
+    // Signed-in staff always order for their own restaurant (a table's restaurant still wins).
+    if (req.user?.restaurant_id) req.body = { ...req.body, restaurant_id: req.user.restaurant_id };
     const result = await orderService.createOrder(req.body, idempotencyKey);
 
     if (result.isDuplicate) {

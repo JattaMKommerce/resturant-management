@@ -231,8 +231,9 @@ async function getExpiryReport(req, res, next) {
       JOIN inventory_items ii ON b.inventory_item_id = ii.id
       JOIN inventory_categories c ON ii.category_id = c.id
       LEFT JOIN suppliers s ON b.supplier_id = s.id
-      WHERE b.current_quantity > 0
+      WHERE b.current_quantity > 0 AND ii.restaurant_id = ?
     `;
+    await require('./purchaseController').ensureInventorySchema();
 
     if (status === 'EXPIRED') {
       query += ` AND b.expiry_date < CURRENT_DATE()`;
@@ -244,7 +245,7 @@ async function getExpiryReport(req, res, next) {
 
     query += ` ORDER BY b.expiry_date ASC`;
 
-    const [rows] = await pool.query(query);
+    const [rows] = await pool.query(query, [req.user?.restaurant_id || 1]);
 
     const report = rows.map(b => {
       const daysDiff = parseInt(b.days_diff);

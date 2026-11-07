@@ -1,13 +1,21 @@
 const pool = require('../../config/database');
 const { sendSuccess, sendError } = require('../../utils/response');
+const { ensureInventorySchema, refreshItemCost } = require('./purchaseController');
+
+// Ingredients, batches, suppliers and recipes belong to one restaurant (REQ-053): every query here
+// is limited to the signed-in user's restaurant.
+const rid = (req) => req.user?.restaurant_id || 1;
 
 async function getInventoryItems(req, res, next) {
   try {
+    await ensureInventorySchema();
     const [items] = await pool.query(
       `SELECT i.*, c.name as category_name 
        FROM inventory_items i
        JOIN inventory_categories c ON i.category_id = c.id
-       ORDER BY i.item_name ASC`
+       WHERE i.restaurant_id = ?
+       ORDER BY i.item_name ASC`,
+      [rid(req)]
     );
     return sendSuccess(res, items, 'Inventory items loaded');
   } catch (err) {
@@ -21,11 +29,16 @@ async function createInventoryItem(req, res, next) {
     if (!category_id || !item_name || !unit) {
       return sendError(res, 'Category, item name, and unit are required', 400);
     }
+    await ensureInventorySchema();
+    const [dup] = await pool.query(
+      `SELECT id FROM inventory_items WHERE restaurant_id = ? AND LOWER(item_name) = LOWER(?)`, [rid(req), String(item_name).trim()]
+    );
+    if (dup.length) return sendError(res, `"${String(item_name).trim()}" is already in your ingredients`, 400);
 
     const [result] = await pool.query(
-      `INSERT INTO inventory_items (category_id, item_name, unit, current_stock, min_stock_alert, unit_cost)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [category_id, item_name, unit, current_stock || 0, min_stock_alert || 5, unit_cost || 0]
+      `INSERT INTO inventory_items (category_id, item_name, unit, current_stock, min_stock_alert, unit_cost, restaurant_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [category_id, String(item_name).trim(), unit, current_stock || 0, min_stock_alert || 5, unit_cost || 0, rid(req)]
     );
 
     const [newItem] = await pool.query(`SELECT * FROM inventory_items WHERE id = ?`, [result.insertId]);
@@ -42,12 +55,14 @@ async function getRecipes(req, res, next) {
        FROM recipes r
        JOIN menu_items m ON r.menu_item_id = m.id
        JOIN menu_categories c ON m.category_id = c.id
-       ORDER BY m.name ASC`
+       WHERE m.restaurant_id = ?
+       ORDER BY m.name ASC`,
+      [rid(req)]
     );
 
     for (let r of recipes) {
       const [ingredients] = await pool.query(
-        `SELECT ri.*, ii.item_name, ii.unit as stock_unit
+        `SELECT ri.*, ii.item_name, ii.unit as stock_unit, ii.unit_cost
          FROM recipe_ingredients ri
          JOIN inventory_items ii ON ri.inventory_item_id = ii.id
          WHERE ri.recipe_id = ?`,
@@ -68,7 +83,25 @@ async function createOrUpdateRecipe(req, res, next) {
     await connection.beginTransaction();
     const { menu_item_id, ingredients = [] } = req.body;
 
-    if (!menu_item_id) return sendError(res, 'Menu item ID is required', 400);
+    if (!menu_item_id) {
+      await connection.rollback();
+      return sendError(res, 'Menu item ID is required', 400);
+    }
+    await ensureInventorySchema();
+    const [dish] = await connection.query(`SELECT id FROM menu_items WHERE id = ? AND restaurant_id = ?`, [menu_item_id, rid(req)]);
+    if (!dish.length) {
+      await connection.rollback();
+      return sendError(res, 'Dish not found', 404);
+    }
+    const ingIds = [...new Set(ingredients.map((i) => Number(i.inventory_item_id)).filter(Boolean))];
+    const [own] = ingIds.length
+      ? await connection.query(`SELECT id, unit FROM inventory_items WHERE id IN (?) AND restaurant_id = ?`, [ingIds, rid(req)])
+      : [[]];
+    if (own.length !== ingIds.length || ingredients.some((i) => !(Number(i.quantity) > 0))) {
+      await connection.rollback();
+      return sendError(res, 'Each ingredient must be one of your ingredients with a quantity above 0', 400);
+    }
+    const stockUnit = new Map(own.map((o) => [o.id, o.unit]));
 
     // Create or get recipe
     let recipeId;
@@ -85,7 +118,8 @@ async function createOrUpdateRecipe(req, res, next) {
       await connection.query(
         `INSERT INTO recipe_ingredients (recipe_id, inventory_item_id, quantity, unit, wastage_percentage)
          VALUES (?, ?, ?, ?, ?)`,
-        [recipeId, ing.inventory_item_id, ing.quantity, ing.unit || 'kg', ing.wastage_percentage || 0]
+        // Quantities are entered in the ingredient's stock unit (the recipe screen shows it).
+        [recipeId, ing.inventory_item_id, ing.quantity, stockUnit.get(Number(ing.inventory_item_id)) || ing.unit || 'kg', Math.min(90, Math.max(0, Number(ing.wastage_percentage) || 0))]
       );
     }
 
@@ -103,7 +137,8 @@ const inventoryService = require('../../services/kot/inventoryService');
 
 async function getIngredientAvailabilityHandler(req, res, next) {
   try {
-    const items = await inventoryService.getIngredientAvailability();
+    await ensureInventorySchema();
+    const items = await inventoryService.getIngredientAvailability(rid(req));
     return sendSuccess(res, items, 'Ingredient availability loaded');
   } catch (err) {
     next(err);
@@ -116,8 +151,10 @@ async function getStockTransactions(req, res, next) {
       `SELECT st.*, ii.item_name, ii.unit
        FROM stock_transactions st
        JOIN inventory_items ii ON st.inventory_item_id = ii.id
+       WHERE ii.restaurant_id = ?
        ORDER BY st.created_at DESC
-       LIMIT 100`
+       LIMIT 100`,
+      [rid(req)]
     );
     return sendSuccess(res, rows, 'Stock transactions loaded');
   } catch (err) {
@@ -136,9 +173,10 @@ async function getInventoryBatches(req, res, next) {
       JOIN inventory_items ii ON b.inventory_item_id = ii.id
       JOIN inventory_categories c ON ii.category_id = c.id
       LEFT JOIN suppliers s ON b.supplier_id = s.id
-      WHERE 1=1
+      WHERE ii.restaurant_id = ?
     `;
-    const params = [];
+    await ensureInventorySchema();
+    const params = [rid(req)];
 
     if (category_id) {
       query += ` AND ii.category_id = ?`;
@@ -247,6 +285,20 @@ async function createInventoryBatch(req, res, next) {
       return sendError(res, 'Expiry date cannot be before purchase date', 400);
     }
 
+    await ensureInventorySchema();
+    const [ownItem] = await connection.query(`SELECT id FROM inventory_items WHERE id = ? AND restaurant_id = ?`, [inventory_item_id, rid(req)]);
+    if (!ownItem.length) {
+      await connection.rollback();
+      return sendError(res, 'Ingredient not found', 404);
+    }
+    if (supplier_id) {
+      const [ownSupplier] = await connection.query(`SELECT id FROM suppliers WHERE id = ? AND restaurant_id = ?`, [supplier_id, rid(req)]);
+      if (!ownSupplier.length) {
+        await connection.rollback();
+        return sendError(res, 'Supplier not found', 404);
+      }
+    }
+
     // Check unique batch_number
     const [existing] = await connection.query(`SELECT id FROM inventory_batches WHERE batch_number = ?`, [batch_number]);
     if (existing.length > 0) {
@@ -285,6 +337,7 @@ async function createInventoryBatch(req, res, next) {
       `UPDATE inventory_items SET current_stock = ? WHERE id = ?`,
       [usableTotal, inventory_item_id]
     );
+    await refreshItemCost(connection, inventory_item_id);
 
     await connection.commit();
     require('../../services/StockAlertService').checkInventoryItems([inventory_item_id], req.user?.restaurant_id || 1);
@@ -313,7 +366,11 @@ async function updateInventoryBatch(req, res, next) {
     const { id } = req.params;
     const { current_quantity, unit_price, purchase_date, expiry_date, supplier_id, supplier_name, notes } = req.body;
 
-    const [existing] = await connection.query(`SELECT * FROM inventory_batches WHERE id = ?`, [id]);
+    await ensureInventorySchema();
+    const [existing] = await connection.query(
+      `SELECT b.* FROM inventory_batches b JOIN inventory_items ii ON ii.id = b.inventory_item_id WHERE b.id = ? AND ii.restaurant_id = ?`,
+      [id, rid(req)]
+    );
     if (existing.length === 0) {
       await connection.rollback();
       return sendError(res, 'Batch not found', 404);
@@ -349,6 +406,7 @@ async function updateInventoryBatch(req, res, next) {
       `UPDATE inventory_items SET current_stock = ? WHERE id = ?`,
       [parseFloat(usableRow[0].usable_total), oldBatch.inventory_item_id]
     );
+    await refreshItemCost(connection, oldBatch.inventory_item_id);
 
     await connection.commit();
     require('../../services/StockAlertService').checkInventoryItems([oldBatch.inventory_item_id], req.user?.restaurant_id || 1);
@@ -367,12 +425,20 @@ async function deleteInventoryBatch(req, res, next) {
     await connection.beginTransaction();
     const { id } = req.params;
 
-    const [existing] = await connection.query(`SELECT * FROM inventory_batches WHERE id = ?`, [id]);
+    await ensureInventorySchema();
+    const [existing] = await connection.query(
+      `SELECT b.* FROM inventory_batches b JOIN inventory_items ii ON ii.id = b.inventory_item_id WHERE b.id = ? AND ii.restaurant_id = ?`,
+      [id, rid(req)]
+    );
     if (existing.length === 0) {
       await connection.rollback();
       return sendError(res, 'Batch not found', 404);
     }
     const batch = existing[0];
+    if (batch.purchase_id) {
+      await connection.rollback();
+      return sendError(res, 'This batch came from a supplier bill. Void the bill or record a stock correction instead.', 400);
+    }
 
     await connection.query(`DELETE FROM inventory_batches WHERE id = ?`, [id]);
 
@@ -408,7 +474,8 @@ async function getExpiryDashboardData(req, res, next) {
         SUM(CASE WHEN expiry_date > DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY) AND expiry_date <= DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY) AND current_quantity > 0 THEN 1 ELSE 0 END) as expiring_30_count,
         COUNT(CASE WHEN current_quantity > 0 THEN 1 END) as total_batches_count
       FROM inventory_batches
-    `);
+      WHERE inventory_item_id IN (SELECT id FROM inventory_items WHERE restaurant_id = ?)
+    `, [rid(req)]);
 
     const stats = {
       expired_count: parseInt(countsRow[0].expired_count || 0),
@@ -457,7 +524,7 @@ async function getExpiryReportData(req, res, next) {
       JOIN inventory_items ii ON b.inventory_item_id = ii.id
       JOIN inventory_categories c ON ii.category_id = c.id
       LEFT JOIN suppliers s ON b.supplier_id = s.id
-      WHERE b.current_quantity > 0
+      WHERE b.current_quantity > 0 AND ii.restaurant_id = ?
     `;
 
     if (filter === 'EXPIRED') {
@@ -470,7 +537,7 @@ async function getExpiryReportData(req, res, next) {
 
     query += ` ORDER BY b.expiry_date ASC`;
 
-    const [rows] = await pool.query(query);
+    const [rows] = await pool.query(query, [rid(req)]);
 
     const report = rows.map(b => {
       const daysDiff = parseInt(b.days_diff);
@@ -520,36 +587,13 @@ async function getExpiryReportData(req, res, next) {
   }
 }
 
-async function getSuppliers(req, res, next) {
-  try {
-    const [rows] = await pool.query(`SELECT * FROM suppliers ORDER BY name ASC`);
-    return sendSuccess(res, rows, 'Suppliers loaded');
-  } catch (err) {
-    next(err);
-  }
-}
-
-async function createSupplier(req, res, next) {
-  try {
-    const { name, contact_person, phone, email, address } = req.body;
-    if (!name) return sendError(res, 'Supplier name is required', 400);
-
-    const [result] = await pool.query(
-      `INSERT INTO suppliers (name, contact_person, phone, email, address)
-       VALUES (?, ?, ?, ?, ?)`,
-      [name, contact_person || null, phone || null, email || null, address || null]
-    );
-
-    const [newSupp] = await pool.query(`SELECT * FROM suppliers WHERE id = ?`, [result.insertId]);
-    return sendSuccess(res, newSupp[0], 'Supplier created successfully', 201);
-  } catch (err) {
-    next(err);
-  }
-}
+const { listSuppliers: getSuppliers, createSupplier } = require('./purchaseController');
 
 async function getInventoryIntelligence(req, res, next) {
   try {
     const { period = '30d', startDate, endDate, item_id, category_id } = req.query;
+    await ensureInventorySchema();
+    const R = rid(req);
 
     // 1. Calculate date ranges for current period and comparison previous period
     const now = new Date();
@@ -596,12 +640,12 @@ async function getInventoryIntelligence(req, res, next) {
        FROM stock_transactions st
        JOIN inventory_items ii ON st.inventory_item_id = ii.id
        JOIN inventory_categories c ON ii.category_id = c.id
-       WHERE st.type = 'ORDER_DEDUCTION'
+       WHERE st.type = 'ORDER_DEDUCTION' AND ii.restaurant_id = ?
          AND DATE(st.created_at) BETWEEN ? AND ?
        GROUP BY st.inventory_item_id, ii.item_name, ii.unit, c.name
        ORDER BY total_consumed DESC
        LIMIT 1`,
-      [currStartStr, currEndStr]
+      [R, currStartStr, currEndStr]
     );
 
     let mostConsumed = null;
@@ -644,9 +688,11 @@ async function getInventoryIntelligence(req, res, next) {
        JOIN menu_categories c ON m.category_id = c.id
        JOIN recipe_ingredients ri ON r.id = ri.recipe_id
        JOIN inventory_items ii ON ri.inventory_item_id = ii.id
+       WHERE m.restaurant_id = ?
        GROUP BY r.id, m.id, m.name, c.name
        ORDER BY total_ingredient_cost DESC
-       LIMIT 1`
+       LIMIT 1`,
+      [R]
     );
 
     let highestIngredientCost = null;
@@ -684,12 +730,12 @@ async function getInventoryIntelligence(req, res, next) {
               SUM(ABS(st.change_quantity) * ii.unit_cost) as total_wasted_value
        FROM stock_transactions st
        JOIN inventory_items ii ON st.inventory_item_id = ii.id
-       WHERE st.type IN ('WASTAGE', 'EXPIRED_DISPOSAL')
+       WHERE st.type IN ('WASTAGE', 'EXPIRED_DISPOSAL') AND ii.restaurant_id = ?
          AND DATE(st.created_at) BETWEEN ? AND ?
        GROUP BY st.inventory_item_id, ii.item_name, ii.unit, ii.unit_cost
        ORDER BY total_wasted_value DESC
        LIMIT 1`,
-      [currStartStr, currEndStr]
+      [R, currStartStr, currEndStr]
     );
 
     let highestWastage = null;
@@ -711,11 +757,11 @@ async function getInventoryIntelligence(req, res, next) {
               SUM(ABS(st.change_quantity)) as qty
        FROM stock_transactions st
        JOIN inventory_items ii ON st.inventory_item_id = ii.id
-       WHERE st.type IN ('WASTAGE', 'EXPIRED_DISPOSAL')
+       WHERE st.type IN ('WASTAGE', 'EXPIRED_DISPOSAL') AND ii.restaurant_id = ?
          AND DATE(st.created_at) BETWEEN ? AND ?
        GROUP BY reason
        ORDER BY value DESC`,
-      [currStartStr, currEndStr]
+      [R, currStartStr, currEndStr]
     );
 
     const totalWastageValue = wasteByReasonRows.reduce((sum, r) => sum + parseFloat(r.value || 0), 0);
@@ -751,7 +797,9 @@ async function getInventoryIntelligence(req, res, next) {
                   AND DATE(st.created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
               ), 0.000) as recent_30d_consumption
        FROM inventory_items ii
-       ORDER BY ii.item_name ASC`
+       WHERE ii.restaurant_id = ?
+       ORDER BY ii.item_name ASC`,
+      [R]
     );
 
     let fastestDepletion = null;
@@ -791,10 +839,10 @@ async function getInventoryIntelligence(req, res, next) {
       SELECT DATE(st.created_at) as date, ii.item_name, SUM(ABS(st.change_quantity)) as consumed, ii.unit
       FROM stock_transactions st
       JOIN inventory_items ii ON st.inventory_item_id = ii.id
-      WHERE st.type = 'ORDER_DEDUCTION'
+      WHERE st.type = 'ORDER_DEDUCTION' AND ii.restaurant_id = ?
         AND DATE(st.created_at) BETWEEN ? AND ?
     `;
-    const trendParams = [currStartStr, currEndStr];
+    const trendParams = [R, currStartStr, currEndStr];
 
     if (item_id) {
       trendQuery += ` AND ii.id = ?`;
@@ -813,7 +861,9 @@ async function getInventoryIntelligence(req, res, next) {
       `SELECT b.inventory_item_id, ii.item_name, ii.unit, b.unit_price, b.purchase_date, b.batch_number
        FROM inventory_batches b
        JOIN inventory_items ii ON b.inventory_item_id = ii.id
-       ORDER BY b.inventory_item_id, b.purchase_date DESC, b.id DESC`
+       WHERE ii.restaurant_id = ?
+       ORDER BY b.inventory_item_id, b.purchase_date DESC, b.id DESC`,
+      [R]
     );
 
     const priceTrendsMap = {};
@@ -904,7 +954,9 @@ async function getInventoryIntelligence(req, res, next) {
 
     // Expiry Insight
     const [expiringBatches] = await pool.query(
-      `SELECT COUNT(*) as count FROM inventory_batches WHERE current_quantity > 0 AND expiry_date >= CURRENT_DATE() AND expiry_date <= DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)`
+      `SELECT COUNT(*) as count FROM inventory_batches WHERE current_quantity > 0 AND expiry_date >= CURRENT_DATE() AND expiry_date <= DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
+         AND inventory_item_id IN (SELECT id FROM inventory_items WHERE restaurant_id = ?)`,
+      [R]
     );
     if (expiringBatches[0]?.count > 0) {
       smartInsights.push({
@@ -933,17 +985,20 @@ async function getInventoryIntelligence(req, res, next) {
 
 async function getKitchenIntelligence(req, res, next) {
   try {
+    await ensureInventorySchema();
+    const R = rid(req);
     // 1. Most Used Item (Quantities only, NO ₹)
     const [mostUsedRows] = await pool.query(
       `SELECT st.inventory_item_id, ii.item_name, ii.unit,
               SUM(ABS(st.change_quantity)) as total_used
        FROM stock_transactions st
        JOIN inventory_items ii ON st.inventory_item_id = ii.id
-       WHERE st.type = 'ORDER_DEDUCTION'
+       WHERE st.type = 'ORDER_DEDUCTION' AND ii.restaurant_id = ?
          AND DATE(st.created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
        GROUP BY st.inventory_item_id, ii.item_name, ii.unit
        ORDER BY total_used DESC
-       LIMIT 1`
+       LIMIT 1`,
+      [R]
     );
 
     const mostUsed = mostUsedRows.length > 0 ? {
@@ -969,7 +1024,9 @@ async function getKitchenIntelligence(req, res, next) {
                   AND st.type = 'ORDER_DEDUCTION'
                   AND DATE(st.created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
               ), 0.000) as recent_consumption
-       FROM inventory_items ii`
+       FROM inventory_items ii
+       WHERE ii.restaurant_id = ?`,
+      [R]
     );
 
     let fastestDepletion = null;
@@ -1000,11 +1057,12 @@ async function getKitchenIntelligence(req, res, next) {
       `SELECT b.batch_number, ii.item_name, b.current_quantity, ii.unit, DATEDIFF(b.expiry_date, CURRENT_DATE()) as days_remaining
        FROM inventory_batches b
        JOIN inventory_items ii ON b.inventory_item_id = ii.id
-       WHERE b.current_quantity > 0
+       WHERE b.current_quantity > 0 AND ii.restaurant_id = ?
          AND b.expiry_date >= CURRENT_DATE()
          AND b.expiry_date <= DATE_ADD(CURRENT_DATE(), INTERVAL 7 DAY)
        ORDER BY b.expiry_date ASC
-       LIMIT 5`
+       LIMIT 5`,
+      [R]
     );
 
     // 4. Critical Stock Alerts (Usable stock <= min_stock_alert)

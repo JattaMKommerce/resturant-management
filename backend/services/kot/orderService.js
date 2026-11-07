@@ -68,7 +68,7 @@ async function createOrder(orderData, idempotencyKey = null) {
 
     for (const rawItem of items) {
       const [dbItems] = await connection.query(
-        `SELECT id, name, price, tax_percentage, is_available, is_active, kitchen_department_id, prep_time_minutes, batch_capacity, stock_quantity
+        `SELECT id, restaurant_id, name, price, tax_percentage, is_available, is_active, kitchen_department_id, prep_time_minutes, batch_capacity, stock_quantity
          FROM menu_items
          WHERE id = ?`,
         [rawItem.menu_item_id]
@@ -79,6 +79,9 @@ async function createOrder(orderData, idempotencyKey = null) {
       }
 
       const dbItem = dbItems[0];
+      if (dbItem.restaurant_id && Number(dbItem.restaurant_id) !== Number(orderRestaurantId)) {
+        throw new Error(`"${dbItem.name}" is not on this restaurant's menu`);
+      }
       if (!dbItem.is_active || !dbItem.is_available) {
         throw new Error(`Menu item "${dbItem.name}" is currently unavailable`);
       }
