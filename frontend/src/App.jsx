@@ -58,6 +58,8 @@ import AdminDriverPayoutsPage from './pages/admin/AdminDriverPayoutsPage';
 import OfflineDashboardPage from './pages/offline/dashboard/DashboardPage';
 import OperationsCenterPage from './pages/offline/operations/OperationsCenterPage';
 import AccommodationPage from './pages/offline/accommodation/AccommodationPage';
+import FolioInvoicePage from './pages/offline/accommodation/FolioInvoicePage';
+import GuestStayPage from './pages/public/GuestStayPage';
 import TableManagementPage from './pages/offline/tables/TableManagementPage';
 import OfflineMenuPage from './pages/offline/menu/MenuManagementPage';
 import ServiceDashboardPage from './pages/offline/waiter/ServiceDashboardPage';
@@ -284,6 +286,8 @@ export default function App() {
 
         {/* Public Customer Offline QR Menu & Live Dine-In Tracking */}
         <Route path="/order/table/:token" element={<CustomerQRMenuPage />} />
+        {/* Hotel guest's private stay page: room service requests (REQ-047) */}
+        <Route path="/stay/:token" element={<GuestStayPage />} />
         <Route path="/order/:orderId/track" element={<CustomerOrderTrackingPage />} />
 
         {/* Driver Auth & Duty Dashboard (No public registration; drivers provisioned by Restaurant Admin) */}
@@ -546,6 +550,11 @@ export default function App() {
                 <AccommodationPage />
               </AdminLayout>
             </FeatureRoute>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/accommodation/folios/:folioId/invoice" element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'WAITER', 'CASHIER', 'RESTAURANT_ADMIN', 'SUPER_ADMIN']}>
+            <FolioInvoicePage />
           </ProtectedRoute>
         } />
         <Route path="/admin/accommodation/:subTab" element={

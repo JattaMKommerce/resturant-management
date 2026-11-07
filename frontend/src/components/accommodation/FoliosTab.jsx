@@ -320,6 +320,13 @@ export default function FoliosTab({
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
+                          <a
+                            href={`/admin/accommodation/folios/${f.id}/invoice`}
+                            className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-[11px] font-bold"
+                            title={isOpen ? 'Provisional bill so far' : 'Final bill'}
+                          >
+                            Bill
+                          </a>
                         </div>
                       </td>
                     </tr>

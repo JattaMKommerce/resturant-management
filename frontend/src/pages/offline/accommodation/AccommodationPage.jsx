@@ -16,6 +16,10 @@ import HousekeepingTab from '../../../components/accommodation/HousekeepingTab';
 import MaintenanceTab from '../../../components/accommodation/MaintenanceTab';
 import RoomLeadsTab from '../../../components/accommodation/RoomLeadsTab';
 import RoomStoreSettingsTab from '../../../components/accommodation/RoomStoreSettingsTab';
+import ReservationsTab from '../../../components/accommodation/ReservationsTab';
+import RatesTab from '../../../components/accommodation/RatesTab';
+import ServiceRequestsTab from '../../../components/accommodation/ServiceRequestsTab';
+import GuestHistoryLookup from '../../../components/accommodation/GuestHistoryLookup';
 import { 
   Building2, 
   Plus, 
@@ -43,7 +47,10 @@ import {
   Coffee,
   Hotel,
   MessageSquare,
-  Store
+  Store,
+  CalendarDays,
+  BellRing,
+  Percent
 } from 'lucide-react';
 
 export default function AccommodationPage() {
@@ -280,13 +287,16 @@ export default function AccommodationPage() {
             { id: 'store', label: 'Room Store Settings', icon: Store },
             { id: 'hotels', label: '20 Hotels Catalog', icon: Hotel, badge: '20 Hotels' },
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'reservations', label: 'Reservations', icon: CalendarDays },
             { id: 'rooms', label: 'Rooms Grid', icon: BedDouble, count: stats.total },
             { id: 'guests', label: 'Guest Directory', icon: Users, count: stats.occupied },
             { id: 'checkin', label: 'Check-In Desk', icon: UserPlus, badge: stats.vacant ? `${stats.vacant} Ready` : null },
             { id: 'checkout', label: 'Check-Out Desk', icon: LogOut, badge: stats.occupied ? `${stats.occupied} In-House` : null },
             { id: 'folios', label: 'Room Folios', icon: Receipt },
             { id: 'housekeeping', label: 'Housekeeping', icon: Sparkles, badge: stats.cleaning > 0 ? `${stats.cleaning} Pending` : null },
-            { id: 'maintenance', label: 'Maintenance', icon: Wrench, badge: stats.maintenance > 0 ? `${stats.maintenance} Out` : null }
+            { id: 'maintenance', label: 'Maintenance', icon: Wrench, badge: stats.maintenance > 0 ? `${stats.maintenance} Out` : null },
+            { id: 'requests', label: 'Guest Requests', icon: BellRing },
+            { id: 'rates', label: 'Rates & GST', icon: Percent }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -614,6 +624,7 @@ export default function AccommodationPage() {
       )}
 
       {/* TAB D: GUEST DIRECTORY */}
+      {activeTab === 'guests' && <GuestHistoryLookup />}
       {activeTab === 'guests' && (
         <GuestManagementTab
           onViewFolioClick={(room) => setFolioRoom(room)}
@@ -680,6 +691,11 @@ export default function AccommodationPage() {
           onRefresh={() => fetchAccommodationData()}
         />
       )}
+
+      {/* Reservations, rates and guest requests (REQ-041 / 045 / 047) */}
+      {activeTab === 'reservations' && <ReservationsTab onChanged={() => fetchAccommodationData()} />}
+      {activeTab === 'rates' && <RatesTab rooms={rooms} />}
+      {activeTab === 'requests' && <ServiceRequestsTab rooms={rooms} />}
 
       {/* 5. MODALS */}
       {selectedRoomDetails && (

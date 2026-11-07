@@ -277,7 +277,8 @@ async function getRooms(req, res, next) {
         f.expected_check_out,
         f.breakfast_included,
         f.breakfast_price,
-        f.notes AS folio_notes
+        f.notes AS folio_notes,
+        f.guest_token
       FROM rooms r
       LEFT JOIN room_folios f ON r.id = f.room_id AND f.folio_status = 'OPEN'
       WHERE 1=1

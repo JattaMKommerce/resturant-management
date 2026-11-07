@@ -25,7 +25,14 @@ export default function CheckInModal({
     guest_name: '',
     guest_phone: '',
     guest_email: '',
-    notes: ''
+    notes: '',
+    // REQ-043: guest registration details
+    id_proof_type: 'AADHAAR',
+    id_proof_number: '',
+    guest_address: '',
+    adults: 1,
+    children: 0,
+    company_gstin: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -156,6 +163,44 @@ export default function CheckInModal({
                 className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Guest registration (REQ-043) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label htmlFor="ci-id-type" className="block text-xs font-bold text-slate-700 mb-1">ID proof</label>
+            <select id="ci-id-type" name="id_proof_type" value={formData.id_proof_type} onChange={handleChange}
+              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]">
+              {['AADHAAR', 'PASSPORT', 'DRIVING_LICENCE', 'VOTER_ID', 'PAN', 'OTHER'].map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="ci-id-no" className="block text-xs font-bold text-slate-700 mb-1">ID number</label>
+            <input id="ci-id-no" name="id_proof_number" value={formData.id_proof_number} onChange={handleChange}
+              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]" />
+          </div>
+          <div>
+            <label htmlFor="ci-adults" className="block text-xs font-bold text-slate-700 mb-1">Adults</label>
+            <input id="ci-adults" type="number" min="1" name="adults" value={formData.adults} onChange={handleChange}
+              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]" />
+          </div>
+          <div>
+            <label htmlFor="ci-children" className="block text-xs font-bold text-slate-700 mb-1">Children</label>
+            <input id="ci-children" type="number" min="0" name="children" value={formData.children} onChange={handleChange}
+              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="ci-address" className="block text-xs font-bold text-slate-700 mb-1">Address</label>
+            <input id="ci-address" name="guest_address" value={formData.guest_address} onChange={handleChange}
+              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]" />
+          </div>
+          <div>
+            <label htmlFor="ci-gstin" className="block text-xs font-bold text-slate-700 mb-1">Company GSTIN (optional)</label>
+            <input id="ci-gstin" name="company_gstin" maxLength={15} value={formData.company_gstin} onChange={(e) => setFormData((p) => ({ ...p, company_gstin: e.target.value.toUpperCase() }))}
+              className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-[#D7E5E8] bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#3A7D7C]" />
           </div>
         </div>
 
