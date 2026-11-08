@@ -19,7 +19,7 @@ async function sendNotification({ userId, restaurantId, orderId, customerIdentit
     const upperType = String(type || '').toUpperCase();
     const isNewOrder = upperType.includes('NEW_ORDER') || upperType.includes('ORDER_CREATED') || upperType === 'NEW_TABLE_ORDER';
     // Restaurant alerts that must stay in the notification bell, not only pop up live (REQ-039)
-    const isRestaurantAlert = ['LOW_STOCK', 'SOLD_OUT'].includes(upperType);
+    const isRestaurantAlert = ['LOW_STOCK', 'SOLD_OUT', 'TABLE_BOOKING'].includes(upperType);
 
     // Only insert into DB for new orders, restaurant alerts or direct user targeted alerts.
     // A failed save must never stop the live pop-up below from being sent.

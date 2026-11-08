@@ -510,7 +510,11 @@ async function createReservationCore(restaurantId, input, { online = false, user
         return fail(pick.error, pick.conflict ? 409 : 400);
       }
       if (pick.none) {
-        if (online && type.confirmOnline) {
+        if (!floor.tables.length) {
+          // No tables set up yet (REQ-051): the booking still comes in. Online it is a request the
+          // restaurant confirms; a staff booking is simply confirmed without a table.
+          if (online) status = 'PENDING';
+        } else if (online && type.confirmOnline) {
           // Events and private dining are requests: staff arrange the tables when confirming.
           status = 'PENDING';
         } else {
@@ -563,6 +567,19 @@ async function createReservationCore(restaurantId, input, { online = false, user
   } finally {
     conn.release();
   }
+}
+
+/** Bell notification for the restaurant team (online bookings and guest cancellations). */
+async function notifyRestaurant(restaurantId, title, r) {
+  try {
+    const when = `${r.date} ${r.time}`;
+    await require('../../services/NotificationService').sendNotification({
+      restaurantId,
+      title,
+      message: `${r.customer_name} · ${r.party_size} guest${r.party_size === 1 ? '' : 's'} · ${when}${r.booking_type_label && r.booking_type !== 'TABLE' ? ` · ${r.booking_type_label}` : ''} · ${r.reservation_code}`,
+      type: 'TABLE_BOOKING'
+    });
+  } catch (e) { /* notifications are best effort */ }
 }
 
 function afterChange(restaurantId, reservation) {
@@ -634,6 +651,42 @@ async function listReservations(req, res, next) {
       by_status: Object.keys(TRANSITIONS).reduce((acc, s) => ({ ...acc, [s]: data.filter((r) => r.status === s).length }), {})
     };
     return sendSuccess(res, { from, to, reservations: data, summary, booking_types: BOOKING_TYPES }, 'Reservations loaded');
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** Counts for the sidebar badge and dashboard: today's bookings and requests waiting to be confirmed. */
+async function getReservationSummary(req, res, next) {
+  try {
+    await ensureTableReservationSchema();
+    const rid = restaurantOf(req);
+    const now = localNow();
+    const today = ymdOf(now);
+    const dayStart = toSql(parseLocal(today, '00:00'));
+    const dayEnd = toSql(addMin(parseLocal(today, '00:00'), 1440));
+    const [t] = await q(
+      `SELECT COUNT(*) AS bookings, COALESCE(SUM(party_size), 0) AS guests,
+              SUM(status = 'SEATED') AS seated, SUM(status = 'WAITLIST') AS waitlist
+       FROM table_reservations WHERE restaurant_id = ? AND reserved_for >= ? AND reserved_for < ?
+         AND status IN ('PENDING','CONFIRMED','SEATED','WAITLIST','COMPLETED')`, [rid, dayStart, dayEnd]
+    );
+    const [p] = await q(
+      `SELECT COUNT(*) AS n, DATE_FORMAT(MIN(reserved_for), '%Y-%m-%d') AS first_date FROM table_reservations
+       WHERE restaurant_id = ? AND status = 'PENDING' AND reserved_until >= ?`, [rid, toSql(now)]
+    );
+    const [u] = await q(
+      `SELECT COUNT(*) AS n FROM table_reservations WHERE restaurant_id = ? AND status IN ('PENDING','CONFIRMED')
+         AND reserved_for >= ? AND reserved_for < ?`, [rid, toSql(now), toSql(addMin(now, 7 * 1440))]
+    );
+    const [tables] = await q(`SELECT COUNT(*) AS n FROM restaurant_tables WHERE (restaurant_id = ? OR restaurant_id IS NULL) AND (is_active = 1 OR is_active IS NULL)`, [rid]);
+    return sendSuccess(res, {
+      today: { date: today, bookings: Number(t.bookings || 0), guests: Number(t.guests || 0), seated: Number(t.seated || 0), waitlist: Number(t.waitlist || 0) },
+      pending_requests: Number(p.n || 0),
+      first_pending_date: p.first_date || null,
+      upcoming_7_days: Number(u.n || 0),
+      has_tables: Number(tables.n || 0) > 0
+    }, 'Booking summary');
   } catch (err) {
     next(err);
   }
@@ -736,7 +789,7 @@ async function updateReservation(req, res, next) {
         if (keepOk || (seated && keep && !keep.error)) pick = keep;
         else if (again && !again.none) pick = again;
         else if (keep && !keep.error) pick = keep; // still free, just tight: keep them with a note
-        else if (current.status === 'PENDING') pick = { tables: [] }; // a request may wait for tables
+        else if (current.status === 'PENDING' || !floor.tables.length) pick = { tables: [] }; // a request may wait for tables; no table plan needs none
         else {
           await conn.rollback();
           return sendError(res, `No free table seats ${partySize} at ${hmOf(start)}. Pick tables yourself or choose another time.`, 409);
@@ -810,11 +863,12 @@ async function changeReservationStatus(req, res, next) {
         const pick = chooseTables(floor, start, end, current.party_size, {
           tableIds: askedIds, excludeId: id, ownTableIds: tables.map((t) => t.id), prefer: (BOOKING_TYPES[current.booking_type] || {}).prefer
         });
-        if (pick.error || pick.none) {
+        const noPlan = pick.none && !floor.tables.length; // restaurant doesn't use a table plan
+        if (pick.error || (pick.none && !noPlan)) {
           await conn.rollback();
           return sendError(res, pick.error || `No free table seats ${current.party_size} right now. Choose tables yourself.`, pick.conflict || pick.none ? 409 : 400);
         }
-        tables = pick.tables;
+        tables = pick.tables || [];
         await q(`DELETE FROM table_reservation_tables WHERE reservation_id = ?`, [id], conn);
         for (const t of tables) await q(`INSERT INTO table_reservation_tables (reservation_id, table_id) VALUES (?, ?)`, [id, t.id], conn);
       }
@@ -918,11 +972,13 @@ async function getPublicSlots(req, res, next) {
     const slots = [];
     for (let t = new Date(win.first); t <= win.last; t = addMin(t, ONLINE.slotStepMin)) {
       if (t < addMin(now, ONLINE.minLeadMin) || t > addMin(now, ONLINE.maxDaysAhead * 1440)) continue;
-      const fits = pickTables(tablesFor(floor, t, addMin(t, type.minutes), { now }), partySize, type.prefer).length > 0;
+      // No table plan yet: every time within opening hours can be requested.
+      const noPlan = !floor.tables.length;
+      const fits = noPlan || pickTables(tablesFor(floor, t, addMin(t, type.minutes), { now }), partySize, type.prefer).length > 0;
       // Events / private dining can be requested even when tables must be rearranged.
-      slots.push({ time: hmOf(t), date: ymdOf(t), available: fits || type.confirmOnline, needs_confirmation: type.confirmOnline || false });
+      slots.push({ time: hmOf(t), date: ymdOf(t), available: fits || type.confirmOnline, needs_confirmation: Boolean(type.confirmOnline || noPlan) });
     }
-    return sendSuccess(res, { date, party_size: partySize, booking_type: typeKey, slots }, 'Slots loaded');
+    return sendSuccess(res, { date, party_size: partySize, booking_type: typeKey, slots, requests_only: !floor.tables.length }, 'Slots loaded');
   } catch (err) {
     next(err);
   }
@@ -935,6 +991,9 @@ async function createPublicReservation(req, res, next) {
     if (Number(r.table_booking_enabled) === 0) return sendError(res, 'Online table booking is switched off. Please call the restaurant.', 403);
     const result = await createReservationCore(r.id, req.body || {}, { online: true, restaurant: r });
     if (result.error) return res.status(result.status).json({ success: false, message: result.error, alternatives: result.alternatives || [] });
+    if (!result.duplicate) {
+      await notifyRestaurant(r.id, result.reservation.status === 'PENDING' ? 'Table booking request: please confirm' : 'New table booking', result.reservation);
+    }
     const tokenRow = await q(`SELECT manage_token FROM table_reservations WHERE id = ?`, [result.reservation.id]);
     const view = publicView(result.reservation, r);
     const message = view.status === 'PENDING'
@@ -980,6 +1039,7 @@ async function cancelPublicReservation(req, res, next) {
     );
     const updated = await loadReservation(r.id);
     afterChange(r.restaurant_id, updated);
+    await notifyRestaurant(r.restaurant_id, 'Guest cancelled a table booking', updated);
     return sendSuccess(res, publicView(updated, found.restaurant), `Booking ${r.reservation_code} cancelled`);
   } catch (err) {
     next(err);
@@ -994,6 +1054,7 @@ module.exports = {
   nextReservationsByTable,
   guardReservation,
   listReservations,
+  getReservationSummary,
   getReservation,
   checkAvailability,
   createReservation,

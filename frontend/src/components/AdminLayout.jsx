@@ -148,6 +148,7 @@ export default function AdminLayout({ children }) {
     if (p.includes('/website')) return 'Website Builder & Visual Setup';
     if (p.includes('/settings')) return 'Store Operational Controls & Rules';
     if (p.includes('/operations')) return 'Live Offline Restaurant Operations';
+    if (p.includes('/table-reservations')) return 'Table Bookings';
     if (p.includes('/tables')) return 'Dining Room & Table Layouts';
     if (p.includes('/kds')) return 'Kitchen Display System (KDS)';
     if (p.includes('/kot-status')) return 'KOT Ticket Dispatch Queue';

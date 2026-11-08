@@ -76,6 +76,21 @@ export default function UnifiedSidebar({
   const [offlineOpen, setOfflineOpen] = useState(true);
   const [accommodationOpen, setAccommodationOpen] = useState(true);
   const [unclaimedCount, setUnclaimedCount] = useState(0);
+  // Table booking requests waiting for confirmation (REQ-051): badge on "Table Bookings"
+  const [bookingRequests, setBookingRequests] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const role = String(user?.role || '').toUpperCase();
+    if (role === 'KITCHEN' || role === 'CHEF' || role === 'DRIVER') return undefined;
+    const load = () => api.get('/table-reservations/summary')
+      .then((res) => { if (alive) setBookingRequests(Number(res.data?.data?.pending_requests || 0)); })
+      .catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    const onChanged = () => load();
+    window.addEventListener('hms_bookings_changed', onChanged);
+    return () => { alive = false; clearInterval(t); window.removeEventListener('hms_bookings_changed', onChanged); };
+  }, [user?.role]);
 
   // Poll for unclaimed / new orders for visual notification light & badge (NO AUDIO IN SIDEBAR)
   useEffect(() => {
@@ -138,6 +153,14 @@ export default function UnifiedSidebar({
       featureKey: 'online_ordering'
     },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
+    {
+      name: 'Table Bookings',
+      path: '/admin/offline/table-reservations',
+      icon: CalendarClock,
+      badge: bookingRequests > 0 ? `${bookingRequests} to confirm` : null,
+      badgeClass: 'bg-amber-500 text-white shadow-sm',
+      featureKey: 'table_dine_in'
+    },
     { name: 'Sales Analytics', path: `/admin/${activeSlug}/sales`, icon: BarChart3 },
     { name: 'Refunds', path: `/admin/${activeSlug}/refunds`, icon: RotateCcw, featureKey: 'online_ordering' },
     { name: 'Coupons', path: `/admin/${activeSlug}/coupons`, icon: Tag, featureKey: 'online_ordering' },
@@ -157,7 +180,7 @@ export default function UnifiedSidebar({
   const offlineNavItems = [
     { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity, featureKey: 'pos_billing' },
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2, featureKey: 'table_dine_in' },
-    { name: 'Table Reservations', path: '/admin/offline/table-reservations', icon: CalendarClock, featureKey: 'table_dine_in' },
+    { name: 'Table Bookings', path: '/admin/offline/table-reservations', icon: CalendarClock, featureKey: 'table_dine_in', badge: bookingRequests > 0 ? `${bookingRequests}` : null },
     { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
     { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat, featureKey: 'pos_billing' },
     { name: 'Kitchen Display System (Active KDS)', path: '/admin/offline/kds', icon: ChefHat, featureKey: 'kds_kot' },
@@ -347,6 +370,9 @@ export default function UnifiedSidebar({
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'inline'}`}>{item.name}</span>
+                    {item.badge && (
+                      <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 bg-amber-500 text-white ${isCollapsed ? 'lg:hidden' : 'inline-flex'}`}>{item.badge}</span>
+                    )}
 
                     {/* Collapsed Tooltip */}
                     {isCollapsed && (

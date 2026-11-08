@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   CalendarClock, ChevronLeft, ChevronRight, Plus, RefreshCw, Search, X, Users, Phone, UserPlus,
   Check, Armchair, Flag, Ban, Pencil, AlertTriangle, IndianRupee, Grid2X2
@@ -319,12 +319,13 @@ function ReasonDialog({ reservation, status, onClose, onDone }) {
   );
 }
 
-function ReservationRow({ r, onAction }) {
+function ReservationRow({ r, onAction, showDate }) {
   const s = STATUS[r.status] || STATUS.CONFIRMED;
   const btn = 'inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition';
   return (
     <li className={`p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(r.status) ? 'opacity-70' : ''}`}>
       <div className="sm:w-24 shrink-0 flex sm:flex-col items-baseline sm:items-start gap-2 sm:gap-0">
+        {showDate && r.status !== 'WAITLIST' && <span className="text-[11px] font-bold text-amber-800">{new Date(`${r.date}T00:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>}
         <span className="text-lg font-black text-slate-900 tabular-nums">{r.status === 'WAITLIST' ? 'Now' : fmtTime(r.time)}</span>
         <span className="text-[11px] text-slate-500">{r.status === 'WAITLIST' ? `added ${fmtTime(r.time)}` : `${r.duration_minutes} min`}</span>
       </div>
@@ -367,6 +368,16 @@ function ReservationRow({ r, onAction }) {
 }
 
 export default function TableReservationsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  // day = one date; week = next 7 days; requests = online requests waiting for confirmation
+  const [view, setViewState] = useState(['requests', 'week'].includes(searchParams.get('view')) ? searchParams.get('view') : 'day');
+  const setView = (v) => {
+    setViewState(v);
+    const next = new URLSearchParams(searchParams);
+    if (v === 'day') next.delete('view'); else next.set('view', v);
+    setSearchParams(next, { replace: true });
+  };
+  const [bookingSummary, setBookingSummary] = useState(null);
   const [date, setDate] = useState(todayIst());
   const [filter, setFilter] = useState('ACTIVE');
   const [search, setSearch] = useState('');
@@ -382,16 +393,23 @@ export default function TableReservationsPage() {
     if (!quiet) setLoading(true);
     setError('');
     try {
-      const p = new URLSearchParams({ date });
+      const today = todayIst();
+      const p = view === 'day' ? new URLSearchParams({ date })
+        : view === 'week' ? new URLSearchParams({ from: today, to: addDays(today, 6) })
+          : new URLSearchParams({ from: today, to: addDays(today, 60), status: 'PENDING' });
       if (search.trim()) p.set('search', search.trim());
-      const res = await api.get(`/table-reservations?${p}`);
+      const [res, sum] = await Promise.all([
+        api.get(`/table-reservations?${p}`),
+        api.get('/table-reservations/summary').catch(() => null)
+      ]);
       setData(res.data);
+      if (sum?.data) setBookingSummary(sum.data);
     } catch (err) {
       setError(err.message || 'Could not load bookings.');
     } finally {
       setLoading(false);
     }
-  }, [date, search]);
+  }, [date, search, view]);
 
   useEffect(() => {
     const t = setTimeout(() => load(), search ? 300 : 0);
@@ -417,6 +435,7 @@ export default function TableReservationsPage() {
     setReason(null);
     setNotice(message || 'Saved');
     load(true);
+    window.dispatchEvent(new Event('hms_bookings_changed')); // sidebar badge
   };
 
   const onAction = async (action, r) => {
@@ -440,7 +459,7 @@ export default function TableReservationsPage() {
       <div className="bg-white border border-blue-100 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <CalendarClock className="w-6 h-6 text-amber-600" /> Table Reservations
+            <CalendarClock className="w-6 h-6 text-amber-600" /> Table Bookings
           </h1>
           <p className="text-slate-600 text-xs sm:text-sm mt-0.5">Bookings by phone, walk-in and online. Booked tables show as reserved on the floor an hour before.</p>
         </div>
@@ -451,9 +470,30 @@ export default function TableReservationsPage() {
         </div>
       </div>
 
+      {bookingSummary?.pending_requests > 0 && view !== 'requests' && (
+        <div className="p-3 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3" role="status">
+          <p className="text-sm font-bold text-amber-900">
+            {bookingSummary.pending_requests} booking request{bookingSummary.pending_requests === 1 ? '' : 's'} waiting for you to confirm
+            <span className="block text-xs font-semibold text-amber-800">Guests booked online. Confirm or cancel so they know where they stand.</span>
+          </p>
+          <button type="button" onClick={() => setView('requests')} className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shrink-0">Show requests</button>
+        </div>
+      )}
+      {bookingSummary && !bookingSummary.has_tables && (
+        <p className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs font-semibold">
+          You haven't set up tables yet. Bookings still come in (online ones as requests for you to confirm). Add your tables in <Link to="/admin/offline/tables" className="underline font-bold">Table Management</Link> to assign them and stop double bookings.
+        </p>
+      )}
+
       <div className="bg-white border border-blue-100 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
+        <div className="flex gap-1.5" role="tablist" aria-label="Which bookings">
+          {[['day', 'One day'], ['week', 'Next 7 days'], ['requests', `Requests to confirm${bookingSummary?.pending_requests ? ` (${bookingSummary.pending_requests})` : ''}`]].map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${view === k ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-white text-slate-700 border-slate-200 hover:border-amber-400'}`}>{l}</button>
+          ))}
+        </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 ${view !== 'day' ? 'hidden' : ''}`}>
             <button type="button" onClick={() => setDate(addDays(date, -1))} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200" aria-label="Previous day"><ChevronLeft className="w-4 h-4" /></button>
             <label className="sr-only" htmlFor="tr-day">Day</label>
             <input id="tr-day" type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold" />
@@ -467,7 +507,7 @@ export default function TableReservationsPage() {
           </div>
         </div>
         <p className="text-sm font-bold text-slate-800">
-          {fmtDay(date)}{isToday ? ' · today' : ''}
+          {view === 'week' ? 'Next 7 days' : view === 'requests' ? 'Online requests waiting for confirmation' : <>{fmtDay(date)}{isToday ? ' · today' : ''}</>}
           {data && <span className="font-semibold text-slate-600"> · {data.summary.bookings} booking{data.summary.bookings === 1 ? '' : 's'}, {data.summary.guests} guests{counts.WAITLIST ? ` · ${counts.WAITLIST} waiting` : ''}</span>}
         </p>
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Booking status">
@@ -494,12 +534,12 @@ export default function TableReservationsPage() {
         ) : list.length === 0 ? (
           <div className="p-10 text-center space-y-2">
             <CalendarClock className="w-8 h-8 text-amber-600 mx-auto" />
-            <p className="font-bold text-slate-900">{filter === 'ACTIVE' ? 'No bookings for this day yet' : 'Nothing here'}</p>
+            <p className="font-bold text-slate-900">{view === 'requests' ? 'No requests waiting' : view === 'week' ? 'No bookings in the next 7 days' : filter === 'ACTIVE' ? 'No bookings for this day yet' : 'Nothing here'}</p>
             <p className="text-xs text-slate-600">Use “New booking” for phone bookings. Online bookings from your restaurant page show up here by themselves.</p>
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {list.map((r) => <ReservationRow key={r.id} r={r} onAction={onAction} />)}
+            {list.map((r) => <ReservationRow key={r.id} r={r} onAction={onAction} showDate={view !== 'day'} />)}
           </ul>
         )}
       </section>

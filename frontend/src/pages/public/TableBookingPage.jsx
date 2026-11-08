@@ -25,6 +25,7 @@ export default function TableBookingPage({ overrideSlug }) {
   const [type, setType] = useState('TABLE');
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState(null);
+  const [requestsOnly, setRequestsOnly] = useState(false); // restaurant confirms every booking
   const [slot, setSlot] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '', occasion: '', special_requests: '' });
   const [error, setError] = useState('');
@@ -45,7 +46,7 @@ export default function TableBookingPage({ overrideSlug }) {
     setSlots(null);
     setSlot(null);
     api.get(`/restaurants/${slug}/table-slots?date=${date}&party_size=${party}&booking_type=${type}`)
-      .then((res) => setSlots(res.data.data.slots))
+      .then((res) => { setSlots(res.data.data.slots); setRequestsOnly(Boolean(res.data.data.requests_only)); })
       .catch((err) => { setSlots([]); setError(err.response?.data?.message || 'Could not load times.'); });
   }, [slug, info, date, party, type]);
 
@@ -165,10 +166,11 @@ export default function TableBookingPage({ overrideSlug }) {
                 ))}
               </div>
               <label className="flex items-center gap-2 text-xs text-slate-600">
-                Other day
+                Or pick a date
                 <input type="date" min={info.first_date} max={info.last_date} value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm" />
               </label>
               <h2 className="font-bold text-sm pt-1">Time</h2>
+              {requestsOnly && <p className="text-xs text-slate-600">Choose a time and send your request. The restaurant confirms it and you'll see the status on your booking page.</p>}
               {!slots ? <p className="text-xs text-slate-500">Finding free times…</p>
                 : slots.filter((s) => s.available).length === 0 ? <p className="text-sm text-slate-600">No free tables for {party} on this day. Please try another day{r.phone ? <> or call <a className="font-bold text-emerald-700" href={`tel:${r.phone}`}>{r.phone}</a></> : ''}.</p>
                   : (
@@ -205,7 +207,7 @@ export default function TableBookingPage({ overrideSlug }) {
                 </label>
                 {error && <p className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold" role="alert">{error}</p>}
                 <button type="submit" disabled={sending} className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm disabled:opacity-50">
-                  {sending ? 'Booking…' : `${chosenType?.needs_confirmation ? 'Send request' : 'Book'} · ${party} guest${party === 1 ? '' : 's'}, ${fmtDay(slot.date)} ${fmtTime(slot.time)}`}
+                  {sending ? 'Sending…' : `${chosenType?.needs_confirmation || slot.needs_confirmation ? 'Send request' : 'Book'} · ${party} guest${party === 1 ? '' : 's'}, ${fmtDay(slot.date)} ${fmtTime(slot.time)}`}
                 </button>
               </section>
             )}

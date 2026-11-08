@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, CheckCheck, Sparkles, XCircle, Clock, AlertCircle, ShoppingBag, Trash2, X } from 'lucide-react';
+import { Bell, Check, CheckCheck, Sparkles, XCircle, Clock, AlertCircle, ShoppingBag, Trash2, X, CalendarClock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 
 export default function NotificationBellDropdown() {
@@ -91,6 +92,12 @@ export default function NotificationBellDropdown() {
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'TABLE_BOOKING':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
+            <CalendarClock className="w-4 h-4" />
+          </div>
+        );
       case 'SUBSCRIPTION_APPROVED':
         return (
           <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
@@ -194,6 +201,11 @@ export default function NotificationBellDropdown() {
                     <p className="text-[11px] text-[#64748B] mt-0.5 leading-snug break-words">
                       {item.message}
                     </p>
+                    {item.type === 'TABLE_BOOKING' && (
+                      <Link to="/admin/offline/table-reservations?view=requests" onClick={() => setIsOpen(false)} className="inline-block mt-1 text-[11px] font-bold text-[#3A7D7C] hover:underline">
+                        View bookings →
+                      </Link>
+                    )}
                   </div>
 
                   {/* Dismiss (✕) Button */}

@@ -11,6 +11,7 @@ import AdminLayout from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import GrokAICopilotModal from '../../components/ai/GrokAICopilotModal';
+import BookingsSummaryCard from '../../components/tables/BookingsSummaryCard';
 
 export default function AdminDashboardPage() {
   const { slug } = useParams();
@@ -1157,6 +1158,9 @@ export default function AdminDashboardPage() {
           })()}
 
         </div>
+
+        {/* Table bookings from the website and phone (REQ-051) */}
+        {(restaurant?.features ? restaurant.features.table_dine_in !== 0 && restaurant.features.table_dine_in !== false : true) && <BookingsSummaryCard />}
 
         {/* Pipeline Status Breakdown */}
         <div className="bg-white rounded-2xl p-5 border border-[#D7E5E8] shadow-xs">

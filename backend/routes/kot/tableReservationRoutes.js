@@ -10,6 +10,7 @@ router.param('id', reservations.guardReservation);
 const FRONT_OF_HOUSE = ['ADMIN', 'MANAGER', 'WAITER', 'CASHIER'];
 router.get('/', requireRoles(...FRONT_OF_HOUSE), reservations.listReservations);
 router.get('/availability', requireRoles(...FRONT_OF_HOUSE), reservations.checkAvailability);
+router.get('/summary', requireRoles(...FRONT_OF_HOUSE), reservations.getReservationSummary);
 router.post('/', requireRoles(...FRONT_OF_HOUSE), reservations.createReservation);
 router.get('/:id', requireRoles(...FRONT_OF_HOUSE), reservations.getReservation);
 router.put('/:id', requireRoles(...FRONT_OF_HOUSE), reservations.updateReservation);
