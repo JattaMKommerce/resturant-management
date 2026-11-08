@@ -1,3 +1,16 @@
+# hotel.jattamkommerce.com is deployed by Hostinger Git straight from this repository's top folder.
+# These rules turn that folder into the website (index.html, sw.js, assets/ copied here by
+# scripts/sync-website.js) and keep the source code private there. Website rules check the host
+# name, so the Node.js Web App (*.hostingersite.com) behaves exactly as before.
+
+# The app shell must never come from the browser cache (logout + Back button must reload it).
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|sw\.js)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+  </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -11,9 +24,16 @@
   # Explicitly allow Let's Encrypt ACME SSL validation
   RewriteRule ^\.well-known/ - [L]
 
-  # 1. Reverse Proxy API, Health, Sockets, and Uploads to Node.js backend Web App
-  RewriteCond %{REQUEST_URI} ^/(api|health|socket\.io|uploads) [NC]
-  RewriteRule ^(.*)$ https://springgreen-gorilla-821094.hostingersite.com/$1 [P,L]
+  # 0. Source code is never served on the website
+  RewriteCond %{HTTP_HOST} !hostingersite\.com$ [NC]
+  RewriteRule ^(backend|frontend|Website|scripts|node_modules)(/.*)?$ - [F,L]
+  RewriteCond %{HTTP_HOST} !hostingersite\.com$ [NC]
+  RewriteRule ^(app\.js|server\.js|index\.js|package(-lock)?\.json|vercel\.json|README\.md|DEPLOYMENT\.md|generate_presentation\.py|gitignore\.txt|[^/]+\.pptx|\.cpanel\.yml|\.gitignore)$ - [F,L]
+
+  # 1. API, health, sockets and uploaded images live on the Node.js Web App.
+  #    Shared hosting has no mod_proxy ([P] returns 503), so redirect (307 keeps POST bodies).
+  RewriteCond %{HTTP_HOST} !hostingersite\.com$ [NC]
+  RewriteRule ^((api|health|socket\.io|uploads)(/.*)?)$ https://springgreen-gorilla-821094.hostingersite.com/$1 [R=307,L]
 
   # 2. Serve static files directly if found
   RewriteRule ^index\.html$ - [L]

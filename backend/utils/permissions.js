@@ -115,6 +115,7 @@ function requireAdminPermission(req, res, next) {
     return res.status(403).json({ success: false, message: 'Access denied.' });
   }
   const path = (req.originalUrl || '').split('?')[0].replace(/^\/api(\/v1)?/, '');
+  if (req.method === 'GET' && READ_ANYWAY.some((re) => re.test(path.slice('/admin'.length)))) return next();
   const key = permissionForAdminPath(path);
   // A route with no mapped permission stays owner/manager only, as before
   if (!key) {

@@ -51,7 +51,8 @@ export default function UnifiedSidebar({
   isMobileOpen = false,
   onCloseMobile
 }) {
-  const { user, logout, updateSuiteMode } = useAuth();
+  // access (REQ-029 permissions) is needed by the badge poll below and the page filter further down
+  const { user, logout, updateSuiteMode, access } = useAuth();
   const navigate = useNavigate();
 
   const activeSlug = currentSlug || restaurant?.slug || user?.restaurant_slug || 'grand-palace';
@@ -81,6 +82,7 @@ export default function UnifiedSidebar({
     let isMounted = true;
     const checkUnclaimed = async () => {
       try {
+        if (access?.loaded && !access.owner && !(access.permissions || []).includes('orders.manage')) return;
         const querySlug = activeSlug ? `?slug=${encodeURIComponent(activeSlug)}` : '';
         const res = await api.get(`/admin/orders/unclaimed${querySlug}`);
         if (res.data?.success && isMounted) {
@@ -96,12 +98,12 @@ export default function UnifiedSidebar({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [activeSlug]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSlug, access?.loaded, access?.owner, (access?.permissions || []).join(',')]);
 
   // Feature Guard Helper
   const features = restaurant?.features || {};
   // REQ-029: admin pages a manager/staff member has no permission for are hidden
-  const { access } = useAuth();
   const PAGE_PERMISSIONS = {
     '': 'orders.manage', unclaimed: 'orders.manage', orders: 'orders.manage', sales: 'reports.view',
     refunds: 'refunds.manage', coupons: 'coupons.manage', customers: 'customers.view', onboarding: 'settings.manage', staff: 'staff.manage',

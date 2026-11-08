@@ -20,12 +20,16 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminLayout from '../../components/AdminLayout';
+import { useAuth } from '../../context/AuthContext';
 import OrderMap from '../../components/OrderMap';
 import { useSocket } from '../../context/SocketContext';
 import { unlockAudio } from '../../utils/audio';
 
 export default function AdminOrdersPage() {
   const { slug } = useParams();
+  const { access, can } = useAuth();
+  // Riders are only listed for people who may assign deliveries (REQ-029).
+  const mayAssignRiders = !access?.loaded || can('drivers.manage');
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id');
   const { socket, joinRoom } = useSocket();
@@ -140,8 +144,9 @@ export default function AdminOrdersPage() {
         });
       }
 
-      const drvRes = await api.get('/admin/drivers');
-      if (drvRes.data.success) {
+      // Riders are only for assigning deliveries; staff without that permission just don't get the list.
+      const drvRes = mayAssignRiders ? await api.get('/admin/drivers').catch(() => null) : null;
+      if (drvRes?.data?.success) {
         setDrivers(drvRes.data.drivers.filter(d => d.is_active === 1));
       }
     } catch (err) {

@@ -31,6 +31,9 @@ export default function AdminCategoriesPage() {
 
   const fetchRestaurants = async () => {
     try {
+      // Only Super Admin picks a restaurant here; everyone else works on their own.
+      const me = JSON.parse(localStorage.getItem('hotel_user') || 'null');
+      if (String(me?.role || '').toUpperCase() !== 'SUPER_ADMIN') return;
       const res = await api.get('/superadmin/restaurants');
       if (res.data.success && res.data.restaurants?.length > 0) {
         setRestaurants(res.data.restaurants);

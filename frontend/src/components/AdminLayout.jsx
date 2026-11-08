@@ -92,6 +92,8 @@ export default function AdminLayout({ children }) {
 
   const fetchSubscription = async () => {
     try {
+      const role = String(user?.role || '').toUpperCase();
+      if (!['ADMIN', 'RESTAURANT_ADMIN', 'SUPER_ADMIN', 'OWNER', 'HOTEL_ADMIN'].includes(role)) return; // staff don't manage the plan
       const res = await api.get('/admin/subscription/status');
       if (res.data.success) {
         setSubscription(res.data.data);
