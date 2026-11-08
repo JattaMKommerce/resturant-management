@@ -1113,29 +1113,48 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-[#D7E5E8] shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider block">Website Status</span>
-              <h3 className="text-base font-bold text-[#1F2937] mt-1">{restaurant?.website_status || 'DRAFT'}</h3>
-              <Link to={`/admin/${currentSlug}/website`} className="text-[11px] font-bold text-[#3A7D7C] hover:underline mt-0.5 inline-block">Manage Website ↗</Link>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center font-bold border border-sky-200">
-              <Globe className="w-5 h-5" />
-            </div>
-          </div>
+          {(() => {
+            // Same rules as the header badge: a store that isn't published can't take orders,
+            // whatever the on/off switch says.
+            const ws = restaurant?.website_status || 'DRAFT';
+            const published = ws === 'PUBLISHED';
+            const website = published
+              ? { text: 'Published', cls: 'text-emerald-700', link: `/admin/${currentSlug}/website`, linkText: 'Manage website ↗' }
+              : ws === 'UNPUBLISHED'
+                ? { text: 'Taken offline', cls: 'text-rose-700', link: `/admin/${currentSlug}/setup-wizard`, linkText: 'Publish again →' }
+                : { text: 'Not published yet', cls: 'text-amber-700', link: `/admin/${currentSlug}/setup-wizard`, linkText: 'Publish website →' };
+            let ordering;
+            if (restaurant?.status === 'SUSPENDED') ordering = { text: 'Suspended', cls: 'text-rose-700', note: 'Contact support to reopen' };
+            else if (!published) ordering = { text: 'Not live yet', cls: 'text-amber-700', note: 'Starts once the website is published' };
+            else if (restaurant?.status && restaurant.status !== 'ACTIVE') ordering = { text: 'Awaiting approval', cls: 'text-amber-700', note: 'Opens when your restaurant is approved' };
+            else if (restaurant?.is_online_ordering_enabled) ordering = { text: 'Accepting orders', cls: 'text-emerald-700', note: 'Pause with the button at the top' };
+            else ordering = { text: 'Paused', cls: 'text-rose-700', note: 'Resume with the button at the top' };
+            return (
+              <>
+                <div className="bg-white rounded-2xl p-5 border border-[#D7E5E8] shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider block">Website Status</span>
+                    <h3 className={`text-base font-bold mt-1 ${website.cls}`}>{website.text}</h3>
+                    <Link to={website.link} className="text-[11px] font-bold text-[#3A7D7C] hover:underline mt-0.5 inline-block">{website.linkText}</Link>
+                  </div>
+                  <div className="w-11 h-11 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center font-bold border border-sky-200">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-[#D7E5E8] shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider block">Online Ordering</span>
-              <h3 className={`text-base font-bold mt-1 ${restaurant?.is_online_ordering_enabled ? 'text-emerald-700' : 'text-rose-700'}`}>
-                {restaurant?.is_online_ordering_enabled ? 'ACCEPTING' : 'PAUSED'}
-              </h3>
-              <span className="text-[11px] font-semibold text-[#64748B] mt-0.5 block">Toggle in Header</span>
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold border border-amber-200">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
+                <div className="bg-white rounded-2xl p-5 border border-[#D7E5E8] shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider block">Online Ordering</span>
+                    <h3 className={`text-base font-bold mt-1 ${ordering.cls}`}>{ordering.text}</h3>
+                    <span className="text-[11px] font-semibold text-[#64748B] mt-0.5 block">{ordering.note}</span>
+                  </div>
+                  <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold border border-amber-200">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
         </div>
 
