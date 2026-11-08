@@ -425,6 +425,13 @@ export default function RestaurantOnboarding() {
     try {
       const res = await api.post('/admin/restaurant/publish');
       if (res.data.success) {
+        try {
+          const saved = JSON.parse(localStorage.getItem('hotel_admin_restaurant') || 'null');
+          if (saved && Number(saved.id) === Number(restaurant.id)) {
+            localStorage.setItem('hotel_admin_restaurant', JSON.stringify({ ...saved, website_status: 'PUBLISHED' }));
+          }
+        } catch (e) { /* storage blocked: the dashboard re-reads it anyway */ }
+        window.dispatchEvent(new Event('hms_restaurant_changed'));
         navigate(`/admin/${restaurant.slug}`);
       }
     } catch (err) {

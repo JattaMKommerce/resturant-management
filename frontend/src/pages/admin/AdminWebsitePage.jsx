@@ -67,7 +67,7 @@ export default function AdminWebsitePage() {
     setActionLoading(true);
     try {
       const res = await api.post('/admin/restaurant/publish', { restaurantId: restaurant?.id });
-      if (res.data.success) loadData();
+      if (res.data.success) { loadData(); window.dispatchEvent(new Event('hms_restaurant_changed')); }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to publish website.');
     } finally {
@@ -80,7 +80,7 @@ export default function AdminWebsitePage() {
     setActionLoading(true);
     try {
       const res = await api.post('/admin/restaurant/unpublish', { restaurantId: restaurant?.id });
-      if (res.data.success) loadData();
+      if (res.data.success) { loadData(); window.dispatchEvent(new Event('hms_restaurant_changed')); }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to unpublish website.');
     } finally {
@@ -97,7 +97,7 @@ export default function AdminWebsitePage() {
         enabled: nextState,
         is_online_ordering_enabled: nextState
       });
-      if (res.data.success) loadData();
+      if (res.data.success) { loadData(); window.dispatchEvent(new Event('hms_restaurant_changed')); }
     } catch (err) {
       console.error('Failed to toggle online ordering status:', err);
     } finally {

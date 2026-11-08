@@ -77,18 +77,38 @@ export default function AdminLayout({ children }) {
     };
   }, [socket, restaurant?.id, user?.restaurant_id, updateRestaurant]);
 
-  // Hydrate features if not already cached in local state
+  // Keep the restaurant shown in the header and pages in step with the server: published or not,
+  // approved, orders on/off, name, features. The copy saved at sign-in went stale after publishing.
+  const lastRestaurantSync = React.useRef(0);
+  const syncRestaurant = React.useCallback((force = false) => {
+    if (!restaurant?.id) return;
+    const now = Date.now();
+    if (!force && now - lastRestaurantSync.current < 10000) return;
+    lastRestaurantSync.current = now;
+    api.get('/admin/restaurant')
+      .then((res) => {
+        const r = res.data?.restaurant;
+        if (!res.data?.success || !r || Number(r.id) !== Number(restaurant.id)) return;
+        updateRestaurant({
+          name: r.name, slug: r.slug, logo_url: r.logo_url, status: r.status,
+          website_status: r.website_status, is_online_ordering_enabled: r.is_online_ordering_enabled,
+          ...(r.features ? { features: r.features } : {})
+        });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurant?.id]);
+  useEffect(() => { syncRestaurant(); }, [location.pathname, syncRestaurant]);
   useEffect(() => {
-    if (restaurant?.id && !restaurant?.features) {
-      api.get('/admin/restaurant')
-        .then(res => {
-          if (res.data.success && res.data.restaurant?.features) {
-            updateRestaurant({ features: res.data.restaurant.features });
-          }
-        })
-        .catch(() => {});
-    }
-  }, [restaurant?.id, restaurant?.features, updateRestaurant]);
+    const onFocus = () => syncRestaurant();
+    const onChanged = () => syncRestaurant(true);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('hms_restaurant_changed', onChanged);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('hms_restaurant_changed', onChanged);
+    };
+  }, [syncRestaurant]);
 
   const fetchSubscription = async () => {
     try {
