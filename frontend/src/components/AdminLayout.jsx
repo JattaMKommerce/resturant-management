@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
-import { Power, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { useLocation, useParams, Link } from 'react-router-dom';
+import { Power, Menu, PanelLeftClose, PanelLeftOpen, Globe } from 'lucide-react';
 import UnifiedSidebar from './UnifiedSidebar';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -264,23 +264,48 @@ export default function AdminLayout({ children }) {
               const isPublished = restaurant.website_status === 'PUBLISHED';
               const isActive = restaurant.status === 'ACTIVE';
 
-              let statusText = 'ONLINE & ACCEPTING';
+              // Plain-language store state. A website that isn't published yet can't take orders,
+              // so it gets a "Publish" button instead of an on/off switch that looks contradictory.
+              // Suspended or still awaiting approval: no switch, just say so.
+              if (restaurant.status === 'SUSPENDED' || (isPublished && !isActive)) {
+                const suspended = restaurant.status === 'SUSPENDED';
+                return (
+                  <div className={`flex flex-col text-right px-3 py-1.5 rounded-xl border shadow-2xs ${suspended ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'}`}>
+                    <span className={`text-[9px] font-bold uppercase ${suspended ? 'text-rose-800' : 'text-amber-800'}`}>Online store</span>
+                    <span className={`text-[11px] font-bold ${suspended ? 'text-rose-900' : 'text-amber-900'}`}>{suspended ? 'Suspended' : 'Awaiting approval'}</span>
+                  </div>
+                );
+              }
+              if (!isPublished) {
+                return (
+                  <div className="flex items-center gap-2 sm:gap-3 bg-amber-50 p-1.5 sm:p-2 sm:px-3.5 rounded-xl border border-amber-200 shadow-2xs">
+                    <div className="hidden sm:flex flex-col text-right">
+                      <span className="text-[9px] font-bold uppercase text-amber-800">Online store</span>
+                      <span className="text-[11px] font-bold text-amber-900">Not published yet</span>
+                    </div>
+                    <Link
+                      to={`/admin/${restaurant.slug || viewedSlug || ''}/setup-wizard`}
+                      className="p-2 sm:px-3 sm:py-2 rounded-xl font-bold flex items-center gap-1.5 text-xs text-white bg-amber-600 hover:bg-amber-700 shadow-2xs"
+                      title="Finish the setup steps and publish your ordering website"
+                      aria-label="Online store not published yet. Publish it"
+                    >
+                      <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="hidden md:inline">Publish website</span>
+                    </Link>
+                  </div>
+                );
+              }
+              let statusText = 'Accepting orders';
               let statusClass = 'text-emerald-700 font-bold';
               if (!isOrderingOn) {
-                statusText = 'OFFLINE (PAUSED)';
-                statusClass = 'text-rose-700 font-bold';
-              } else if (!isPublished) {
-                statusText = `OFFLINE (${restaurant.website_status || 'DRAFT'})`;
-                statusClass = 'text-amber-700 font-bold';
-              } else if (!isActive) {
-                statusText = 'OFFLINE (INACTIVE)';
+                statusText = 'Orders paused';
                 statusClass = 'text-rose-700 font-bold';
               }
 
               return (
                 <div className="flex items-center gap-2 sm:gap-3 bg-slate-50 p-1.5 sm:p-2 sm:px-3.5 rounded-xl border border-[#D7E5E8] shadow-2xs">
                   <div className="hidden sm:flex flex-col text-right">
-                    <span className="text-[9px] font-bold uppercase text-[#64748B]">Online Ordering</span>
+                    <span className="text-[9px] font-bold uppercase text-[#64748B]">Online orders</span>
                     <span className={`text-[11px] font-bold ${statusClass}`}>
                       {statusText}
                     </span>
@@ -294,12 +319,12 @@ export default function AdminLayout({ children }) {
                         ? 'bg-emerald-600 hover:bg-emerald-700'
                         : 'bg-rose-600 hover:bg-rose-700'
                     }`}
-                    title={!isPublished ? "Master toggle is ON, but website is in DRAFT state. Publish website in Website Controls." : "Toggle Online Store Order Acceptances"}
+                    title={isOrderingOn ? 'Stop taking online orders for now' : 'Start taking online orders again'}
                     aria-label={`Online ordering is ${isOrderingOn ? 'on' : 'off'}. Turn it ${isOrderingOn ? 'off' : 'on'}`}
                   >
                     <Power className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span className="hidden md:inline">
-                      {loadingToggle ? 'Updating...' : isOrderingOn ? 'Turn Store OFF' : 'Turn Store ON'}
+                      {loadingToggle ? 'Updating…' : isOrderingOn ? 'Pause orders' : 'Resume orders'}
                     </span>
                   </button>
                 </div>
