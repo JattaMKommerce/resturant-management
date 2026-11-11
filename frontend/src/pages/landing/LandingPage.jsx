@@ -205,36 +205,36 @@ function TiltPlanCard({ featured, ribbon, title, price, oldPrice, desc, features
 
         <div className="lp-pop-sm w-full">
           <div className="flex items-center justify-between gap-2 mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#96640c]">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#e8b964]">
               1 Month Free Trial
             </span>
-            <span className="text-[11px] font-semibold text-[#5f7d80] line-through">{oldPrice}</span>
+            <span className="text-[11px] font-semibold text-[#a3bcbe] line-through">{oldPrice}</span>
           </div>
 
-          <h3 className="lp-serif text-2xl sm:text-3xl font-medium text-[#0f2b2e] mb-3">
+          <h3 className="lp-serif text-2xl sm:text-3xl font-medium text-[#f8f1e4] mb-3">
             {title}
           </h3>
 
           <div className="flex items-baseline gap-2 mb-4">
-            <span className="lp-serif lp-price text-[#0f2b2e]">{price}</span>
-            <span className="text-xs font-medium text-[#5f7d80]">/ month</span>
+            <span className="lp-serif lp-price text-[#f8f1e4]">{price}</span>
+            <span className="text-xs font-medium text-[#a3bcbe]">/ month</span>
           </div>
 
-          <p className="text-sm text-[#36565a] leading-relaxed mb-6">{desc}</p>
+          <p className="text-sm text-[#d3e0e0] leading-relaxed mb-6">{desc}</p>
         </div>
 
-        <ul className="lp-pop-sm space-y-2.5 text-sm text-[#36565a] mb-8 flex-1 w-full">
+        <ul className="lp-pop-sm space-y-2.5 text-sm text-[#d3e0e0] mb-8 flex-1 w-full">
           {features.map((feat) => (
             <li key={feat} className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-[#0e9f6e]/10 border border-[#0e9f6e]/30 flex items-center justify-center shrink-0">
-                <Check className="w-3 h-3 text-[#0e9f6e]" />
+              <span className="w-5 h-5 rounded-full bg-[#e3b25b]/15 border border-[#e3b25b]/40 flex items-center justify-center shrink-0">
+                <Check className="w-3 h-3 text-[#f3d595]" />
               </span>
               <span>{feat}</span>
             </li>
           ))}
         </ul>
 
-        <div className="lp-pop w-full pt-4 border-t border-[#0f2b2e]/10">
+        <div className="lp-pop w-full pt-4 border-t border-white/10">
           <span
             className={`lp-btn w-full py-3.5 px-5 text-sm ${
               featured ? 'lp-btn-gold' : 'lp-btn-ghost'
@@ -413,14 +413,14 @@ export default function LandingPage() {
             onClick={() => scrollToSection('hero')}
             className="flex items-center gap-2 sm:gap-3 text-left min-w-0 cursor-pointer bg-transparent border-0"
           >
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0a8a8f] via-[#007a7e] to-[#006c70] text-white flex items-center justify-center font-black text-sm shadow-lg shadow-[#006c70]/25">
+            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#f6dc9f] via-[#e3b25b] to-[#c69238] text-[#1a1204] flex items-center justify-center font-black text-sm shadow-lg shadow-[#e3b25b]/25">
               GP
             </span>
             <div>
-              <span className="lp-serif block text-[15px] sm:text-lg font-medium tracking-tight text-[#0f2b2e] leading-none whitespace-nowrap">
+              <span className="lp-serif block text-[15px] sm:text-lg font-medium tracking-tight text-[#f8f1e4] leading-none whitespace-nowrap">
                 The Grand Palace
               </span>
-              <span className="hidden sm:block text-[9px] font-bold uppercase tracking-[0.22em] text-[#96640c] mt-1">
+              <span className="hidden sm:block text-[9px] font-bold uppercase tracking-[0.22em] text-[#e8b964] mt-1">
                 Hospitality Suite
               </span>
             </div>
@@ -444,7 +444,7 @@ export default function LandingPage() {
               to="/restaurant/hotel"
               className="hidden sm:inline-flex lp-btn lp-btn-ghost px-4 py-2 text-xs"
             >
-              <Store className="w-3.5 h-3.5 text-[#96640c]" />
+              <Store className="w-3.5 h-3.5 text-[#e8b964]" />
               <span>Live Storefront</span>
             </Link>
             <Link
@@ -495,7 +495,7 @@ export default function LandingPage() {
               </div>
 
               <h1
-                className="lp-serif lp-h1 lp-rise text-[#0f2b2e]"
+                className="lp-serif lp-h1 lp-rise text-[#f8f1e4]"
                 style={{ animationDelay: '0.2s' }}
               >
                 From sign-up to <em>served</em>, in five steps.
@@ -583,9 +583,9 @@ export default function LandingPage() {
                     </span>
                   </div>
 
-                  <h2 className="lp-serif lp-h2 text-[#0f2b2e] mb-3">{ch.title}</h2>
+                  <h2 className="lp-serif lp-h2 text-[#f8f1e4] mb-3">{ch.title}</h2>
 
-                  <p className="text-sm sm:text-[15px] leading-relaxed text-[#36565a] mb-5">
+                  <p className="text-sm sm:text-[15px] leading-relaxed text-[#d3e0e0] mb-5">
                     {ch.body}
                   </p>
 
@@ -622,10 +622,10 @@ export default function LandingPage() {
             {/* Pricing Header */}
             <div className="text-center max-w-2xl mx-auto space-y-4 lp-reveal">
               <div className="lp-eyebrow justify-center">Simple, Transparent Plans</div>
-              <h2 className="lp-serif lp-h2 text-[#0f2b2e]">
+              <h2 className="lp-serif lp-h2 text-[#f8f1e4]">
                 Choose the suite built for <em>your property</em>
               </h2>
-              <p className="text-sm sm:text-base text-[#5f7d80]">
+              <p className="text-sm sm:text-base text-[#a3bcbe]">
                 Every plan includes a full 30-day free trial with no credit card required.
               </p>
             </div>
@@ -668,10 +668,10 @@ export default function LandingPage() {
             {/* Quick Portal Links */}
             <div className="space-y-5 lp-reveal">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#96640c]">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#e8b964]">
                   Jump Directly Into Any Portal
                 </p>
-                <span className="text-xs text-[#5f7d80]">
+                <span className="text-xs text-[#a3bcbe]">
                   Multi-role access across storefront, floor, kitchen &amp; fleet
                 </span>
               </div>
@@ -679,16 +679,16 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {PORTALS.map(({ label, sub, to, icon: Icon }) => (
                   <Link key={label} to={to} className="lp-portal">
-                    <span className="w-10 h-10 rounded-xl bg-[#006c70]/10 border border-[#006c70]/15 flex items-center justify-center shrink-0">
+                    <span className="w-10 h-10 rounded-xl bg-[#e3b25b]/12 border border-[#e3b25b]/28 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-bold text-[#0f2b2e] truncate">
+                      <span className="block text-sm font-bold text-[#f8f1e4] truncate">
                         {label}
                       </span>
-                      <span className="block text-xs text-[#5f7d80] truncate">{sub}</span>
+                      <span className="block text-xs text-[#a3bcbe] truncate">{sub}</span>
                     </span>
-                    <ArrowRight className="w-4 h-4 text-[#5f7d80] shrink-0" />
+                    <ArrowRight className="w-4 h-4 text-[#a3bcbe] shrink-0" />
                   </Link>
                 ))}
               </div>

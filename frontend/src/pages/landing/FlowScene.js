@@ -1,4 +1,4 @@
-// The 3D world behind the landing page: one restaurant on a sunny floating street.
+// The 3D world behind the landing page: one restaurant on a floating street at dusk.
 // Each page section is a camera stop, and each stop plays one part of the product
 // flow as a small looping animation:
 //   1 onboarding → 2 website → 3 online order → 4 delivery → 5 dine-in KOT
@@ -77,13 +77,13 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: lowPower, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.18;
   renderer.shadowMap.enabled = !lowPower;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0xd9f0f3, 0.0055);
+  scene.fog = new THREE.FogExp2(0x2b5266, 0.0065);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
 
   // ───────────────────────── small textures ─────────────────────────
@@ -113,38 +113,37 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05, ...extra });
   const lightMat = (r, g, b) => new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b), toneMapped: false });
   const M = {
-    wall: std(0xfff6e6),
-    wallTrim: std(0x1f9a94),
-    wallDeep: std(0xf1e2c6),
-    roof: std(0x157f84),
-    room: std(0xcfeae6),
-    roomSide: std(0xb8dfda),
-    counter: std(0x1f9a94),
-    customer: std(0x7c6cf0, { roughness: 0.7 }),
-    cloud: std(0xffffff, { roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.45, fog: false }),
-    ground: std(0xa9e0c2, { roughness: 0.95 }),
-    plaza: std(0xfaf0dc, { roughness: 0.9 }),
-    floor: std(0xf0d9b0, { roughness: 0.8 }),
-    road: std(0x56666f, { roughness: 0.8 }),
-    rock: std(0xe2d2b0, { roughness: 1 }),
-    gold: std(0xe0a83a, { roughness: 0.4, metalness: 0.45 }),
-    cream: std(0xfffaf0, { roughness: 0.7 }),
-    wood: std(0xa87748),
-    trunk: std(0x9a7148),
-    leaf: std(0x2fb07c, { roughness: 0.7 }),
-    dark: std(0x2c4a50),
+    wall: std(0xe6d8bf, { roughness: 0.9 }),
+    wallTrim: std(0x1c5a60, { roughness: 0.6 }),
+    wallDeep: std(0xc9b99c, { roughness: 0.9 }),
+    roof: std(0x16323a, { roughness: 0.55, metalness: 0.2 }),
+    room: std(0x2a5a63),
+    roomSide: std(0x234e57),
+    counter: std(0x173f46, { roughness: 0.5, metalness: 0.15 }),
+    customer: std(0x8b7cf5, { roughness: 0.7 }),
+    ground: std(0x2f6a5e, { roughness: 0.95 }),
+    plaza: std(0x9c9079, { roughness: 0.85 }),
+    floor: std(0x94704c, { roughness: 0.6 }),
+    road: std(0x1a242a, { roughness: 0.65 }),
+    rock: std(0x21363d, { roughness: 1 }),
+    gold: std(0xd9a441, { roughness: 0.32, metalness: 0.75 }),
+    cream: std(0xf1e6cf, { roughness: 0.7 }),
+    wood: std(0x7a5232),
+    trunk: std(0x5d4630),
+    leaf: std(0x1f7a5c, { roughness: 0.7 }),
+    dark: std(0x14252b),
     skin: std(0xe6b18a, { roughness: 0.8 }),
-    teal: std(0x19b3a6, { roughness: 0.45, metalness: 0.15 }),
-    wine: std(0xe0694f, { roughness: 0.8 }),
-    house: std(0xffe3bd),
-    steel: std(0xc5d3d6, { roughness: 0.35, metalness: 0.5 }),
+    teal: std(0x22b3a5, { roughness: 0.4, metalness: 0.3 }),
+    wine: std(0x9c4a36, { roughness: 0.8 }),
+    house: std(0xd6c2a1, { roughness: 0.9 }),
+    steel: std(0xa9bcc0, { roughness: 0.3, metalness: 0.7 }),
     white: std(0xffffff, { roughness: 0.6 }),
-    warm: lightMat(1.0, 0.9, 0.62),
-    warmSoft: lightMat(1.0, 0.98, 0.9),
-    goldLine: lightMat(0.93, 0.66, 0.2),
-    tealLine: lightMat(0.1, 0.75, 0.7),
-    red: lightMat(0.95, 0.32, 0.26),
-    win: lightMat(0.5, 0.56, 0.58), // restaurant windows; colour follows the "lights on" value
+    warm: lightMat(1.3, 0.92, 0.48),
+    warmSoft: lightMat(0.95, 0.8, 0.55),
+    goldLine: lightMat(1.2, 0.84, 0.32),
+    tealLine: lightMat(0.18, 1.0, 0.92),
+    red: lightMat(1.5, 0.3, 0.22),
+    win: lightMat(0.05, 0.11, 0.13), // restaurant windows; colour follows the "lights on" value
   };
 
   const world = new THREE.Group();
@@ -201,11 +200,11 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
 
   // Text bubbles that pop up over the scene to say what just happened.
   const redraws = [];
-  const makeLabel = (text, { accent = '#d9951f', h = 0.62, parent = world } = {}) => {
+  const makeLabel = (text, { accent = '#f0be5f', h = 0.62, parent = world } = {}) => {
     const c = makeCanvas(8, 8);
     const tex = canvasTexture(c);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: tex, transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false, toneMapped: false,
+      map: tex, color: new THREE.Color(1.12, 1.12, 1.12), transparent: true, opacity: 0, depthTest: false, depthWrite: false, fog: false, toneMapped: false,
     }));
     sprite.renderOrder = 20;
     sprite.visible = false;
@@ -217,17 +216,17 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
       c.width = Math.ceil(tw + 126);
       c.height = 96;
       rr(ctx, 3, 3, c.width - 6, 90, 45);
-      ctx.fillStyle = 'rgba(255,255,255,0.97)';
+      ctx.fillStyle = 'rgba(9,24,33,0.94)';
       ctx.fill();
       ctx.strokeStyle = accent;
-      ctx.lineWidth = 5;
+      ctx.lineWidth = 4;
       ctx.stroke();
       ctx.fillStyle = accent;
       ctx.beginPath();
       ctx.arc(46, 48, 11, 0, Math.PI * 2);
       ctx.fill();
       ctx.font = font;
-      ctx.fillStyle = '#0f2b2e';
+      ctx.fillStyle = '#fffaf0';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, 74, 51);
       tex.dispose();
@@ -248,8 +247,8 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     s.material.opacity = Math.min(1, v * 1.6);
     s.scale.set(s.userData.w * e, s.userData.h * e, 1);
   };
-  const GREEN = '#10b981';
-  const TEAL = '#0f9c95';
+  const GREEN = '#4ade9f';
+  const TEAL = '#5eead4';
 
   // ───────────────────────── sky ─────────────────────────
   scene.add(new THREE.Mesh(
@@ -258,40 +257,43 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
       side: THREE.BackSide,
       depthWrite: false,
       uniforms: {
-        top: { value: new THREE.Color(0x7cc6ea) },
-        mid: { value: new THREE.Color(0xc9e9f7) },
-        bottom: { value: new THREE.Color(0xd3f0ec) },
+        top: { value: new THREE.Color(0x13264a) },
+        horizon: { value: new THREE.Color(0xec9e72) },
+        mid: { value: new THREE.Color(0x315f88) },
+        bottom: { value: new THREE.Color(0x2a5565) },
       },
       vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: `
-        varying vec3 vDir; uniform vec3 top; uniform vec3 mid; uniform vec3 bottom;
+        varying vec3 vDir; uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; uniform vec3 horizon;
         void main(){
           float h = vDir.y;
-          vec3 c = mix(mid, top, smoothstep(0.0, 0.4, h));
-          c = mix(c, bottom, smoothstep(0.0, -0.45, h));
+          vec3 c = mix(mid, top, smoothstep(0.06, 0.5, h));
+          c = mix(horizon, c, smoothstep(-0.02, 0.13, h));
+          c = mix(bottom, c, smoothstep(-0.07, 0.0, h));
           gl_FragColor = vec4(c, 1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
         }`,
     })
   ));
-  halo(-70, 66, -110, 70, 0xfff2c8, 0.85, scene).material.fog = false;
-  halo(-70, 66, -110, 20, 0xffffff, 1, scene).material.fog = false;
-  const clouds = [];
-  for (const [x, y, z, size] of [[-24, 13, -22, 1.5], [-4, 17, -30, 2.1], [15, 12.5, -20, 1.3], [32, 16, -27, 1.9], [-38, 10.5, -14, 1.2], [44, 11, -12, 1.4]]) {
-    const g = new THREE.Group();
-    g.position.set(x, y, z);
-    for (const [dx, dy, r] of [[0, 0, 1.5], [1.5, -0.15, 1.1], [-1.5, -0.2, 1.05], [0.7, 0.55, 1.0], [2.7, -0.4, 0.7], [-2.6, -0.45, 0.65]]) {
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), M.cloud);
-      puff.position.set(dx, dy, 0);
-      puff.scale.y = 0.72;
-      g.add(puff);
+  halo(-95, 7, -120, 38, 0xffb070, 0.5, scene).material.fog = false;
+  halo(-95, 7, -120, 11, 0xfff0d0, 0.85, scene).material.fog = false;
+  {
+    const n = 260;
+    const pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const u = Math.random() * Math.PI * 2;
+      const v = Math.acos(0.25 + Math.random() * 0.75);
+      pos[i * 3] = 150 * Math.sin(v) * Math.cos(u);
+      pos[i * 3 + 1] = 150 * Math.cos(v);
+      pos[i * 3 + 2] = 150 * Math.sin(v) * Math.sin(u);
     }
-    g.scale.setScalar(size);
-    scene.add(g);
-    clouds.push({ g, x, speed: 0.12 + Math.random() * 0.14 });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+      color: 0xdfeeff, size: 1.2, sizeAttenuation: false, transparent: true, opacity: 0.7, fog: false, depthWrite: false,
+    })));
   }
-
   // ───────────────────────── floating street ─────────────────────────
   const CX = 2.5; // centre of the island along x
   const CZ = 1.5;
@@ -371,7 +373,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if ('letterSpacing' in ctx) ctx.letterSpacing = '10px';
-      ctx.fillStyle = '#fff3d6';
+      ctx.fillStyle = '#ffe2a6';
       ctx.fillText('YOUR RESTAURANT', 512, 80);
     };
     draw();
@@ -393,7 +395,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   glowing(box(1.2, 1.6, 0.06, M.win, 0, -0.2, 0.03, frontG));
   box(0.05, 1.6, 0.08, M.wallTrim, 0, -0.2, 0.05, frontG);
   for (const x of [-1.95, 1.95]) glowing(box(1.7, 1.2, 0.06, M.win, x, 0, 0.03, frontG));
-  const awning = box(R.w + 0.2, 0.07, 1.15, M.wallTrim, 0, 0.98, 0.5, frontG);
+  const awning = box(R.w + 0.2, 0.07, 1.15, M.roof, 0, 0.98, 0.5, frontG);
   awning.rotation.x = 0.3;
   for (let i = 0; i < 6; i++) box(0.5, 0.075, 1.16, M.cream, -2.75 + i * 1.1, 0.98, 0.5, frontG).rotation.x = 0.3;
   box(2.0, 0.12, 0.9, M.cream, 0, -0.94, 0.45, frontG);
@@ -405,7 +407,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     const c = makeCanvas(160, 240);
     const draw = () => {
       const ctx = c.getContext('2d');
-      ctx.fillStyle = '#157f84';
+      ctx.fillStyle = '#0f2f35';
       ctx.fillRect(0, 0, 160, 240);
       ctx.fillStyle = '#f3d595';
       ctx.font = `700 40px ${SERIF}`;
@@ -498,7 +500,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     dining.add(m);
     return m;
   })();
-  const qrRing = pulseRing(TABLE.x, FY + 0.8, TABLE.z + 0.15, 0x0f9c95, dining);
+  const qrRing = pulseRing(TABLE.x, FY + 0.8, TABLE.z + 0.15, 0x5eead4, dining);
 
   // kitchen along the back wall
   box(5.0, 0.95, 0.75, M.counter, -1.3, FY + 0.475, -2.1, dining);
@@ -628,8 +630,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     dining.add(m);
     return m;
   })();
-  const kotGlow = halo(0, 0, 0, 1.4, 0xf08a1c, 0, dining);
-  kotGlow.material.blending = THREE.NormalBlending;
+  const kotGlow = halo(0, 0, 0, 1.6, 0xffc266, 0, dining);
   const lblTable = makeLabel('Order taken at the table', { accent: TEAL, h: 0.5, parent: dining });
   lblTable.position.set(TABLE.x - 0.4, 0.62, 3.0);
   const lblKot = makeLabel('KOT on the kitchen screen', { h: 0.5, parent: dining });
@@ -649,11 +650,11 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   const devCanvas = makeCanvas(1024, 704);
   const devTex = canvasTexture(devCanvas);
   {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.56, 2.45), new THREE.MeshBasicMaterial({ map: devTex, toneMapped: false }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.56, 2.45), new THREE.MeshBasicMaterial({ map: devTex, toneMapped: false, color: 0xdedede }));
     m.position.z = 0.065;
     device.add(m);
   }
-  const deviceRings = [pulseRing(0, 0, 0.2, 0x10b981, device), pulseRing(0, 0, 0.2, 0x10b981, device)];
+  const deviceRings = [pulseRing(0, 0, 0.2, 0x4ade9f, device), pulseRing(0, 0, 0.2, 0x4ade9f, device)];
   const lblLive = makeLabel('Website is live', { accent: GREEN, h: 0.56, parent: device });
   lblLive.position.set(0, 1.95, 0.3);
   let devKey = '';
@@ -869,7 +870,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   lblReadyToGo.position.set(0, 5.6, RF);
   const lblNewOrder = makeLabel('New order received', { h: 1.05 });
   lblNewOrder.position.set(0, 5.9, RF);
-  const orderRings = [pulseRing(0, 3.2, RF + 0.4, 0xf08a1c), pulseRing(0, 3.2, RF + 0.4, 0xf08a1c)];
+  const orderRings = [pulseRing(0, 3.2, RF + 0.4, 0xffc45e), pulseRing(0, 3.2, RF + 0.4, 0xffc45e)];
   const lblRider = makeLabel('Rider assigned', { h: 0.95 });
   lblRider.position.set(2.6, 2.9, RF + 2.2);
 
@@ -907,10 +908,9 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   const ORDER_FROM = new V3(HX - 1.75, 1.2, 2.8);
   const ORDER_VIA = new V3(7.6, 10.5, 2.4);
   const ORDER_TO = new V3(0, 3.2, RF + 0.4);
-  const orderMat = lightMat(0.98, 0.45, 0.08);
+  const orderMat = lightMat(1.9, 1.25, 0.45);
   const orb = glowing(ball(0.3, orderMat, 0, 0, 0));
-  const orbGlow = halo(0, 0, 0, 2.4, 0xf08a1c, 0.35);
-  orbGlow.material.blending = THREE.NormalBlending;
+  const orbGlow = halo(0, 0, 0, 3.0, 0xffc266, 0.65);
   const orbTrail = Array.from({ length: 9 }, (_, i) => glowing(ball(0.17 - i * 0.014, orderMat, 0, 0, 0)));
 
   // ───────────────────────── delivery ─────────────────────────
@@ -955,7 +955,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     glowing(ball(0.03, M.red, -0.52, 0.42, 0, s));
     halo(0.55, 0.45, 0, 1.2, 0xffe0a0, 0.35, s);
   }
-  const headlight = new THREE.PointLight(0xffd9a0, 0.6, 6, 2);
+  const headlight = new THREE.PointLight(0xffd9a0, 3, 6, 2);
   headlight.position.set(1.1, 0.6, 0);
   scooter.add(headlight);
   const parcel = box(0.34, 0.3, 0.34, M.cream, 0, 0, 0);
@@ -992,10 +992,12 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     const x = -12.5 + i * 6.1;
     cyl(0.03, 0.045, 2.6, M.dark, x, 1.3, -5.6, world, 6);
     glowing(ball(0.13, M.warm, x, 2.65, -5.6));
+    halo(x, 2.65, -5.6, 2.6, 0xffc266, 0.4);
   }
   for (let i = 0; i < 12; i++) {
     const x = -12.5 + i * 2.75;
     glowing(ball(0.07, M.warm, x, 0.1, 7.55));
+    halo(x, 0.14, 7.55, 0.8, 0xffc266, 0.3);
   }
 
   const FLY = lowPower ? 90 : 200;
@@ -1012,13 +1014,14 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   const flyGeo = new THREE.BufferGeometry();
   flyGeo.setAttribute('position', new THREE.BufferAttribute(flyPos, 3));
   world.add(new THREE.Points(flyGeo, new THREE.PointsMaterial({
-    map: glow, color: 0xffffff, size: 0.15, transparent: true, opacity: 0.75, depthWrite: false,
+    map: glow, color: new THREE.Color(1.8, 1.3, 0.6), size: 0.16, transparent: true, opacity: 0.8,
+    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
   })));
 
   // ───────────────────────── lights ─────────────────────────
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xd6efe2, 1.9));
-  const moonLight = new THREE.DirectionalLight(0xfff2da, 2.3);
-  moonLight.position.set(CX - 10, 17, 11);
+  scene.add(new THREE.HemisphereLight(0xa9c8f0, 0x36504c, 1.45));
+  const moonLight = new THREE.DirectionalLight(0xffb880, 2.7);
+  moonLight.position.set(CX - 15, 11, 14);
   moonLight.target.position.set(CX, 0, 0);
   scene.add(moonLight.target);
   moonLight.castShadow = !lowPower;
@@ -1027,7 +1030,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   moonLight.shadow.bias = -0.0005;
   moonLight.shadow.normalBias = 0.04;
   scene.add(moonLight);
-  const rimLight = new THREE.DirectionalLight(0xbfeee8, 0.5);
+  const rimLight = new THREE.DirectionalLight(0x4fd1c5, 0.9);
   rimLight.position.set(18, 6, -12);
   scene.add(rimLight);
   const point = (color, power, range, x, y, z) => {
@@ -1036,7 +1039,8 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     scene.add(l);
     return l;
   };
-  const frontLight = point(0xffd9a0, 2, 12, 0, 1.6, RF + 2.2);
+  const frontLight = point(0xffb866, 9, 12, 0, 1.6, RF + 2.2);
+  point(0xffb866, 5, 9, HX - 0.6, 1.6, 2.6);
   const roomLights = [point(0xffc27a, 9, 11, DX + 1.2, 2.7, 0.8), point(0xffc27a, 7, 10, DX - 2.2, 2.7, -0.6)];
   
   // ───────────────────────── post-processing ─────────────────────────
@@ -1045,7 +1049,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     const target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
     composer = new EffectComposer(renderer, target);
     composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(4, 4), 0.1, 0.5, 1.2));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(4, 4), 0.2, 0.5, 1.08));
     composer.addPass(new OutputPass());
   }
 
@@ -1076,10 +1080,10 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   const tmpB = new V3();
   const tmpC = new V3();
   const tmpColor = new THREE.Color();
-  const WIN_OFF = new THREE.Color(0.5, 0.56, 0.58);
-  const WIN_ON = new THREE.Color(0.6, 0.88, 0.97);
-  const DOT_OFF = new THREE.Color(0.36, 0.43, 0.46);
-  const DOT_ON = new THREE.Color(0.25, 1.0, 0.9);
+  const WIN_OFF = new THREE.Color(0.05, 0.11, 0.13);
+  const WIN_ON = new THREE.Color(1.08, 0.62, 0.2);
+  const DOT_OFF = new THREE.Color(0.1, 0.24, 0.26);
+  const DOT_ON = new THREE.Color(0.3, 1.6, 1.4);
   const UP = new V3(0, 1, 0);
   const scooterPos = new V3();
 
@@ -1193,7 +1197,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
       kot.rotation.set(-0.3 + fly * 0.3, fly * Math.PI * 2, Math.sin(t * 9) * 0.12);
       kot.scale.setScalar(1.7 - fly * 0.8);
       kotGlow.position.copy(kot.position);
-      kotGlow.material.opacity = 0.3;
+      kotGlow.material.opacity = 0.5;
     }
     drawKds(!on ? 2 : t < 3.2 ? 0 : t < 3.9 ? 1 : t < 5.6 ? 2 : 3);
     showLabel(lblKot, on && say ? span(t, 3.2, 5.4) : 0);
@@ -1266,12 +1270,12 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     dining.scale.setScalar(Math.max(0.001, backOut(built.dining)));
     const lights = built.lights * (0.25 + 0.75 * intro);
     M.win.color.copy(WIN_OFF).lerp(WIN_ON, lights);
-    sign.material.color.setScalar(0.5 + 0.5 * lights);
-    signGlow.material.opacity = 0.14 * lights * built.roof;
-    frontGlow.material.opacity = 0.12 * lights * built.front;
-    frontLight.intensity = 2 * lights * built.front;
-    roomLights[0].intensity = 5 * built.dining;
-    roomLights[1].intensity = 4 * built.dining;
+    sign.material.color.setRGB(0.35 + 1.25 * lights, 0.32 + 1.0 * lights, 0.26 + 0.55 * lights);
+    signGlow.material.opacity = 0.2 * lights * built.roof;
+    frontGlow.material.opacity = 0.14 * lights * built.front;
+    frontLight.intensity = 6 * lights * built.front;
+    roomLights[0].intensity = 20 * built.dining;
+    roomLights[1].intensity = 15 * built.dining;
     plot.material = active === 1 && built.body < 0.5 ? M.goldLine : M.cream;
     showLabel(lblReadyToGo, ob.label);
 
@@ -1339,7 +1343,6 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     camera.setViewOffset(width, height, -shiftNow * width, liftNow * height, width, height);
 
     // ambient life
-    for (const c of clouds) c.g.position.x = c.x + ((elapsed * c.speed) % 12) - 6;
     for (const p of palms) p.crown.rotation.z = Math.sin(elapsed * 0.9 + p.phase) * 0.05;
     for (let i = 0; i < FLY; i++) {
       const j = i * 3;
