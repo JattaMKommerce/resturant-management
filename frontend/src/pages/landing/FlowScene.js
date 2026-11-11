@@ -1,4 +1,4 @@
-// The 3D world behind the landing page: one restaurant on a street in a small town, at dusk.
+// The 3D world behind the landing page: one restaurant on a floating street at dusk.
 // Each page section is a camera stop, and each stop plays one part of the product
 // flow as a small looping animation:
 //   1 onboarding → 2 website → 3 online order → 4 delivery → 5 dine-in KOT
@@ -84,7 +84,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x2b5266, 0.0065);
-  const camera = new THREE.PerspectiveCamera(36, 1, 0.5, 900);
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
 
   // ───────────────────────── small textures ─────────────────────────
   const glow = (() => {
@@ -120,8 +120,8 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     room: std(0x2a5a63),
     roomSide: std(0x234e57),
     counter: std(0x173f46, { roughness: 0.5, metalness: 0.15 }),
-    customer: std(0x66739f, { roughness: 0.85 }),
-    ground: std(0x2a5a50, { roughness: 1 }),
+    customer: std(0x8b7cf5, { roughness: 0.7 }),
+    ground: std(0x2f6a5e, { roughness: 0.95 }),
     plaza: std(0x9c9079, { roughness: 0.85 }),
     floor: std(0x94704c, { roughness: 0.6 }),
     road: std(0x1a242a, { roughness: 0.65 }),
@@ -132,19 +132,6 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     trunk: std(0x5d4630),
     leaf: std(0x1f7a5c, { roughness: 0.7 }),
     dark: std(0x14252b),
-    pave: std(0x6b675b, { roughness: 0.9 }),
-    city1: std(0x3a5563, { roughness: 0.9 }),
-    city2: std(0x4a6068, { roughness: 0.9 }),
-    city3: std(0x2f4856, { roughness: 0.9 }),
-    cloth1: std(0x2c6468, { roughness: 0.85 }),
-    cloth2: std(0x7d3838, { roughness: 0.85 }),
-    cloth3: std(0xe4dcc8, { roughness: 0.85 }),
-    cloth4: std(0x262d33, { roughness: 0.85 }),
-    cloth5: std(0x9a7b4f, { roughness: 0.85 }),
-    navy: std(0x2c4263, { roughness: 0.85 }),
-    hair: std(0x2a211c, { roughness: 0.9 }),
-    shoe: std(0x191a1c, { roughness: 0.6 }),
-    helmet: std(0x1d272d, { roughness: 0.25, metalness: 0.3 }),
     skin: std(0xe6b18a, { roughness: 0.8 }),
     teal: std(0x22b3a5, { roughness: 0.4, metalness: 0.3 }),
     wine: std(0x9c4a36, { roughness: 0.8 }),
@@ -265,7 +252,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
 
   // ───────────────────────── sky ─────────────────────────
   scene.add(new THREE.Mesh(
-    new THREE.SphereGeometry(600, 32, 16),
+    new THREE.SphereGeometry(180, 32, 16),
     new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
@@ -273,7 +260,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
         top: { value: new THREE.Color(0x13264a) },
         horizon: { value: new THREE.Color(0xec9e72) },
         mid: { value: new THREE.Color(0x315f88) },
-        bottom: { value: new THREE.Color(0x2b5266) },
+        bottom: { value: new THREE.Color(0x2a5565) },
       },
       vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
       fragmentShader: `
@@ -282,7 +269,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
           float h = vDir.y;
           vec3 c = mix(mid, top, smoothstep(0.06, 0.5, h));
           c = mix(horizon, c, smoothstep(-0.02, 0.13, h));
-          c = mix(bottom, c, smoothstep(0.0, 0.05, h));
+          c = mix(bottom, c, smoothstep(-0.07, 0.0, h));
           gl_FragColor = vec4(c, 1.0);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
@@ -307,31 +294,48 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
       color: 0xdfeeff, size: 1.2, sizeAttenuation: false, transparent: true, opacity: 0.7, fog: false, depthWrite: false,
     })));
   }
-  // ───────────────────────── the town ─────────────────────────
-  // The street is part of a town: the land runs to the horizon, with neighbours along the road
-  // and a skyline behind. CX / CZ mark the middle of the stretch where the story happens.
-  const CX = 2.5;
+  // ───────────────────────── floating street ─────────────────────────
+  const CX = 2.5; // centre of the island along x
   const CZ = 1.5;
+  const roundedShape = (w, d, r) => {
+    const s = new THREE.Shape();
+    const x = -w / 2;
+    const y = -d / 2;
+    s.moveTo(x + r, y);
+    s.lineTo(x + w - r, y);
+    s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + d - r);
+    s.quadraticCurveTo(x + w, y + d, x + w - r, y + d);
+    s.lineTo(x + r, y + d);
+    s.quadraticCurveTo(x, y + d, x, y + d - r);
+    s.lineTo(x, y + r);
+    s.quadraticCurveTo(x, y, x + r, y);
+    return s;
+  };
+  const slab = (w, d, r, h, mat, topY) => {
+    const geo = new THREE.ExtrudeGeometry(roundedShape(w, d, r), { depth: h, bevelEnabled: false, curveSegments: 18 });
+    geo.rotateX(-Math.PI / 2);
+    return add(geo, mat, CX, topY - h, CZ);
+  };
+  slab(37, 18, 5, 0.5, M.ground, 0);
+  slab(33, 14, 4.5, 1.3, M.rock, -0.5).castShadow = false;
+  slab(24, 9, 4, 1.7, M.rock, -1.8).castShadow = false;
+  slab(12, 4.5, 2.2, 1.7, M.rock, -3.5).castShadow = false;
   {
-    const land = add(new THREE.CircleGeometry(600, 72), M.ground, CX, 0, CZ);
-    land.rotation.x = -Math.PI / 2;
-    land.castShadow = false;
+    const pts = roundedShape(37, 18, 5).getPoints(20).map((p) => new V3(p.x + CX, 0.03, -p.y + CZ));
+    const edge = add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 320, 0.045, 6, true), M.goldLine);
+    glowing(edge);
   }
-
+  
   // road along the front
   const ROAD_Z = 6.2;
-  box(600, 0.02, 1.9, M.road, CX, 0.011, ROAD_Z).castShadow = false;
-  // pavements either side, a paved forecourt strip in front of the buildings, and a side street
-  for (const z of [ROAD_Z - 1.4, ROAD_Z + 1.4]) box(600, 0.02, 0.9, M.pave, CX, 0.004, z).castShadow = false;
-  box(600, 0.02, 3.4, M.pave, CX, 0.002, 3.1).castShadow = false;
-  const SIDE_X = 21.6;
-  box(1.9, 0.02, 600, M.road, SIDE_X, 0.0105, CZ).castShadow = false;
+  box(32.5, 0.02, 1.9, M.road, CX, 0.011, ROAD_Z).castShadow = false;
   {
-    const count = 260;
+    const count = 28;
     const dashes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.012, 0.07), M.warmSoft, count);
     const o = new THREE.Object3D();
     for (let i = 0; i < count; i++) {
-      o.position.set(-148 + i * 1.16, 0.024, ROAD_Z);
+      o.position.set(-13 + i * 1.16, 0.024, ROAD_Z);
       o.updateMatrix();
       dashes.setMatrixAt(i, o.matrix);
     }
@@ -339,52 +343,6 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   }
   box(8.5, 0.02, 3.6, M.plaza, 0.6, 0.012, 3.4).castShadow = false;
   box(3.2, 0.02, 3.6, M.plaza, 14.7, 0.012, 3.3).castShadow = false;
-
-  // Neighbours along the street and a skyline behind: plain blocks with a scatter of lit windows.
-  {
-    let seed = 7;
-    const rnd = () => {
-      seed = (seed * 16807) % 2147483647;
-      return seed / 2147483647;
-    };
-    const mats = [M.city1, M.city2, M.city3];
-    const lit = [];
-    const block = (x, z, w, h, d) => {
-      const m = box(w, h, d, mats[(rnd() * 3) | 0], x, h / 2, z);
-      m.castShadow = z > -6;
-      box(w + 0.3, 0.16, d + 0.3, M.roof, x, h + 0.08, z).castShadow = false;
-      const cols = Math.max(2, Math.floor(w / 1.15));
-      const rows = Math.max(1, Math.floor((h - 1.4) / 1.05));
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (rnd() < 0.68) continue;
-          lit.push([x - w / 2 + (c + 0.5) * (w / cols), 1.5 + r * 1.05, z + d / 2 + 0.02, rnd()]);
-        }
-      }
-    };
-    // same side of the street as the restaurant (the side street cuts through at SIDE_X)
-    for (const [x, w, h] of [[-18.2, 7, 4.4], [-27.2, 8, 5.4], [-37.5, 9, 4.2]]) block(x, -0.9, w, h, 4.8);
-    for (const [x, w, h] of [[27.4, 7, 5.0], [36.4, 8, 7.2], [46.6, 9, 4.8], [57.5, 9, 6.4], [69, 10, 5.4], [82, 11, 7.0]]) block(x, -0.9, w, h, 4.8);
-    // three rows behind, taller towards the back
-    for (const [z, hMin, hMax] of [[-16, 3.4, 5.4], [-27, 4.6, 8.4], [-42, 6, 13]]) {
-      let x = -44 + rnd() * 4;
-      while (x < 105) {
-        const w = 5 + rnd() * 5;
-        if (Math.abs(x + w / 2 - SIDE_X) > w / 2 + 1.6) block(x + w / 2, z, w, hMin + rnd() * (hMax - hMin), 6 + rnd() * 3);
-        x += w + 0.8 + rnd() * 2.2;
-      }
-    }
-    const panes = new THREE.InstancedMesh(new THREE.BoxGeometry(0.4, 0.52, 0.04), new THREE.MeshBasicMaterial({ toneMapped: false }), lit.length);
-    const o = new THREE.Object3D();
-    const c = new THREE.Color();
-    lit.forEach(([x, y, z, k], i) => {
-      o.position.set(x, y, z);
-      o.updateMatrix();
-      panes.setMatrixAt(i, o.matrix);
-      panes.setColorAt(i, k < 0.1 ? c.setRGB(0.3, 0.5, 0.58) : c.setRGB(0.62 + k * 0.3, 0.4 + k * 0.18, 0.16 + k * 0.08));
-    });
-    world.add(panes);
-  }
 
   // ───────────────────────── the restaurant ─────────────────────────
   const R = { w: 6, h: 3.6, d: 4, z: -0.5 };
@@ -483,65 +441,28 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   glowing(box(8.4, 0.03, 0.05, M.goldLine, 0, 0.13, 3.2, dining));
 
   const FY = 0.12; // floor height inside the room
-  // People are plain low-poly figures with real proportions (legs, torso, arms, neck, head), no
-  // faces. The origin is at the feet, or on the floor under the seat; they face +z.
-  const figure = (topMat, { legMat = M.cloth4, seated = false, arms = 'down', hat = null, parent = world } = {}) => {
+  const figure = (bodyMat, { chef = false, parent = world } = {}) => {
     const g = new THREE.Group();
     parent.add(g);
-    const hip = seated ? 0.385 : 0.6;
-    for (const sx of [-1, 1]) {
-      const x = sx * 0.075;
-      if (seated) {
-        cyl(0.058, 0.052, 0.34, legMat, x, hip, 0.15, g, 8).rotation.x = Math.PI / 2;
-        cyl(0.048, 0.042, 0.37, legMat, x, 0.2, 0.32, g, 8);
-        box(0.085, 0.05, 0.17, M.shoe, x, 0.025, 0.35, g);
-      } else {
-        cyl(0.058, 0.044, hip, legMat, x, hip / 2, 0, g, 8);
-        box(0.085, 0.05, 0.17, M.shoe, x, 0.025, 0.03, g);
-      }
-    }
-    cyl(0.15, 0.115, 0.42, topMat, 0, hip + 0.2, 0, g, 12).scale.z = 0.62;
-    const shoulder = hip + 0.38;
-    for (const sx of [-1, 1]) {
-      const x = sx * 0.185;
-      cyl(0.042, 0.038, 0.25, topMat, x, shoulder - 0.125, 0, g, 8);
-      if (arms === 'fwd') {
-        cyl(0.036, 0.032, 0.24, topMat, x, shoulder - 0.25, 0.12, g, 8).rotation.x = Math.PI / 2;
-        ball(0.036, M.skin, x, shoulder - 0.25, 0.26, g);
-      } else {
-        cyl(0.036, 0.032, 0.24, topMat, x, shoulder - 0.37, 0, g, 8);
-        ball(0.036, M.skin, x, shoulder - 0.52, 0, g);
-      }
-    }
-    cyl(0.038, 0.044, 0.07, M.skin, 0, shoulder + 0.06, 0, g, 8);
-    const headY = shoulder + 0.175;
-    ball(0.085, M.skin, 0, headY, 0, g).scale.set(0.92, 1.12, 1);
-    if (hat === 'helmet') {
-      ball(0.112, M.helmet, 0, headY + 0.015, -0.005, g);
-    } else {
-      const hair = add(new THREE.SphereGeometry(0.092, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), M.hair, 0, headY + 0.012, -0.012, g);
-      hair.scale.set(0.95, 1.12, 1.05);
-      if (hat === 'chef') {
-        cyl(0.082, 0.078, 0.16, M.white, 0, headY + 0.16, 0, g, 12);
-        cyl(0.098, 0.088, 0.05, M.white, 0, headY + 0.26, 0, g, 12);
-      }
+    box(0.26, 0.36, 0.2, M.dark, 0, 0.18, 0, g);
+    add(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10), bodyMat, 0, 0.62, 0, g);
+    ball(0.15, M.skin, 0, 1.05, 0, g);
+    if (chef) {
+      cyl(0.13, 0.12, 0.18, M.white, 0, 1.24, 0, g);
+      ball(0.16, M.white, 0, 1.36, 0, g);
     }
     return g;
   };
-  const table = (x, z, tops) => {
+  const table = (x, z) => {
     const g = group(x, FY, z, dining);
-    cyl(0.46, 0.46, 0.04, M.cream, 0, 0.6, 0, g, 24);
-    cyl(0.035, 0.035, 0.58, M.dark, 0, 0.3, 0, g, 8);
-    cyl(0.24, 0.26, 0.03, M.dark, 0, 0.015, 0, g, 16);
-    [-1, 1].forEach((sx, i) => {
-      // a chair, with its guest sitting on it, facing the table
-      const seat = group(sx * 0.8, 0, 0, g);
-      seat.rotation.y = sx < 0 ? Math.PI / 2 : -Math.PI / 2;
-      box(0.36, 0.04, 0.36, M.wood, 0, 0.31, 0, seat);
-      box(0.36, 0.44, 0.035, M.wood, 0, 0.55, -0.175, seat);
-      for (const lx of [-0.15, 0.15]) for (const lz of [-0.15, 0.15]) box(0.03, 0.3, 0.03, M.wood, lx, 0.15, lz, seat);
-      figure(tops[i], { seated: true, arms: 'fwd', legMat: i ? M.cloth4 : M.navy, parent: seat });
-    });
+    cyl(0.46, 0.46, 0.05, M.cream, 0, 0.58, 0, g, 22);
+    cyl(0.05, 0.09, 0.56, M.wood, 0, 0.28, 0, g, 8);
+    for (const sx of [-1, 1]) {
+      box(0.3, 0.3, 0.3, M.wood, sx * 0.78, 0.15, 0, g);
+      const guest = figure(sx < 0 ? M.teal : M.wine, { parent: g });
+      guest.position.set(sx * 0.78, 0.12, 0);
+      guest.rotation.y = sx < 0 ? Math.PI / 2 : -Math.PI / 2;
+    }
     // pendant lamp
     cyl(0.008, 0.008, 0.9, M.dark, 0, 2.65, 0, g, 4).castShadow = false;
     glowing(ball(0.11, M.warm, 0, 2.15, 0, g));
@@ -549,8 +470,8 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     return g;
   };
   const TABLE = new V3(1.7, 0, 1.35);
-  table(TABLE.x, TABLE.z, [M.cloth1, M.cloth2]);
-  table(-2.3, 1.55, [M.cloth5, M.cloth3]);
+  table(TABLE.x, TABLE.z);
+  table(-2.3, 1.55);
 
   // QR stand on the guest's table
   const qr = (() => {
@@ -588,7 +509,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   cyl(0.24, 0.22, 0.26, M.steel, -3.3, FY + 1.14, -2.1, dining);
   glowing(cyl(0.3, 0.3, 0.02, M.red, -3.3, FY + 1.012, -2.1, dining));
   const steam = [0, 1, 2].map(() => halo(-3.3, 1.6, -2.1, 0.5, 0xdff6f6, 0, dining));
-  const chef = figure(M.white, { arms: 'fwd', hat: 'chef', parent: dining });
+  const chef = figure(M.white, { chef: true, parent: dining });
   chef.position.set(-2.4, FY, -2.75);
   const PASS = new V3(0.7, FY + 1.03, -2.1); // where finished plates are put for the waiter
 
@@ -675,12 +596,12 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   glowing(box(0.44, 0.3, 0.02, M.tealLine, CASH.x - 0.2, FY + 1.32, CASH.z + 0.03, dining)).rotation.x = -0.25;
   box(0.26, 0.16, 0.26, M.dark, CASH.x + 0.4, FY + 1.09, CASH.z + 0.1, dining);
   const receipt = glowing(box(0.18, 1, 0.01, M.white, CASH.x + 0.4, FY + 1.17, CASH.z + 0.1, dining));
-  const cashier = figure(M.navy, { parent: dining });
+  const cashier = figure(M.gold, { parent: dining });
   cashier.position.set(CASH.x, FY, CASH.z - 0.6);
 
   // moving pieces of the dine-in story
-  const waiter = figure(M.cloth3, { arms: 'fwd', parent: dining });
-  box(0.25, 0.38, 0.02, M.cloth4, 0, 0.56, 0.075, waiter); // long black apron
+  const waiter = figure(M.dark, { parent: dining });
+  box(0.3, 0.34, 0.03, M.gold, 0, 0.56, 0.17, waiter);
   const WAITER_AT_TABLE = new V3(TABLE.x, FY, TABLE.z - 0.95);
   const WAITER_AT_PASS = new V3(PASS.x, FY, PASS.z + 0.85);
   const plate = group(0, 0, 0, dining);
@@ -967,12 +888,11 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
   glowing(box(0.06, 0.8, 0.9, M.warm, -1.81, 1.3, 0.2, house));
   box(1.2, 0.1, 0.6, M.cream, -0.7, 0.05, 2.0, house);
   halo(0.75, 1.3, 2.3, 3.2, 0xffb95e, 0.14, house);
-  const customer = figure(M.customer, { arms: 'fwd', legMat: M.navy });
+  const customer = figure(M.customer);
   customer.position.set(HX - 1.9, 0, 2.6);
   customer.rotation.y = -0.5;
-  const phone = glowing(box(0.09, 0.16, 0.015, M.tealLine, 0.185, 0.8, 0.27, customer));
-  phone.rotation.x = -0.5;
-  const phoneGlow = halo(0.185, 0.8, 0.33, 0.9, 0x5eead4, 0.3, customer);
+  const phone = glowing(box(0.12, 0.2, 0.02, M.tealLine, 0.16, 0.72, 0.2, customer));
+  const phoneGlow = halo(0.16, 0.72, 0.3, 1.2, 0x5eead4, 0.3, customer);
   const lblOrdered = makeLabel('Orders on your website', { accent: TEAL, h: 1.0 });
   lblOrdered.position.set(HX - 1.9, 2.6, 2.9);
   const lblDelivered = makeLabel('Delivered', { accent: GREEN, h: 1.0 });
@@ -1029,10 +949,8 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     wheelGeo.rotateX(Math.PI / 2);
     add(wheelGeo, M.dark, 0.34, 0.11, 0, s);
     add(wheelGeo, M.dark, -0.3, 0.11, 0, s);
-    const rider = figure(M.cloth3, { seated: true, arms: 'fwd', hat: 'helmet', parent: s });
-    rider.scale.setScalar(0.74);
-    rider.position.set(-0.1, 0.13, 0);
-    rider.rotation.y = Math.PI / 2;
+    add(new THREE.CapsuleGeometry(0.09, 0.22, 4, 8), M.cream, -0.08, 0.6, 0, s).rotation.z = -0.2;
+    ball(0.1, M.gold, -0.02, 0.86, 0, s);
     glowing(ball(0.045, M.warm, 0.4, 0.5, 0, s));
     glowing(ball(0.03, M.red, -0.52, 0.42, 0, s));
     halo(0.55, 0.45, 0, 1.2, 0xffe0a0, 0.35, s);
@@ -1064,8 +982,6 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     palms.push({ crown, phase: Math.random() * 6 });
   };
   palm(-13.4, -3.6, 3.8, 0.5);
-  // open land beyond the last neighbour on the left
-  for (const [x, z, h] of [[-47, -5, 4.2], [-55, -15, 3.6], [-63, -4, 3.9], [-52, -27, 4.4], [-72, -12, 3.5], [-66, -30, 4.1], [-82, -22, 3.8]]) palm(x, z, h, 0.5);
   palm(4.6, -4.6, 4.3, 0.6);
   palm(9.6, -3.6, 3.5, 0.45);
   palm(11.9, -2.9, 4.0, 0.55);
@@ -1078,10 +994,10 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     glowing(ball(0.13, M.warm, x, 2.65, -5.6));
     halo(x, 2.65, -5.6, 2.6, 0xffc266, 0.4);
   }
-  for (let i = 0; i < 44; i++) {
-    const x = -59.25 + i * 2.75;
-    glowing(ball(0.07, M.warm, x, 0.1, 8.1));
-    halo(x, 0.14, 8.1, 0.8, 0xffc266, 0.3);
+  for (let i = 0; i < 12; i++) {
+    const x = -12.5 + i * 2.75;
+    glowing(ball(0.07, M.warm, x, 0.1, 7.55));
+    halo(x, 0.14, 7.55, 0.8, 0xffc266, 0.3);
   }
 
   const FLY = lowPower ? 90 : 200;
@@ -1288,8 +1204,8 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     showLabel(lblReady, on && say ? span(t, 5.6, 7.3) : 0);
     // chef cooks
     const cooking = on ? span(t, 3.6, 5.7) : 0.35;
-    chef.position.y = FY + Math.abs(Math.sin(elapsed * 5)) * 0.012 * cooking;
-    chef.rotation.y = Math.sin(elapsed * 2.2) * 0.14 * cooking - 0.2;
+    chef.position.y = FY + Math.abs(Math.sin(elapsed * 7)) * 0.07 * cooking;
+    chef.rotation.y = Math.sin(elapsed * 3.5) * 0.3 * cooking - 0.3;
     steam.forEach((s, i) => {
       const k = (elapsed * 0.5 + i / 3) % 1;
       s.position.y = 1.5 + k * 1.1;
@@ -1301,12 +1217,12 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     const toTable = smooth(6.0, 7.7, t);
     const w = toPass - toTable;
     waiter.position.copy(WAITER_AT_TABLE).lerp(WAITER_AT_PASS, w);
-    waiter.position.y = FY + Math.abs(Math.sin(t * 9)) * 0.018 * (toPass > 0 && toPass < 1 || (toTable > 0 && toTable < 1) ? 1 : 0);
+    waiter.position.y = FY + Math.abs(Math.sin(t * 9)) * 0.05 * (toPass > 0 && toPass < 1 || (toTable > 0 && toTable < 1) ? 1 : 0);
     waiter.rotation.y = toTable > 0 && toTable < 1 ? 0 : toPass > 0 && w > 0.02 ? Math.PI : 0;
     plate.visible = on && t >= 5.6;
     if (plate.visible) {
       if (t < 6.0) plate.position.copy(PASS);
-      else if (toTable < 1) plate.position.set(waiter.position.x, FY + 0.79, waiter.position.z + 0.3);
+      else if (toTable < 1) plate.position.set(waiter.position.x, FY + 0.92, waiter.position.z + 0.28);
       else plate.position.set(TABLE.x, FY + 0.63, TABLE.z - 0.1);
       plate.scale.setScalar(t < 6 ? backOut((t - 5.6) / 0.4) : 1);
     }
@@ -1316,7 +1232,7 @@ export function createFlowScene(canvas, { reducedMotion = false, onReady, onPhas
     receipt.scale.y = Math.max(0.001, print * 0.5);
     receipt.position.y = FY + 1.17 + print * 0.25;
     showLabel(lblBill, on && say ? span(t, 8.5, 10.7) : 0);
-    cashier.rotation.y = on && t > 7.8 ? Math.sin(elapsed * 2.5) * 0.12 : 0;
+    cashier.rotation.y = on && t > 7.8 ? Math.sin(elapsed * 4) * 0.2 : 0;
     return t < 1.6 ? 0 : t < 3.4 ? 1 : t < 7.8 ? 2 : 3;
   };
 
