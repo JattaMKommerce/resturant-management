@@ -153,14 +153,6 @@ export default function UnifiedSidebar({
       featureKey: 'online_ordering'
     },
     { name: 'Order History & Status', path: `/admin/${activeSlug}/orders`, icon: History, featureKey: 'online_ordering' },
-    {
-      name: 'Table Bookings',
-      path: '/admin/offline/table-reservations',
-      icon: CalendarClock,
-      badge: bookingRequests > 0 ? `${bookingRequests} to confirm` : null,
-      badgeClass: 'bg-amber-500 text-white shadow-sm',
-      featureKey: 'table_dine_in'
-    },
     { name: 'Sales Analytics', path: `/admin/${activeSlug}/sales`, icon: BarChart3 },
     { name: 'Refunds', path: `/admin/${activeSlug}/refunds`, icon: RotateCcw, featureKey: 'online_ordering' },
     { name: 'Coupons', path: `/admin/${activeSlug}/coupons`, icon: Tag, featureKey: 'online_ordering' },
@@ -180,7 +172,8 @@ export default function UnifiedSidebar({
   const offlineNavItems = [
     { name: 'Live Floor Operations', path: '/admin/offline/operations', icon: Activity, featureKey: 'pos_billing' },
     { name: 'Table Management', path: '/admin/offline/tables', icon: Grid2X2, featureKey: 'table_dine_in' },
-    { name: 'Table Bookings', path: '/admin/offline/table-reservations', icon: CalendarClock, featureKey: 'table_dine_in', badge: bookingRequests > 0 ? `${bookingRequests}` : null },
+    // Table bookings are dine-in, so they live here only (REQ-051); the badge counts requests to confirm.
+    { name: 'Table Bookings', path: '/admin/offline/table-reservations', icon: CalendarClock, featureKey: 'table_dine_in', badge: bookingRequests > 0 ? `${bookingRequests} to confirm` : null },
     { name: 'Offline Food Menu', path: '/admin/offline/menu', icon: UtensilsCrossed },
     { name: 'Live POS Orders', path: '/admin/offline/orders', icon: ChefHat, featureKey: 'pos_billing' },
     { name: 'Kitchen Display System (Active KDS)', path: '/admin/offline/kds', icon: ChefHat, featureKey: 'kds_kot' },
