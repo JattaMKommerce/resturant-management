@@ -249,6 +249,7 @@ const HomeRedirect = () => {
   );
 };
 
+import LandingPage from './pages/landing/LandingPage';
 import ProductSelectionPage from './pages/product/ProductSelectionPage';
 import { getSubdomainSlug } from './utils/subdomain';
 
@@ -274,8 +275,9 @@ export default function App() {
             <Route path="/book-table" element={<TableBookingPage overrideSlug={activeSubdomain} />} />
           </>
         ) : (
-          <Route path="/" element={<ProductSelectionPage />} />
+          <Route path="/" element={<LandingPage />} />
         )}
+        <Route path="/landing" element={<LandingPage />} />
         <Route path="/select-product" element={<ProductSelectionPage />} />
         <Route path="/product-selection" element={<ProductSelectionPage />} />
 

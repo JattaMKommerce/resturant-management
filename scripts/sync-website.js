@@ -24,7 +24,8 @@ for (const target of [root, path.join(root, 'backend', 'public')]) {
   const assetsDir = path.join(target, 'assets');
   fs.mkdirSync(assetsDir, { recursive: true });
   for (const old of fs.readdirSync(assetsDir)) {
-    if (/^index-[A-Za-z0-9_-]+\.(js|css)$/.test(old) && !builtAssets.includes(old)) fs.rmSync(path.join(assetsDir, old));
+    // index-* is the app; FlowScene-* is the landing page's 3D scene, loaded only on that page
+    if (/^(index|FlowScene)-[A-Za-z0-9_-]+\.(js|css)$/.test(old) && !builtAssets.includes(old)) fs.rmSync(path.join(assetsDir, old));
   }
   for (const f of builtAssets) fs.copyFileSync(path.join(dist, 'assets', f), path.join(assetsDir, f));
   for (const f of ['index.html', 'sw.js']) fs.copyFileSync(path.join(dist, f), path.join(target, f));
