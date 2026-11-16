@@ -831,6 +831,10 @@ async function logout(req, res) {
 
 const RESET_CODE_TTL_MS = 10 * 60 * 1000;
 const RESET_MAX_ATTEMPTS = 5;
+const RESET_RESEND_WAIT_MS = 45 * 1000;
+
+const isEmail = (text) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(text || '').trim());
+const lastTenDigits = (text) => String(text || '').replace(/\D/g, '').slice(-10);
 
 /** Find the password account (staff/admin/driver — customers use OTP login) for an email or phone. */
 async function findPasswordAccount(identifier) {
@@ -843,7 +847,7 @@ async function findPasswordAccount(identifier) {
     );
     return user || null;
   }
-  const digits = input.replace(/\D/g, '').slice(-10);
+  const digits = lastTenDigits(input);
   if (digits.length < 10) return null;
   const users = await query(
     `SELECT id, name, email, phone, role, status FROM users
@@ -856,44 +860,86 @@ async function findPasswordAccount(identifier) {
 }
 
 /**
- * POST /api/auth/forgot-password { identifier }
- * Sends a 6-digit reset code to the account's registered WhatsApp number.
- * The response is the same whether or not the account exists.
+ * POST /api/auth/forgot-password { identifier, email? }
+ *
+ * Emails a 6-digit reset code to the email address saved on the account.
+ *  - identifier is an email: the code goes to that account's email.
+ *  - identifier is a mobile number: the reply is { need_email: true } and the page asks for the
+ *    account's email. The code is sent only when that email belongs to the account with that
+ *    mobile number. It is never sent to an address that is not already on the account, otherwise
+ *    anyone who knows an admin's phone number could take the account over.
+ * The reply is the same whether or not an account exists.
  */
 async function forgotPassword(req, res) {
-  const genericMessage = 'If an account exists for these details, a 6-digit reset code has been sent to its registered WhatsApp number. It expires in 10 minutes.';
+  const genericMessage = 'If these details match an account, a 6-digit code has been sent to its email address. It works for 10 minutes. Check the spam folder too.';
   try {
     await ensureAuthSchema();
-    const identifier = req.body?.identifier || req.body?.email || req.body?.phone;
-    if (!identifier || !String(identifier).trim()) {
+    const identifier = String(req.body?.identifier || req.body?.phone || req.body?.email || '').trim();
+    const emailInput = String(req.body?.email || '').trim();
+    if (!identifier) {
       return res.status(400).json({ success: false, message: 'Enter your email or mobile number.' });
     }
 
-    const user = await findPasswordAccount(identifier);
-    if (!user || user.status === 'DISABLED' || !user.phone) {
+    let user = null;
+    if (isEmail(identifier)) {
+      user = await findPasswordAccount(identifier);
+    } else {
+      if (lastTenDigits(identifier).length < 10) {
+        return res.status(400).json({ success: false, message: 'Enter a valid email address or 10-digit mobile number.' });
+      }
+      if (!emailInput) {
+        return res.json({ success: true, need_email: true, message: 'Enter the email address on your account. We will send the code there.' });
+      }
+      if (!isEmail(emailInput)) {
+        return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+      }
+      const byEmail = await findPasswordAccount(emailInput);
+      if (byEmail && lastTenDigits(byEmail.phone) === lastTenDigits(identifier)) user = byEmail;
+    }
+
+    if (!user || user.status === 'DISABLED' || !isEmail(user.email)) {
+      return res.json({ success: true, message: genericMessage });
+    }
+
+    // One code at a time, and no flooding an inbox by pressing "send again" repeatedly.
+    const [recent] = await query(
+      `SELECT expires_at_ms FROM password_resets WHERE user_id = ? AND used = 0 ORDER BY id DESC LIMIT 1`,
+      [user.id]
+    );
+    if (recent && Number(recent.expires_at_ms) - RESET_CODE_TTL_MS > Date.now() - RESET_RESEND_WAIT_MS) {
       return res.json({ success: true, message: genericMessage });
     }
 
     const crypto = require('crypto');
     const code = String(crypto.randomInt(100000, 1000000));
     await query(`UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0`, [user.id]);
-    await query(
-      `INSERT INTO password_resets (user_id, code_hash, channel, expires_at_ms) VALUES (?, ?, 'WHATSAPP', ?)`,
+    const inserted = await query(
+      `INSERT INTO password_resets (user_id, code_hash, channel, expires_at_ms) VALUES (?, ?, 'EMAIL', ?)`,
       [user.id, hashCode(code), Date.now() + RESET_CODE_TTL_MS]
     );
 
-    const { sendWhatsAppOtp } = require('../services/WhatsAppOtpService');
-    const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'hms_login_otp';
-    const delivery = await sendWhatsAppOtp(user.phone, code, templateName).catch((e) => ({ success: false, error: e.message }));
+    const { sendPasswordResetCode } = require('../services/MailService');
+    let delivery = await sendPasswordResetCode({ to: user.email, name: user.name, code, minutes: RESET_CODE_TTL_MS / 60000 });
+
+    // Same code on WhatsApp where that is set up, as before: staff accounts created with a
+    // made-up email address still get their code. Counts as delivered if either one went out.
+    if (user.phone) {
+      const { sendWhatsAppOtp } = require('../services/WhatsAppOtpService');
+      const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'hms_login_otp';
+      const wa = await sendWhatsAppOtp(user.phone, code, templateName).catch((e) => ({ success: false, error: e.message }));
+      if (wa.success && !delivery.success) delivery = wa;
+    }
 
     if (!delivery.success) {
       if (DEMO_OTP_ALLOWED) {
         return res.json({ success: true, message: genericMessage, dev_code: code });
       }
-      console.error(`[forgotPassword] WhatsApp delivery failed for user ${user.id}:`, delivery.error);
+      // The code never left, so it must not stay usable.
+      await query(`UPDATE password_resets SET used = 1 WHERE id = ?`, [inserted.insertId]);
+      console.error(`[forgotPassword] Email delivery failed for user ${user.id}:`, delivery.error);
       return res.status(503).json({
         success: false,
-        message: 'We could not send the reset code on WhatsApp right now. Please try again later or ask your administrator to reset your password.'
+        message: 'We could not send the email right now. Please try again in a few minutes.'
       });
     }
 
@@ -946,7 +992,7 @@ async function resetPassword(req, res) {
     await query(`UPDATE users SET password_hash = ?, plain_password = NULL WHERE id = ?`, [hash, user.id]);
     await query(`UPDATE password_resets SET used = 1 WHERE user_id = ?`, [user.id]);
     await revokeAllSessionsForUser(user.id);
-    require('../utils/audit').logAudit(req, { action: 'PASSWORD_RESET', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role, restaurantId: null, details: { via: 'WhatsApp code' } });
+    require('../utils/audit').logAudit(req, { action: 'PASSWORD_RESET', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role, restaurantId: null, details: { via: reset.channel === 'EMAIL' ? 'Email code' : 'WhatsApp code' } });
 
     return res.json({ success: true, message: 'Password updated. Please log in with your new password.' });
   } catch (err) {

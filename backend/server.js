@@ -351,6 +351,17 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Is outgoing email set up? Logs in to the mail server without sending anything. No secrets in the reply.
+app.get('/health/email', async (req, res) => {
+  const state = await require('./services/MailService').checkMailServer();
+  res.status(200).json({
+    success: true,
+    email: !state.configured ? 'NOT_SET_UP' : state.ready ? 'READY' : 'LOGIN_FAILED',
+    reason: state.ready ? undefined : state.reason,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/health/db', async (req, res) => {
   const targetHost = pool.pool?.config?.connectionConfig?.host || 'unknown';
   const targetDb = pool.pool?.config?.connectionConfig?.database || 'unknown';
