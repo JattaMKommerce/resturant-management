@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { addAioHeaders } from '../utils/aioHeaders'; // ALL-IN-ONE hub: device + location on login calls
 
 /**
  * Resolve KOT & Offline API base URL.
@@ -33,6 +34,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    addAioHeaders(config); // ALL-IN-ONE hub
     const token = localStorage.getItem('hotel_token') || localStorage.getItem('hms_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

@@ -36,6 +36,7 @@ async function login(req, res, next) {
 
     if (rows.length === 0) {
       require('../../utils/audit').logAudit(req, { action: 'LOGIN_FAILED', entity: 'auth', userId: null, userRole: null, restaurantId: null, details: { login: inputStr } });
+      require('../../utils/hub').track('failed_login', req, inputStr.includes('@') ? { email: inputStr } : { name: inputStr }, { app: 'KOT' }); // ALL-IN-ONE hub
       return sendError(res, 'Invalid credentials or inactive user account', 401);
     }
 
@@ -43,6 +44,7 @@ async function login(req, res, next) {
     const isMatch = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!isMatch) {
       require('../../utils/audit').logAudit(req, { action: 'LOGIN_FAILED', entity: 'auth', entityId: user.id, userId: user.id, userRole: user.role, restaurantId: null, details: { login: inputStr, reason: 'wrong password' } });
+      require('../../utils/hub').track('failed_login', req, user, { role: user.role, app: 'KOT' }); // ALL-IN-ONE hub
       return sendError(res, 'Invalid email/mobile or password.', 401);
     }
 
@@ -92,6 +94,7 @@ async function login(req, res, next) {
       restaurants: restRows || []
     };
 
+    require('../../utils/hub').track('login', req, user, { role: user.role, app: 'KOT' }); // ALL-IN-ONE hub
     // Return both top-level and nested data structure for 100% universal frontend compatibility
     return res.status(200).json({
       success: true,

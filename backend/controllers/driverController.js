@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const hub = require('../utils/hub'); // ALL-IN-ONE hub login tracking
 const jwt = require('jsonwebtoken');
 const { getConnection, query } = require('../config/db');
 const OrderService = require('../services/OrderService');
@@ -164,6 +165,7 @@ async function driverLogin(req, res) {
     }
 
     if (users.length === 0) {
+      hub.track('failed_login', req, { name: String(identifier || '') }, { role: 'DRIVER' }); // ALL-IN-ONE hub
       return res.status(401).json({ success: false, message: 'Invalid driver credentials or account does not exist.' });
     }
 
@@ -175,6 +177,7 @@ async function driverLogin(req, res) {
 
     const match = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!match) {
+      hub.track('failed_login', req, user, { role: 'DRIVER' }); // ALL-IN-ONE hub
       return res.status(401).json({ success: false, message: 'Invalid credentials.' });
     }
 
@@ -256,6 +259,7 @@ async function driverLogin(req, res) {
     res.cookie('hotel_token', token, cookieOptions);
     res.cookie('token', token, cookieOptions);
 
+    hub.track('login', req, user, { role: 'DRIVER' }); // ALL-IN-ONE hub
     res.json({
       success: true,
       token,

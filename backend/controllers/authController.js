@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const hub = require('../utils/hub'); // ALL-IN-ONE hub login tracking
 const { query } = require('../config/db');
 const {
   signToken, tokenExpiryFor, extractToken, revokeToken, revokeAllSessionsForUser,
@@ -64,6 +65,8 @@ async function register(req, res) {
     );
 
     const userId = result.insertId;
+
+    hub.track('signup', req, { id: userId, email, name }, { role: assignedRole }); // ALL-IN-ONE hub
 
     if (isStaffSignup) {
       await query(
@@ -228,6 +231,7 @@ async function login(req, res) {
     }
 
     if (users.length === 0) {
+      hub.track('failed_login', req, inputStr.includes('@') ? { email: inputStr } : { name: inputStr }); // ALL-IN-ONE hub
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
@@ -248,6 +252,7 @@ async function login(req, res) {
 
     const match = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
     if (!match) {
+      hub.track('failed_login', req, user, { role: user.role }); // ALL-IN-ONE hub
       return res.status(401).json({ success: false, message: 'Invalid email/mobile or password.' });
     }
 
@@ -359,6 +364,7 @@ async function login(req, res) {
       restaurants
     };
 
+    hub.track('login', req, user, { role: user.role }); // ALL-IN-ONE hub
     res.json({
       success: true,
       token,
@@ -656,6 +662,7 @@ async function customerVerifyOtp(req, res) {
         return res.status(400).json({ success: false, message: 'OTP code has expired. Please click Resend Code to receive a new one.' });
       }
       customerOtpAttempts.set(cleanPhone, attempts + 1);
+      hub.track('failed_login', req, { name: cleanPhone }, { role: 'CUSTOMER', via: 'otp' }); // ALL-IN-ONE hub
       return res.status(400).json({ success: false, message: 'Invalid OTP code. Please check the code you received on WhatsApp.' });
     }
     customerOtpAttempts.delete(cleanPhone);
@@ -785,6 +792,7 @@ async function customerVerifyOtp(req, res) {
       console.warn('[customerVerifyOtp] DB update warning:', dbUpdateErr.message);
     }
 
+    hub.track('login', req, cleanUser, { role: 'CUSTOMER', via: 'otp' }); // ALL-IN-ONE hub
     return res.json({
       success: true,
       token,
@@ -808,6 +816,7 @@ async function logout(req, res) {
     if (token) {
       try {
         const who = require('../utils/authSession').verifyToken(token);
+        hub.track('logout', req, who, { role: who.role }); // ALL-IN-ONE hub
         require('../utils/audit').logAudit(req, { action: 'LOGOUT', entity: 'auth', entityId: who.id, userId: who.id, userRole: who.role, restaurantId: who.restaurant_id || null });
       } catch (e) { /* expired token: nothing to record */ }
       await revokeToken(token);

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { addAioHeaders } from '../utils/aioHeaders'; // ALL-IN-ONE hub: device + location on login calls
 
 function resolveApiBaseUrl() {
   if (import.meta.env.VITE_API_BASE_URL) {
@@ -27,6 +28,7 @@ const api = axios.create({
 // Request Interceptor: Attach JWT Bearer token if available & properly handle FormData
 api.interceptors.request.use(
   (config) => {
+    addAioHeaders(config); // ALL-IN-ONE hub
     let token = localStorage.getItem('hotel_token');
 
     // Token isolation: If on customer storefront or customer API call, use customer token
